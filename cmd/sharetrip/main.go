@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"job4j.ru/share_trip/configs"
 	"job4j.ru/share_trip/internal/api"
-	"job4j.ru/share_trip/internal/domain"
+	"job4j.ru/share_trip/internal/service"
 	"log"
 	_ "time"
 
@@ -42,7 +42,7 @@ func main() {
 	fmt.Println("Connected to database successfully")
 
 	repo := storage.NewRepoPg(pool)
-	service := domain.NewCommonService(repo)
+	service := service.NewCommonService(repo)
 
 	server := api.NewServer(service) // ← add to service
 

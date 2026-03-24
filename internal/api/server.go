@@ -1,13 +1,13 @@
 package api
 
 import (
-	"job4j.ru/share_trip/internal/domain"
+	"job4j.ru/share_trip/internal/service"
 )
 
 type Server struct {
-	Service *domain.Service
+	Service *service.Service
 }
 
-func NewServer(service *domain.Service) *Server {
+func NewServer(service *service.Service) *Server {
 	return &Server{Service: service}
 }
