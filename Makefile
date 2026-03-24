@@ -4,8 +4,8 @@ GO_PKG := ./...
 APP_NAME=sharetrip
 BUILD_DIR=./build
 MAIN_FILE=cmd/sharetrip/main.go
-DB_DSN = "postgres://user:password@localhost:5432/share_trip?sslmode=disable"
-MIGRATIONS_DIR = db/migrations
+DB_DSN = "postgres://postgres:password@localhost:6543/share_trip?sslmode=disable"
+MIGRATIONS_DIR = ./migrations
 DEPLOY_DIR := ./deploy
 DC := $(DEPLOY_DIR)/docker-compose.yml
 

@@ -10,7 +10,7 @@ type GetInfoResponse struct {
 }
 
 func (s *Server) GetConnectInfo(ctx *fiber.Ctx) error {
-	res, err := s.Service.GetDBInfo(ctx.UserContext())
+	res, err := s.InfoService.GetDBInfo(ctx.UserContext())
 	if err != nil {
 		log.Errorw("s.Repository.List", err)
 		return fiber.NewError(fiber.StatusInternalServerError, "internal server error")

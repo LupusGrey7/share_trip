@@ -1,4 +1,4 @@
-package storage
+package repository
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type CommonRepository interface {
+type InfoRepository interface {
 	GetDbConnectInfo(ctx context.Context) (string, error)
 }
 
