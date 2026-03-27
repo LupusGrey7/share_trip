@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	APIPrefix = "/api"
+	APIPrefix   = "/api/v1"
+	APIPrefixV2 = "/api/v2"
 )
 
 func main() {
@@ -55,6 +56,7 @@ func main() {
 
 	app := fiber.New()
 	server.Route(app.Group(APIPrefix))
+	server.RouteV2(app.Group(APIPrefixV2))
 
 	printRoute(app)
 

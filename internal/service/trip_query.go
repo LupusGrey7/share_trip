@@ -22,17 +22,17 @@ func NewQueryTripService(repo RepositoryReader) *QueryTripService {
 	}
 }
 
-func (s *QueryTripService) GetById(ctx context.Context, id string) (trip.Response, error) {
+func (s *QueryTripService) GetById(ctx context.Context, id string) (trip.CreateTripResponse, error) {
 	_, err := uuid.Parse(id)
 	if err != nil {
 		log.Error("uuid parse errors: %v\n", err)
-		return trip.Response{}, errs.RequestValidationError{Message: err.Error()}
+		return trip.CreateTripResponse{}, errs.RequestValidationError{Message: err.Error()}
 	}
 
 	tr, err := s.repo.GetById(ctx, id)
 	if err != nil {
 		log.Debug("error when get by ID: ", err)
-		return trip.Response{}, err
+		return trip.CreateTripResponse{}, err
 	}
 
 	return tr.ToResponse(), nil

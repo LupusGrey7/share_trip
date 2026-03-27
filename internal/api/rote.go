@@ -15,7 +15,15 @@ func (s *Server) Route(route fiber.Router) {
 	route.Get(InfoPath, s.GetConnectInfo)
 
 	//group
-	shipGroup := route.Group(TripPath)
-	shipGroup.Get("/:tripId", s.TripHandler.FindByID)
-	shipGroup.Post("/create", s.TripHandler.Create)
+	tripGroup := route.Group(TripPath)
+	tripGroup.Get("/:tripId", s.TripHandler.FindByID)
+	tripGroup.Post("/create", s.TripHandler.Create)
+}
+
+// RouteV2 - group v2
+func (s *Server) RouteV2(route fiber.Router) {
+	tripGroupV2 := route.Group(TripPath)
+	tripGroupV2.Post("/create-tx", s.TripHandler.CreateTx)
+	tripGroupV2.Patch("/:tripId", s.TripHandler.UpdateTripDraftToPublishTx)
+
 }

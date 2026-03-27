@@ -17,14 +17,17 @@ const (
 	validationFailed     = "validate name error"
 	internalServerError  = "Internal server error"
 	invalidIdParamFormat = "id param is required"
+	invalidParseJson     = "Cannot parse JSON"
 )
 
 type ServiceWriter interface {
-	CreateTrip(ctx context.Context, tr trip.CreateTripCommand) (trip.Response, error)
+	CreateTrip(ctx context.Context, tr trip.CreateTripRequest) (trip.CreateTripResponse, error)
+	CreateTripTx(ctx context.Context, tp trip.CreateTripRequest) (trip.CreateTripResponse, error)
+	MoveTripDraftToPublish(ctx context.Context, req trip.MoveTripDraftToPublishModelRequest) (*trip.MoveTripDraftToPublishModelResponse, error)
 }
 
 type ServiceReader interface {
-	GetById(context.Context, string) (trip.Response, error)
+	GetById(context.Context, string) (trip.CreateTripResponse, error)
 }
 
 type Handler struct {
@@ -66,19 +69,76 @@ func (h *Handler) FindByID(c *fiber.Ctx) error {
 
 func (h *Handler) Create(c *fiber.Ctx) error {
 	ctx := c.UserContext()
-	var request trip.CreateTripCommand
+	var request trip.CreateTripRequest
 
 	// Парсим тело запроса
 	if err := c.BodyParser(&request); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(
 			fiber.Map{
-				"error": "Cannot parse JSON",
+				"error": invalidParseJson,
 			})
 	}
 
 	resp, err := h.createSvc.CreateTrip(ctx, request)
 	if err != nil {
 		log.Error("error create is: ", err)
+		switch {
+		case errors.As(err, &errs.RequestValidationError{}):
+			return apierr.ErrResponse(c, fiber.StatusBadRequest, err.Error())
+
+		default:
+			return apierr.ErrResponse(c, fiber.StatusInternalServerError, internalServerError)
+		}
+	}
+	return c.Status(fiber.StatusCreated).JSON(resp)
+}
+
+func (h *Handler) CreateTx(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	var request trip.CreateTripRequest
+
+	// Парсим тело запроса
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			fiber.Map{
+				"error": invalidParseJson,
+			})
+	}
+
+	resp, err := h.createSvc.CreateTripTx(ctx, request)
+	if err != nil {
+		log.Error("error create is: ", err)
+		switch {
+		case errors.As(err, &errs.RequestValidationError{}):
+			return apierr.ErrResponse(c, fiber.StatusBadRequest, err.Error())
+
+		default:
+			return apierr.ErrResponse(c, fiber.StatusInternalServerError, internalServerError)
+		}
+	}
+	return c.Status(fiber.StatusCreated).JSON(resp)
+}
+
+func (h *Handler) UpdateTripDraftToPublishTx(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	var request trip.MoveTripDraftToPublishModelRequest
+
+	id := c.Params("tripId")
+	if id == "" {
+		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
+	}
+	// Парсим тело запроса
+	if err := c.BodyParser(&request); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			fiber.Map{
+				"error": invalidParseJson,
+			})
+	}
+	request.ID = id
+
+	resp, err := h.createSvc.MoveTripDraftToPublish(ctx, request)
+	if err != nil {
+		log.Error("error update is: ", err)
 		switch {
 		case errors.As(err, &errs.RequestValidationError{}):
 			return apierr.ErrResponse(c, fiber.StatusBadRequest, err.Error())
