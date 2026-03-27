@@ -19,8 +19,11 @@ const (
 	invalidIdParamFormat = "id param is required"
 )
 
-type Service interface {
+type ServiceWriter interface {
 	CreateTrip(ctx context.Context, tr trip.CreateTripCommand) (trip.Response, error)
+}
+
+type ServiceReader interface {
 	GetById(context.Context, string) (trip.Response, error)
 }
 
