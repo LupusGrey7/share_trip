@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/gofiber/fiber/v2"
+	"github.com/joho/godotenv"
 	"job4j.ru/share_trip/configs"
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/repository"
@@ -17,6 +18,14 @@ import (
 const (
 	APIPrefix = "/api"
 )
+
+// init is invoked before main()
+func init() {
+	// loads values from .env into the system
+	if err := godotenv.Load(); err != nil {
+		log.Info("No .env file found")
+	}
+}
 
 func main() {
 	ctx := context.Background()
@@ -49,27 +58,17 @@ func main() {
 	infoService := service.NewInfoService(repo)
 	commandService := service.NewCommandTripService(repoTrip, validate)
 	queryService := service.NewQueryTripService(repoTrip)
-	tripHandler := api.NewHandler(commandService, queryService)
+	//tripHandler := api.NewHandler(commandService, queryService)
 
-	server := api.NewServer(infoService, tripHandler) // ← add to service
+	server := api.NewServer(infoService, commandService, queryService) // ← add to service
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		EnablePrintRoutes: true,
+	})
 	server.Route(app.Group(APIPrefix))
-
-	printRoute(app)
 
 	err = app.Listen(":8080")
 	if err != nil {
 		log.Fatal(err)
-	}
-}
-
-// ВЫВОД МАРШРУТОВ, precheck.
-func printRoute(app *fiber.App) {
-	log.Info("Зарегистрированные маршруты:")
-	for _, routes := range app.Stack() {
-		for _, route := range routes {
-			log.Debug("Метод и Путь: ", route.Method, route.Path)
-		}
 	}
 }

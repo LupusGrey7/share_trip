@@ -16,6 +16,6 @@ func (s *Server) Route(route fiber.Router) {
 
 	//group
 	shipGroup := route.Group(TripPath)
-	shipGroup.Get("/:tripId", s.TripHandler.FindByID)
-	shipGroup.Post("/create", s.TripHandler.Create)
+	shipGroup.Get("/:tripId", s.FindByID)
+	shipGroup.Post("/create", s.CreateTrip)
 }

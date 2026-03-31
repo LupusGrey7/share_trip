@@ -8,8 +8,12 @@ import (
 	"job4j.ru/share_trip/internal/domain/trip"
 )
 
+type QueryTripReaderService interface {
+	GetById(context.Context, string) (trip.Response, error)
+}
+
 type RepositoryReader interface {
-	GetById(context.Context, string) (trip.Entity, error)
+	GetById(context.Context, string) (*trip.Entity, error)
 }
 
 type QueryTripService struct {

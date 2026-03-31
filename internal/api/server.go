@@ -5,16 +5,19 @@ import (
 )
 
 type Server struct {
-	InfoService *service.InfoService
-	TripHandler *Handler
+	InfoService        *service.InfoService
+	CommandTripService *service.CommandTripService
+	QueryTripService   *service.QueryTripService
 }
 
 func NewServer(
 	service *service.InfoService,
-	tpHandler *Handler,
+	commandTripService *service.CommandTripService,
+	queryTripService *service.QueryTripService,
 ) *Server {
 	return &Server{
-		InfoService: service,
-		TripHandler: tpHandler,
+		InfoService:        service,
+		CommandTripService: commandTripService,
+		QueryTripService:   queryTripService,
 	}
 }

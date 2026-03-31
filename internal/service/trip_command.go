@@ -8,8 +8,12 @@ import (
 	"job4j.ru/share_trip/internal/domain/trip"
 )
 
+type CommandTripWriterService interface {
+	CreateTrip(ctx context.Context, tr trip.CreateTripCommand) (trip.Response, error)
+}
+
 type RepositoryWriter interface {
-	CreateTrip(context.Context, *trip.Entity) (trip.Entity, error)
+	CreateTrip(context.Context, *trip.Entity) (*trip.Entity, error)
 }
 
 type Validator interface {
