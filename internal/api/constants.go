@@ -5,4 +5,5 @@ const (
 	validationFailed     = "validate name error"
 	internalServerError  = "Internal server error"
 	invalidIdParamFormat = "id param is required"
+	invalidParseJson     = "Cannot parse JSON"
 )

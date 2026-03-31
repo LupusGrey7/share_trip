@@ -6,37 +6,34 @@ import (
 	"github.com/google/uuid"
 	"job4j.ru/share_trip/internal/domain/errs"
 	"job4j.ru/share_trip/internal/domain/trip"
+	"job4j.ru/share_trip/internal/repository"
 )
 
 type QueryTripReaderService interface {
-	GetById(context.Context, string) (trip.Response, error)
-}
-
-type RepositoryReader interface {
-	GetById(context.Context, string) (*trip.Entity, error)
+	GetById(ctx context.Context, id string) (trip.CreateTripResponse, error)
 }
 
 type QueryTripService struct {
-	repo RepositoryReader
+	repo repository.BaseTripRepository
 }
 
-func NewQueryTripService(repo RepositoryReader) *QueryTripService {
+func NewQueryTripService(repo repository.BaseTripRepository) *QueryTripService {
 	return &QueryTripService{
 		repo: repo,
 	}
 }
 
-func (s *QueryTripService) GetById(ctx context.Context, id string) (trip.Response, error) {
+func (s *QueryTripService) GetById(ctx context.Context, id string) (trip.CreateTripResponse, error) {
 	_, err := uuid.Parse(id)
 	if err != nil {
 		log.Error("uuid parse errors: %v\n", err)
-		return trip.Response{}, errs.RequestValidationError{Message: err.Error()}
+		return trip.CreateTripResponse{}, errs.RequestValidationError{Message: err.Error()}
 	}
 
 	tr, err := s.repo.GetById(ctx, id)
 	if err != nil {
 		log.Debug("error when get by ID: ", err)
-		return trip.Response{}, err
+		return trip.CreateTripResponse{}, err
 	}
 
 	return tr.ToResponse(), nil

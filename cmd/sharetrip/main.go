@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	APIPrefix = "/api"
+	APIPrefix   = "/api/v1"
+	APIPrefixV2 = "/api/v2"
 )
 
 // init is invoked before main()
@@ -56,16 +57,17 @@ func main() {
 	repo := repository.NewRepoPg(pool)
 	repoTrip := repository.NewTripRepository(pool)
 	infoService := service.NewInfoService(repo)
-	commandService := service.NewCommandTripService(repoTrip, validate)
+	tripService := service.NewTripService(repoTrip, validate)
+	commandService := service.NewCommandTripService(pool, repoTrip, validate)
 	queryService := service.NewQueryTripService(repoTrip)
-	//tripHandler := api.NewHandler(commandService, queryService)
 
-	server := api.NewServer(infoService, commandService, queryService) // ← add to service
+	server := api.NewServer(infoService, tripService, commandService, queryService) // ← add to service
 
 	app := fiber.New(fiber.Config{
 		EnablePrintRoutes: true,
 	})
 	server.Route(app.Group(APIPrefix))
+	server.RouteV2(app.Group(APIPrefixV2))
 
 	err = app.Listen(":8080")
 	if err != nil {

@@ -9,7 +9,7 @@ import (
 	"job4j.ru/share_trip/internal/domain/trip"
 )
 
-func (s *Server) CreateTrip(c *fiber.Ctx) error {
+func (s *Server) CreateTx(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 	var request trip.CreateTripRequest
 
@@ -17,11 +17,11 @@ func (s *Server) CreateTrip(c *fiber.Ctx) error {
 	if err := c.BodyParser(&request); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(
 			fiber.Map{
-				"error": "Cannot parse JSON",
+				"error": invalidParseJson,
 			})
 	}
 
-	resp, err := s.TripService.CreateTrip(ctx, request)
+	resp, err := s.CommandTripService.CreateTripWithTx(ctx, request)
 	if err != nil {
 		log.Error("error create is: ", err)
 		switch {

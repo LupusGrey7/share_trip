@@ -10,3 +10,11 @@ type RequestValidationError struct {
 func (err RequestValidationError) Error() string {
 	return err.Message
 }
+
+type JsonParseValidationError struct {
+	Message string
+}
+
+func (err JsonParseValidationError) Error() string {
+	return err.Message
+}

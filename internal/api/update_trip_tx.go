@@ -9,21 +9,29 @@ import (
 	"job4j.ru/share_trip/internal/domain/trip"
 )
 
-func (s *Server) CreateTrip(c *fiber.Ctx) error {
-	ctx := c.UserContext()
-	var request trip.CreateTripRequest
+//сценарий перевода поездки из состояния draft в published.
 
+func (s *Server) UpdateTripDraftToPublishTx(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	var request trip.MoveTripDraftToPublishModelRequest
+
+	id := c.Params("tripId")
+	if id == "" {
+		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
+	}
 	// Парсим тело запроса
 	if err := c.BodyParser(&request); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(
 			fiber.Map{
-				"error": "Cannot parse JSON",
+				"error": invalidParseJson,
 			})
 	}
 
-	resp, err := s.TripService.CreateTrip(ctx, request)
+	request.ID = id
+
+	resp, err := s.CommandTripService.MoveTripDraftToPublish(ctx, request)
 	if err != nil {
-		log.Error("error create is: ", err)
+		log.Error("error update is: ", err)
 		switch {
 		case errors.As(err, &errs.RequestValidationError{}):
 			return apierr.ErrResponse(c, fiber.StatusBadRequest, err.Error())
