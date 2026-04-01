@@ -50,9 +50,6 @@ func (s *CommandTripService) CreateTripWithTx(ctx context.Context, req trip.Crea
 	}
 
 	res, err := tx(ctx, s.pool, func(tx pgx.Tx) (*trip.CreateTripResponse, error) {
-		entity := req.ToEntity()
-		entity.Status = trip.StatusDraft
-		entity.Seats = 1
 
 		resp, err := use_case.CreateTrip(ctx, tx, s.repo, req)
 		if err != nil {
