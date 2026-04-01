@@ -11,7 +11,10 @@ import (
 	"job4j.ru/share_trip/internal/domain/errs"
 	"job4j.ru/share_trip/internal/domain/trip"
 	"job4j.ru/share_trip/internal/repository"
+	"job4j.ru/share_trip/internal/service/use_case"
 )
+
+// Оркестрация + tx[] wrapper
 
 const (
 	invalidValidateError = "Validation errors: %v\n"
@@ -51,16 +54,16 @@ func (s *CommandTripService) CreateTripWithTx(ctx context.Context, req trip.Crea
 		entity.Status = trip.StatusDraft
 		entity.Seats = 1
 
-		resp, err := s.repo.CreateTripTx(ctx, tx, entity)
+		resp, err := use_case.CreateTrip(ctx, tx, s.repo, req)
 		if err != nil {
-			return nil, fmt.Errorf("usecase.CreateTrip: %w", err)
+			return nil, fmt.Errorf("err use_case.CreateTripWithxTx: %w", err)
 		}
 
-		return resp.ToCreateResponse(), nil
+		return resp, nil
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed in transaction: %w", err)
+		return nil, fmt.Errorf("failed in transaction CreateTripWithxTx: %w", err)
 	}
 
 	return res, nil
@@ -71,6 +74,7 @@ func (s *CommandTripService) MoveTripDraftToPublish(
 	req trip.MoveTripDraftToPublishModelRequest,
 ) (*trip.MoveTripDraftToPublishModelResponse, error) {
 	log.Info("update trip tx")
+	var req1 trip.MoveTripDraftToPublishModel
 
 	if err := s.vlr.Struct(&req); err != nil {
 		log.Error(invalidValidateError, err)
@@ -83,36 +87,18 @@ func (s *CommandTripService) MoveTripDraftToPublish(
 		return nil, errs.JsonParseValidationError{Message: err.Error()}
 	}
 	log.Info("trip ID is: ", uuID)
+	req1.ID = uuID
+	req1.ClientID = req.ClientID
 
 	res, err := tx(ctx, s.pool, func(tx pgx.Tx) (*trip.MoveTripDraftToPublishModelResponse, error) {
-		resp, err := s.repo.GetForUpdateByIDTx(ctx, tx, uuID)
+		resp, err := use_case.MoveTripDraftToPublishTx(ctx, tx, s.repo, req1)
 
 		if err != nil {
-			return nil, fmt.Errorf("tripRepository.GetForUpdateByID: %w", err)
+			return nil, fmt.Errorf("err trip UseCase MoveTripDraftToPublishTx: %w", err)
 		}
 
-		if resp.DriverID != req.ClientID {
-			return nil, fmt.Errorf("forbidden: client %s is not driver of trip %s", req.ClientID, uuID)
-		}
+		return resp, nil
 
-		if resp.Status == trip.StatusPublished {
-			return &trip.MoveTripDraftToPublishModelResponse{
-				ID: resp.ID,
-			}, nil
-		}
-
-		if resp.Status != trip.StatusDraft {
-			return nil, fmt.Errorf("invalid entity status: expected %s, got %s", trip.StatusDraft, resp.Status)
-		}
-
-		resp.Status = trip.StatusPublished
-
-		updatedTrip, err := s.repo.UpdateTripTx(ctx, tx, resp)
-		if err != nil {
-			return nil, fmt.Errorf("error tripRepository.Update: %w", err)
-		}
-
-		return updatedTrip.UpdateToPublishModelResponse(), nil
 	})
 
 	if err != nil {

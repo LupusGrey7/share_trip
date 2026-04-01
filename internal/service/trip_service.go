@@ -10,7 +10,7 @@ import (
 )
 
 type BaseTripService interface {
-	CreateTrip(ctx context.Context, req trip.CreateTripRequest) (*trip.CreateTripResponse, error)
+	CreateTrip(ctx context.Context, req trip.CreateTripRequest) (trip.CreateTripResponse, error)
 }
 
 type TripService struct {

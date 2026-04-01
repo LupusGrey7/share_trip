@@ -56,6 +56,11 @@ type MoveTripDraftToPublishModelRequest struct {
 	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"` //"omitempty,uuid"
 }
 
+type MoveTripDraftToPublishModel struct {
+	ID       uuid.UUID
+	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"` //"omitempty,uuid"
+}
+
 type MoveTripDraftToPublishModelResponse struct {
 	ID            uuid.UUID  `json:"id"`
 	DriverID      uuid.UUID  `json:"driverId"`
