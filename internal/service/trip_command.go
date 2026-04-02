@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"job4j.ru/share_trip/internal/domain/errs"
+	"job4j.ru/share_trip/internal/domain/outbox"
 	"job4j.ru/share_trip/internal/domain/trip"
 	"job4j.ru/share_trip/internal/repository"
 	"job4j.ru/share_trip/internal/service/use_case"
@@ -30,16 +31,18 @@ type Validator interface {
 }
 
 type CommandTripService struct {
-	pool *pgxpool.Pool
-	repo repository.BaseTxTripRepository
-	vlr  *validator.Validate
+	pool       *pgxpool.Pool
+	repo       repository.BaseTxTripRepository
+	outboxRepo repository.OutboxRepository
+	vlr        *validator.Validate
 }
 
-func NewCommandTripService(pool *pgxpool.Pool, repo repository.BaseTxTripRepository, validator *validator.Validate) *CommandTripService {
+func NewCommandTripService(pool *pgxpool.Pool, repo repository.BaseTxTripRepository, outboxRepo repository.OutboxRepository, validator *validator.Validate) *CommandTripService {
 	return &CommandTripService{
-		pool: pool,
-		repo: repo,
-		vlr:  validator,
+		pool:       pool,
+		repo:       repo,
+		outboxRepo: outboxRepo,
+		vlr:        validator,
 	}
 }
 
@@ -93,9 +96,20 @@ func (s *CommandTripService) MoveTripDraftToPublish(
 		if err != nil {
 			return nil, fmt.Errorf("err trip UseCase MoveTripDraftToPublishTx: %w", err)
 		}
+		//outbox
+		payload := outbox.PayloadEvent{TripID: resp.ID}
+		event := outbox.Entity{
+			EventName:   string(outbox.EventPublished),
+			AggregateId: resp.ID,
+			Payload:     payload,
+		}
+
+		err = s.outboxRepo.CreateEventTx(ctx, tx, &event)
+		if err != nil {
+			return nil, fmt.Errorf("error outboxRepository.Create: %w", err)
+		}
 
 		return resp, nil
-
 	})
 
 	if err != nil {

@@ -56,9 +56,10 @@ func main() {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	repo := repository.NewRepoPg(pool)
 	repoTrip := repository.NewTripRepository(pool)
+	outboxRepo := repository.NewOutboxEventRepository()
 	infoService := service.NewInfoService(repo)
 	tripService := service.NewTripService(repoTrip, validate)
-	commandService := service.NewCommandTripService(pool, repoTrip, validate)
+	commandService := service.NewCommandTripService(pool, repoTrip, outboxRepo, validate)
 	queryService := service.NewQueryTripService(repoTrip)
 
 	server := api.NewServer(infoService, tripService, commandService, queryService) // ← add to service
