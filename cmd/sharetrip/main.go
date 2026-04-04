@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	_ "time"
+
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/joho/godotenv"
 	"job4j.ru/share_trip/configs"
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/repository"
 	"job4j.ru/share_trip/internal/service"
-	_ "time"
+	"job4j.ru/share_trip/internal/service/use_case"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2/log"
@@ -52,20 +55,26 @@ func main() {
 	}
 	log.Info("Connected to database successfully")
 
+	//app
+	app := fiber.New(fiber.Config{
+		EnablePrintRoutes: true,
+	})
+	app.Use(requestid.New())
+	app.Use(func(c *fiber.Ctx) error {
+		log.Infof("Generated ID: %v", c.Locals("requestid"))
+		return c.Next()
+	})
+
 	// Initialize the validator instance
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	repo := repository.NewRepoPg(pool)
 	repoTrip := repository.NewTripRepository(pool)
 	infoService := service.NewInfoService(repo)
 	tripService := service.NewTripService(repoTrip, validate)
-	commandService := service.NewCommandTripService(pool, repoTrip, validate)
-	queryService := service.NewQueryTripService(repoTrip)
+	userCase := use_case.NewTripUsecase()
+	commandService := service.NewTripWriterService(pool, repoTrip, userCase)
 
-	server := api.NewServer(infoService, tripService, commandService, queryService) // ← add to service
-
-	app := fiber.New(fiber.Config{
-		EnablePrintRoutes: true,
-	})
+	server := api.NewServer(validate, infoService, tripService, commandService) // ← add to service
 	server.Route(app.Group(APIPrefix))
 	server.RouteV2(app.Group(APIPrefixV2))
 

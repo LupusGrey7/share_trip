@@ -3,13 +3,21 @@ package repository
 import (
 	"context"
 	"fmt"
+	"time"
+
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"job4j.ru/share_trip/internal/domain/trip"
-	"time"
 )
 
 const (
+	getTripByID = `
+select *
+from trips 
+where id = $1
+`
+
 	forUpdateTrip = `
 select
 	id,
@@ -38,17 +46,50 @@ where trip_id = $2
 )
 
 type BaseTxTripRepository interface {
-	GetForUpdateByIDTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) (trip.Entity, error)
-	UpdateTripTx(ctx context.Context, tx pgx.Tx, tp trip.Entity) (trip.Entity, error)
-	CreateTripTx(ctx context.Context, tx pgx.Tx, t *trip.Entity) (trip.Entity, error)
+	GetById(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*trip.Entity, error)
+	GetForUpdateByIDTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*trip.Entity, error)
+	UpdateTripTx(ctx context.Context, tx pgx.Tx, t *trip.Entity) (*trip.Entity, error)
+	CreateTripTx(ctx context.Context, tx pgx.Tx, t *trip.Entity) (*trip.Entity, error)
+}
+
+func (r *TripRepository) GetById(
+	ctx context.Context,
+	tx pgx.Tx,
+	id uuid.UUID,
+) (*trip.Entity, error) {
+	var entity trip.Entity
+
+	query := getTripByID
+	rows, err := r.pool.Query(ctx, query, id)
+	if err != nil {
+		return &trip.Entity{}, fmt.Errorf("error while query: %w", err)
+	}
+	defer rows.Close()
+
+	//Критически важно: переходим на первую строку
+	if !rows.Next() {
+		return &trip.Entity{}, fmt.Errorf("trip with id %s not found", id)
+	}
+
+	argsRslRow := []interface{}{
+		&entity.ID, &entity.DriverID, &entity.FromPoint, &entity.ToPoint,
+		&entity.DepartureTime, &entity.Seats, &entity.Status, &entity.CreatedAt,
+	}
+	err = rows.Scan(argsRslRow...)
+	if err != nil {
+		log.Error("error : ", err)
+		return &trip.Entity{}, err
+	}
+
+	return &entity, nil
 }
 
 func (r *TripRepository) CreateTripTx(
 	ctx context.Context,
 	tx pgx.Tx, // транзакция
 	t *trip.Entity,
-) (trip.Entity, error) {
-	var entity trip.Entity
+) (*trip.Entity, error) {
+	var entity = trip.Entity{}
 
 	query := createNewTrip
 	id := uuid.New()
@@ -57,7 +98,7 @@ func (r *TripRepository) CreateTripTx(
 
 	err := tx.QueryRow(ctx, query, args...).Scan(argsRslRow...)
 	if err != nil {
-		return trip.Entity{}, fmt.Errorf("ошибка при вставке: %w", err)
+		return &trip.Entity{}, fmt.Errorf("ошибка при вставке: %w", err)
 	}
 
 	id = uuid.New()
@@ -66,21 +107,21 @@ func (r *TripRepository) CreateTripTx(
 
 	rows, err := tx.Query(ctx, query, argsTHistory...)
 	if err != nil {
-		return trip.Entity{}, fmt.Errorf("ошибка при вставке trip_history: %w", err)
+		return &trip.Entity{}, fmt.Errorf("ошибка при вставке trip_history: %w", err)
 	}
 	defer rows.Close() // обработать rows
 
-	return entity, nil
+	return &entity, nil
 }
 
 func (r *TripRepository) UpdateTripTx(
 	ctx context.Context,
 	tx pgx.Tx,
-	tp trip.Entity,
-) (trip.Entity, error) {
+	t *trip.Entity,
+) (*trip.Entity, error) {
 	var entity trip.Entity
 	query := updateTrip
-	args := []interface{}{tp.Status, tp.ID}
+	args := []interface{}{t.Status, t.ID}
 
 	err := tx.QueryRow(ctx, query, args...).Scan(
 		&entity.ID,
@@ -93,28 +134,28 @@ func (r *TripRepository) UpdateTripTx(
 		&entity.CreatedAt,
 	)
 	if err != nil {
-		return trip.Entity{}, fmt.Errorf(
+		return &trip.Entity{}, fmt.Errorf(
 			"error tx.QueryRow trip by id for update: %w", err,
 		)
 	}
 
-	args = []interface{}{tp.Status, tp.ID}
+	args = []interface{}{t.Status, t.ID}
 	query = updateTripHistory
 	rows, err := tx.Query(ctx, query, args...)
 	if err != nil {
-		return trip.Entity{}, fmt.Errorf("error by update trip_history: %w", err)
+		return &trip.Entity{}, fmt.Errorf("error by update trip_history: %w", err)
 	}
 	defer rows.Close() // обработать rows
 
-	return entity, nil
+	return &entity, nil
 }
 
 func (r *TripRepository) GetForUpdateByIDTx(
 	ctx context.Context,
 	tx pgx.Tx, // транзакция
 	id uuid.UUID,
-) (trip.Entity, error) {
-	var tp trip.Entity
+) (*trip.Entity, error) {
+	var tp trip.Entity // Создаем пустую структуру в стеке
 
 	query := forUpdateTrip
 	err := tx.QueryRow(ctx, query, id).Scan(
@@ -128,9 +169,9 @@ func (r *TripRepository) GetForUpdateByIDTx(
 		&tp.CreatedAt,
 	)
 	if err != nil {
-		return trip.Entity{}, fmt.Errorf(
+		return &trip.Entity{}, fmt.Errorf(
 			"error tx.QueryRow get trip by id for update: %w", err,
 		)
 	}
-	return tp, nil
+	return &tp, nil // Возвращаем указатель на заполненную структуру
 }

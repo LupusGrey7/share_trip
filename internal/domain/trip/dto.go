@@ -1,8 +1,9 @@
 package trip
 
 import (
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type StatusEnum string
@@ -39,8 +40,19 @@ type CreateTripResponse struct {
 	Status        StatusEnum `json:"status"`
 }
 
-type GetByIdRequest struct {
+type GetByIdModelRequest struct {
 	ID uuid.UUID `json:"id" validate:"required,uuid"`
+}
+
+type GetTripByIdModelResponse struct {
+	ID            uuid.UUID  `json:"id"`
+	DriverID      uuid.UUID  `json:"driverId"`
+	FromPoint     string     `json:"fromPoint"`
+	ToPoint       string     `json:"toPoint"`
+	Seats         int        `json:"seats"`
+	CreatedAt     time.Time  `json:"createdAt" validate:"required"`
+	DepartureTime time.Time  `json:"departureTime" validate:"required"`
+	Status        StatusEnum `json:"status"`
 }
 
 type CreateTripRequest struct {
@@ -146,6 +158,19 @@ func (req *MoveTripDraftToPublishModelResponse) ToPublishModelResponse(entity En
 
 func (req *Entity) UpdateToPublishModelResponse() *MoveTripDraftToPublishModelResponse {
 	return &MoveTripDraftToPublishModelResponse{
+		ID:            req.ID,
+		DriverID:      req.DriverID,
+		FromPoint:     req.FromPoint,
+		ToPoint:       req.ToPoint,
+		CreatedAt:     req.CreatedAt,
+		DepartureTime: req.DepartureTime,
+		Seats:         req.Seats,
+		Status:        req.Status,
+	}
+}
+
+func (req *Entity) ToGetByIdModelResponse() *GetTripByIdModelResponse {
+	return &GetTripByIdModelResponse{
 		ID:            req.ID,
 		DriverID:      req.DriverID,
 		FromPoint:     req.FromPoint,
