@@ -3,12 +3,13 @@ package repository
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"job4j.ru/share_trip/internal/domain/trip"
-	"time"
 )
 
 const (

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2/log"
 	"job4j.ru/share_trip/internal/domain/errs"

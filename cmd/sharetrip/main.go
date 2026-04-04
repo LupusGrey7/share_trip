@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
+	_ "time"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 	"job4j.ru/share_trip/configs"
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/repository"
 	"job4j.ru/share_trip/internal/service"
-	_ "time"
+	"job4j.ru/share_trip/internal/service/use_case"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2/log"
@@ -58,7 +60,8 @@ func main() {
 	repoTrip := repository.NewTripRepository(pool)
 	infoService := service.NewInfoService(repo)
 	tripService := service.NewTripService(repoTrip, validate)
-	commandService := service.NewCommandTripService(pool, repoTrip, validate)
+	userCase := use_case.NewTripUsecase()
+	commandService := service.NewTripWriterService(pool, repoTrip, validate, userCase)
 	queryService := service.NewQueryTripService(repoTrip)
 
 	server := api.NewServer(infoService, tripService, commandService, queryService) // ← add to service

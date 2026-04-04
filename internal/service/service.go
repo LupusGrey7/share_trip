@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
@@ -17,10 +18,10 @@ import (
 // Оркестрация + tx[] wrapper
 
 const (
-	invalidValidateError = "Validation errors: %v\n"
+	invalidValidateError string = "Validation errors: %v\n"
 )
 
-type CommandTripWriterService interface {
+type WriterService interface {
 	CreateTripWithTx(context.Context, trip.CreateTripRequest) (*trip.CreateTripResponse, error)
 	MoveTripDraftToPublish(ctx context.Context, req trip.MoveTripDraftToPublishModelRequest) (*trip.MoveTripDraftToPublishModelResponse, error)
 }
@@ -29,21 +30,27 @@ type Validator interface {
 	Validate(request any) error
 }
 
-type CommandTripService struct {
-	pool *pgxpool.Pool
-	repo repository.BaseTxTripRepository
-	vlr  *validator.Validate
+type TripWriterService struct {
+	pool    *pgxpool.Pool
+	repo    repository.BaseTxTripRepository
+	vlr     *validator.Validate
+	useCase use_case.BaseUsecase
 }
 
-func NewCommandTripService(pool *pgxpool.Pool, repo repository.BaseTxTripRepository, validator *validator.Validate) *CommandTripService {
-	return &CommandTripService{
-		pool: pool,
-		repo: repo,
-		vlr:  validator,
+func NewTripWriterService(
+	pool *pgxpool.Pool,
+	repo repository.BaseTxTripRepository,
+	validator *validator.Validate,
+	uc use_case.BaseUsecase) *TripWriterService {
+	return &TripWriterService{
+		pool:    pool,
+		repo:    repo,
+		vlr:     validator,
+		useCase: uc,
 	}
 }
 
-func (s *CommandTripService) CreateTripWithTx(ctx context.Context, req trip.CreateTripRequest) (*trip.CreateTripResponse, error) {
+func (s *TripWriterService) CreateTripWithTx(ctx context.Context, req trip.CreateTripRequest) (*trip.CreateTripResponse, error) {
 	if err := s.vlr.Struct(&req); err != nil {
 		log.Error(invalidValidateError, err)
 		return &trip.CreateTripResponse{}, errs.RequestValidationError{Message: err.Error()}
@@ -66,7 +73,7 @@ func (s *CommandTripService) CreateTripWithTx(ctx context.Context, req trip.Crea
 	return res, nil
 }
 
-func (s *CommandTripService) MoveTripDraftToPublish(
+func (s *TripWriterService) MoveTripDraftToPublish(
 	ctx context.Context,
 	req trip.MoveTripDraftToPublishModelRequest,
 ) (*trip.MoveTripDraftToPublishModelResponse, error) {
@@ -88,7 +95,7 @@ func (s *CommandTripService) MoveTripDraftToPublish(
 	req1.ClientID = req.ClientID
 
 	res, err := tx(ctx, s.pool, func(tx pgx.Tx) (*trip.MoveTripDraftToPublishModelResponse, error) {
-		resp, err := use_case.MoveTripDraftToPublishTx(ctx, tx, s.repo, req1)
+		resp, err := s.useCase.MoveTripDraftToPublishTx(ctx, tx, s.repo, req1)
 
 		if err != nil {
 			return nil, fmt.Errorf("err trip UseCase MoveTripDraftToPublishTx: %w", err)

@@ -1,8 +1,9 @@
 package api
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"log"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 const (
@@ -24,6 +25,6 @@ func (s *Server) Route(route fiber.Router) {
 func (s *Server) RouteV2(route fiber.Router) {
 	tripGroupV2 := route.Group(TripPath)
 
-	tripGroupV2.Post("/create-tx", s.CreateTx)
-	tripGroupV2.Patch("/:tripId", s.UpdateTripDraftToPublishTx)
+	tripGroupV2.Post("/createTrip", s.CreateTx)
+	tripGroupV2.Patch("/moveTripDraft-ToPublish/:tripId", s.UpdateTripDraftToPublishTx)
 }

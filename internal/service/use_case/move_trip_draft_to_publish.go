@@ -3,6 +3,7 @@ package use_case
 import (
 	"context"
 	"fmt"
+
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/jackc/pgx/v5"
 	"job4j.ru/share_trip/internal/domain/trip"

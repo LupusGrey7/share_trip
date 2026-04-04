@@ -7,14 +7,14 @@ import (
 type Server struct {
 	InfoService        *service.InfoService
 	TripService        *service.TripService
-	CommandTripService *service.CommandTripService
+	CommandTripService *service.TripWriterService
 	QueryTripService   *service.QueryTripService
 }
 
 func NewServer(
 	service *service.InfoService,
 	tripService *service.TripService,
-	commandTripService *service.CommandTripService,
+	commandTripService *service.TripWriterService,
 	queryTripService *service.QueryTripService,
 ) *Server {
 	return &Server{

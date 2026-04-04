@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 	"job4j.ru/share_trip/internal/domain/errs"
