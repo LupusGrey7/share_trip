@@ -9,7 +9,7 @@ import (
 	"job4j.ru/share_trip/internal/repository"
 )
 
-func CreateTrip(
+func (t *TripUsecase) CreateTrip(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo repository.BaseTxTripRepository,

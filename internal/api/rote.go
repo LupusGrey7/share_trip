@@ -26,5 +26,5 @@ func (s *Server) RouteV2(route fiber.Router) {
 	tripGroupV2 := route.Group(TripPath)
 
 	tripGroupV2.Post("/createTrip", s.CreateTx)
-	tripGroupV2.Patch("/moveTripDraft-ToPublish/:tripId", s.UpdateTripDraftToPublishTx)
+	tripGroupV2.Patch("/moveTripDraft-ToPublish/:tripId", s.MoveTripDraftToPublishTx)
 }

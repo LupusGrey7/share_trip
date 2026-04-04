@@ -12,7 +12,7 @@ import (
 
 //сценарий перевода поездки из состояния draft в published.
 
-func (s *Server) UpdateTripDraftToPublishTx(c *fiber.Ctx) error {
+func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 	var request trip.MoveTripDraftToPublishModelRequest
 

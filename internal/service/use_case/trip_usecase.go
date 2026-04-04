@@ -20,28 +20,28 @@ func NewTripUsecase() *TripUsecase {
 	return &TripUsecase{}
 }
 
-func (t *TripUsecase) CreateTrip(
-	ctx context.Context,
-	tx pgx.Tx,
-	repo repository.BaseTxTripRepository,
-	req trip.CreateTripRequest,
-) (*trip.CreateTripResponse, error) {
-	resp, err := CreateTrip(ctx, tx, repo, req)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
+//func (t *TripUsecase) CreateTrip(
+//	ctx context.Context,
+//	tx pgx.Tx,
+//	repo repository.BaseTxTripRepository,
+//	req trip.CreateTripRequest,
+//) (*trip.CreateTripResponse, error) {
+//	resp, err := CreateTrip(ctx, tx, repo, req)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return resp, nil
+//}
 
-func (t *TripUsecase) MoveTripDraftToPublishTx(
-	ctx context.Context,
-	tx pgx.Tx,
-	repo repository.BaseTxTripRepository,
-	req trip.MoveTripDraftToPublishModel,
-) (*trip.MoveTripDraftToPublishModelResponse, error) {
-	resp, err := MoveTripDraftToPublishTx(ctx, tx, repo, req)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
+//func (t *TripUsecase) MoveTripDraftToPublishTx(
+//	ctx context.Context,
+//	tx pgx.Tx,
+//	repo repository.BaseTxTripRepository,
+//	req trip.MoveTripDraftToPublishModel,
+//) (*trip.MoveTripDraftToPublishModelResponse, error) {
+//	resp, err := MoveTripDraftToPublishTx(ctx, tx, repo, req)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return resp, nil
+//}
