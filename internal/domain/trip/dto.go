@@ -41,7 +41,7 @@ type CreateTripResponse struct {
 }
 
 type GetByIdModelRequest struct {
-	ID uuid.UUID `json:"id" validate:"required,uuid"`
+	ID uuid.UUID
 }
 
 type GetTripByIdModelResponse struct {
