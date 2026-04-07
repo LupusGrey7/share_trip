@@ -47,11 +47,11 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 	}
 	request.ID = uuID
 	// логирование на границе компонента.
-	log.Infof("update trip ID: %v with traceID: %s ", uuID, traceID)
+	log.Infof("move trip to publish ID: %v with traceID: %s ", uuID, traceID)
 
 	resp, err := s.CommandTripService.MoveTripDraftToPublish(ctx, request.ToRequest())
 	if err != nil {
-		log.Error("error update is: ", err)
+		log.Error("error move trip to publish is: ", err)
 		switch {
 		case errors.As(err, &errs.RequestValidationError{}):
 			return apierr.ErrResponse(c, fiber.StatusBadRequest, err.Error())
@@ -60,5 +60,5 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 			return apierr.ErrResponse(c, fiber.StatusInternalServerError, internalServerError)
 		}
 	}
-	return c.Status(fiber.StatusCreated).JSON(resp)
+	return c.Status(fiber.StatusOK).JSON(resp)
 }

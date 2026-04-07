@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"job4j.ru/share_trip/internal/domain/outbox"
 	"job4j.ru/share_trip/internal/domain/trip"
 	"job4j.ru/share_trip/internal/repository"
 	"job4j.ru/share_trip/internal/service/use_case"
@@ -25,19 +26,23 @@ type Validator interface {
 }
 
 type TripWriterService struct {
-	pool    *pgxpool.Pool
-	repo    repository.BaseTxTripRepository
-	useCase use_case.BaseUsecase
+	pool       *pgxpool.Pool
+	repo       repository.BaseTxTripRepository
+	outboxRepo repository.OutboxRepository
+	useCase    use_case.BaseUsecase
 }
 
 func NewTripWriterService(
 	pool *pgxpool.Pool,
 	repo repository.BaseTxTripRepository,
-	uc use_case.BaseUsecase) *TripWriterService {
+	outbox repository.OutboxRepository,
+	uc use_case.BaseUsecase,
+) *TripWriterService {
 	return &TripWriterService{
-		pool:    pool,
-		repo:    repo,
-		useCase: uc,
+		pool:       pool,
+		repo:       repo,
+		outboxRepo: outbox,
+		useCase:    uc,
 	}
 }
 
@@ -68,6 +73,19 @@ func (s *TripWriterService) MoveTripDraftToPublish(
 
 		if err != nil {
 			return nil, fmt.Errorf("err trip UseCase MoveTripDraftToPublishTx: %w", err)
+		}
+
+		//outbox
+		payload := outbox.PayloadEvent{TripID: resp.ID}
+		event := outbox.Entity{
+			EventName:   string(outbox.EventPublished),
+			AggregateId: resp.ID,
+			Payload:     payload,
+		}
+
+		err = s.outboxRepo.CreateNotificationTripPublishTx(ctx, tx, &event)
+		if err != nil {
+			return nil, fmt.Errorf("error create Event Notification: %w", err)
 		}
 
 		return resp, nil
