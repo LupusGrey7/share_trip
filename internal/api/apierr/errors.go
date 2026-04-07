@@ -2,6 +2,7 @@ package apierr
 
 import (
 	"errors"
+
 	"github.com/gofiber/fiber/v2"
 	"job4j.ru/share_trip/internal/domain/http"
 )

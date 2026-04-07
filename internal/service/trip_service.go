@@ -2,11 +2,16 @@ package service
 
 import (
 	"context"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2/log"
 	"job4j.ru/share_trip/internal/domain/errs"
 	"job4j.ru/share_trip/internal/domain/trip"
 	"job4j.ru/share_trip/internal/repository"
+)
+
+const (
+	invalidValidateError string = "Validation errors: %v\n"
 )
 
 type BaseTripService interface {

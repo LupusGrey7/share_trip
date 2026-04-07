@@ -3,17 +3,16 @@ package repository
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"job4j.ru/share_trip/internal/domain/trip"
-	"time"
 )
 
 const (
-	getTripByID = `select * from trips where id = $1`
-
 	createNewTrip = `
 insert into trips(id, driver_id, from_point, to_point, departure_time, seats, status, created_at) 
 values($1, $2, $3, $4, $5, $6, $7, $8) 
@@ -27,7 +26,7 @@ values($1, $2, $3, $4, $5)`
 
 type BaseTripRepository interface {
 	CreateTrip(context.Context, *trip.Entity) (*trip.Entity, error)
-	GetById(ctx context.Context, id string) (*trip.Entity, error)
+	//GetById(ctx context.Context, id string) (*trip.Entity, error)
 	Tx(ctx context.Context, block func(tx pgx.Tx) error) error
 }
 
@@ -64,34 +63,34 @@ func (r *TripRepository) CreateTrip(ctx context.Context, t *trip.Entity) (*trip.
 	return entity, nil
 }
 
-func (r *TripRepository) GetById(ctx context.Context, id string) (*trip.Entity, error) {
-	var entity = &trip.Entity{}
-
-	query := getTripByID
-
-	rows, err := r.pool.Query(ctx, query, id)
-	if err != nil {
-		return &trip.Entity{}, fmt.Errorf("error while query: %w", err)
-	}
-	defer rows.Close()
-
-	//Критически важно: переходим на первую строку
-	if !rows.Next() {
-		return &trip.Entity{}, fmt.Errorf("trip with id %s not found", id)
-	}
-
-	argsRslRow := []interface{}{
-		&entity.ID, &entity.DriverID, &entity.FromPoint, &entity.ToPoint,
-		&entity.DepartureTime, &entity.Seats, &entity.Status, &entity.CreatedAt,
-	}
-	err = rows.Scan(argsRslRow...)
-	if err != nil {
-		log.Error("error : ", err)
-		return &trip.Entity{}, err
-	}
-
-	return entity, nil
-}
+//func (r *TripRepository) GetById(ctx context.Context, id string) (*trip.Entity, error) {
+//	var entity = &trip.Entity{}
+//
+//	query := getTripByID
+//
+//	rows, err := r.pool.Query(ctx, query, id)
+//	if err != nil {
+//		return &trip.Entity{}, fmt.Errorf("error while query: %w", err)
+//	}
+//	defer rows.Close()
+//
+//	//Критически важно: переходим на первую строку
+//	if !rows.Next() {
+//		return &trip.Entity{}, fmt.Errorf("trip with id %s not found", id)
+//	}
+//
+//	argsRslRow := []interface{}{
+//		&entity.ID, &entity.DriverID, &entity.FromPoint, &entity.ToPoint,
+//		&entity.DepartureTime, &entity.Seats, &entity.Status, &entity.CreatedAt,
+//	}
+//	err = rows.Scan(argsRslRow...)
+//	if err != nil {
+//		log.Error("error : ", err)
+//		return &trip.Entity{}, err
+//	}
+//
+//	return entity, nil
+//}
 
 // BeginWithTx - create DB transactional, выполняет переданную функцию внутри транзакции.
 func (r *TripRepository) BeginWithTx(
