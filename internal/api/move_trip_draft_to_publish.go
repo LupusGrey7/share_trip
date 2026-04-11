@@ -2,7 +2,6 @@ package api
 
 import (
 	"errors"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
@@ -49,16 +48,15 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 	// логирование на границе компонента.
 	log.Infof("move trip to publish ID: %v with traceID: %s ", uuID, traceID)
 
-	resp, err := s.CommandTripService.MoveTripDraftToPublish(ctx, request.ToRequest())
+	resp, err := s.TripService.MoveTripDraftToPublish(ctx, request.ToRequest())
 	if err != nil {
 		log.Error("error move trip to publish is: ", err)
-		switch {
-		case errors.As(err, &errs.RequestValidationError{}):
+		if errors.As(err, &errs.RequestValidationError{}) {
 			return apierr.ErrResponse(c, fiber.StatusBadRequest, err.Error())
-
-		default:
-			return apierr.ErrResponse(c, fiber.StatusInternalServerError, internalServerError)
 		}
+
+		return apierr.ErrResponse(c, fiber.StatusInternalServerError, internalServerError)
+
 	}
 	return c.Status(fiber.StatusOK).JSON(resp)
 }

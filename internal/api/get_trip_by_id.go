@@ -37,7 +37,7 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 	}
 
 	log.Infof("find Bytrip ID: %s with traceID: %s ", id, traceID)
-	resp, err := s.CommandTripService.GetTripByID(ctx, request)
+	resp, err := s.TripService.GetTripByID(ctx, request)
 	if err != nil {
 		log.Error("error when FindById trip is: ", err)
 

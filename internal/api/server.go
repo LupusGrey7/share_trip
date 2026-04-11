@@ -6,22 +6,19 @@ import (
 )
 
 type Server struct {
-	validator          *validator.Validate
-	InfoService        *service.InfoService
-	TripService        *service.TripService
-	CommandTripService *service.TripWriterService
+	validator   *validator.Validate
+	InfoService *service.InfoService
+	TripService *service.TripService
 }
 
 func NewServer(
 	vl *validator.Validate,
 	service *service.InfoService,
 	tripService *service.TripService,
-	commandTripService *service.TripWriterService,
 ) *Server {
 	return &Server{
-		validator:          vl,
-		InfoService:        service,
-		TripService:        tripService,
-		CommandTripService: commandTripService,
+		validator:   vl,
+		InfoService: service,
+		TripService: tripService,
 	}
 }

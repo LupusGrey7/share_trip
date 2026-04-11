@@ -67,15 +67,19 @@ func main() {
 
 	// Initialize the validator instance
 	validate := validator.New(validator.WithRequiredStructEnabled())
+
 	repo := repository.NewRepoPg(pool)
 	repoTrip := repository.NewTripRepository(pool)
 	outboxRepo := repository.NewOutboxEventRepository()
-	infoService := service.NewInfoService(repo)
-	tripService := service.NewTripService(repoTrip, validate)
-	tripUseCase := use_case.NewTripUsecase()
-	commandService := service.NewTripWriterService(pool, repoTrip, outboxRepo, tripUseCase)
 
-	server := api.NewServer(validate, infoService, tripService, commandService) // ← add to service
+	infoUseCase := use_case.NewInfoUseCase()
+	tripUseCase := use_case.NewTripUsecase()
+
+	infoService := service.NewInfoService(infoUseCase, repo)
+	tripService := service.NewTripService(pool, repoTrip, outboxRepo, tripUseCase)
+
+	server := api.NewServer(validate, infoService, tripService) // ← add to service
+
 	server.Route(app.Group(APIPrefix))
 	server.RouteV2(app.Group(APIPrefixV2))
 

@@ -33,7 +33,7 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 	}
 	log.Infof("create trip traceID: %s", traceID)
 
-	resp, err := s.CommandTripService.CreateTripWithTx(ctx, request)
+	resp, err := s.TripService.CreateTripWithTx(ctx, request)
 	if err != nil {
 		log.Error("error create is: ", err)
 		switch {

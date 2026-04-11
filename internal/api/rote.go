@@ -11,13 +11,11 @@ const (
 	TripPath = "/trip"
 )
 
+// Route - group v1
 func (s *Server) Route(route fiber.Router) {
 	log.Println("Server listening on :8080")
 	route.Get(InfoPath, s.GetConnectInfo)
 
-	//group
-	shipGroup := route.Group(TripPath)
-	shipGroup.Post("/create", s.CreateTrip)
 }
 
 // RouteV2 - group v2
