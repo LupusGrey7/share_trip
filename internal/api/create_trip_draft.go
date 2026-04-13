@@ -44,5 +44,5 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 			return apierr.ErrResponse(c, fiber.StatusInternalServerError, internalServerError)
 		}
 	}
-	return c.Status(fiber.StatusCreated).JSON(resp)
+	return c.Status(fiber.StatusOK).JSON(resp)
 }

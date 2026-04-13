@@ -66,7 +66,7 @@ lint:
 	fi
 	golangci-lint run
 
-# Задача - Запуск тестов
+# Задача - Запуск тестов (Подробный вывод (имена тестов и PASS/FAIL))
 .PHONY: test
 test:
 	$(GO) test -v $(GO_PKG)
