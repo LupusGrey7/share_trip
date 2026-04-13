@@ -3,15 +3,26 @@ package apitest
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 	"io"
-	"job4j.ru/share_trip/internal/domain/trip"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+	"job4j.ru/share_trip/internal/domain/trip"
 )
 
+/*
+*
+=== Registered Routes ===
+GET    /ready
+GET    /trip/:tripId
+HEAD   /ready
+HEAD   /trip/:tripId
+POST   /trip/createTripDraft
+PATCH  /trip/moveTripDraft-ToPublish/:tripId
+*/
 func TestServer_CreateTrip(t *testing.T) {
 
 	t.Run("success - создание поездки", func(t *testing.T) {
@@ -28,7 +39,7 @@ func TestServer_CreateTrip(t *testing.T) {
 
 		req, err := http.NewRequest(
 			http.MethodPost,
-			"/trip/create",
+			"/trip/createTripDraft",
 			bytes.NewReader(body),
 		)
 		require.NoError(t, err)

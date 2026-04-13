@@ -31,7 +31,7 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 		log.Error(invalidValidateError, err)
 		return errs.RequestValidationError{Message: err.Error()}
 	}
-	log.Infof("create trip traceID: %s", traceID)
+	log.Infof("create trip with traceID: %s", traceID)
 
 	resp, err := s.TripService.CreateTripWithTx(ctx, request)
 	if err != nil {
@@ -44,5 +44,5 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 			return apierr.ErrResponse(c, fiber.StatusInternalServerError, internalServerError)
 		}
 	}
-	return c.Status(fiber.StatusOK).JSON(resp)
+	return c.Status(fiber.StatusCreated).JSON(resp)
 }

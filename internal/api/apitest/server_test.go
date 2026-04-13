@@ -4,13 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/go-playground/validator/v10"
-	"job4j.ru/share_trip/internal/api"
-	"job4j.ru/share_trip/internal/repository"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"job4j.ru/share_trip/internal/api"
+	"job4j.ru/share_trip/internal/repository"
+	"job4j.ru/share_trip/internal/service/use_case"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -40,35 +43,14 @@ func TestMain(m *testing.M) {
 
 	// === 1. Запуск PostgreSQL контейнера ===
 	var err error
-	testContainer, err = postgres.Run(
-		testCtx,
-		"postgres:17",
-		postgres.WithDatabase("testdb"),
-		postgres.WithUsername("postgres"),
-		postgres.WithPassword("password"),
-	)
-	if err != nil {
-		log.Fatalf("failed to start postgres container: %v", err)
-	}
 
-	dsn, err := testContainer.ConnectionString(testCtx, "sslmode=disable")
-	if err != nil {
-		log.Fatalf("failed to get connection string: %v", err)
-	}
-	log.Println("Postgres container started")
-	testDB, err = sql.Open("pgx", dsn)
-	if err != nil {
-		log.Fatalf("failed to open sql.DB: %v", err)
-	}
+	//init BD
+	dsn := initTestDb(err)
 
 	waitReady(testDB)
+
 	// Миграции
-	if err = goose.SetDialect("postgres"); err != nil {
-		log.Fatalf("set goose dialect: %v", err)
-	}
-	if err = goose.Up(testDB, "../../../migrations"); err != nil {
-		log.Fatalf("run migrations: %v", err)
-	}
+	setUpMigrations(testDB, err)
 
 	testPool, err = pgxpool.New(testCtx, dsn)
 	if err != nil {
@@ -77,22 +59,28 @@ func TestMain(m *testing.M) {
 	log.Println("Database and pool ready, migrations applied")
 	// Инициализация зависимостей (validator, сервисы и т.д.)
 	validate := validator.New(validator.WithRequiredStructEnabled())
+
 	repo := repository.NewRepoPg(testPool)
-	outboxRepo := repository.NewOutboxEventRepository()
 	repoTrip := repository.NewTripRepository(testPool)
+	outboxRepo := repository.NewOutboxEventRepository()
 
-	infoService := service.NewInfoService(repo)
-	tripService := service.NewTripService(repoTrip, validate)
-	commandService := service.NewCommandTripService(testPool, repoTrip, outboxRepo, validate)
-	queryService := service.NewQueryTripService(repoTrip)
+	infoUseCase := use_case.NewInfoUseCase()
+	tripUseCase := use_case.NewTripUsecase()
 
-	//server
-	server := api.NewServer(infoService, tripService, commandService, queryService)
+	infoService := service.NewInfoService(infoUseCase, repo)
+	tripService := service.NewTripService(testPool, repoTrip, outboxRepo, tripUseCase)
+
+	server := api.NewServer(validate, infoService, tripService) // ← add to service
 
 	// === 2. Создание Fiber приложения ===
 	//testApp = fiber.New()
 	testApp = fiber.New(fiber.Config{
 		EnablePrintRoutes: true, // ← Включаем автоматический вывод маршрутов при старте
+	})
+	testApp.Use(requestid.New())
+	testApp.Use(func(c *fiber.Ctx) error {
+		log.Printf("Generated TEST_TRACE_ID: %v", c.Locals("requestid"))
+		return c.Next()
 	})
 
 	server.Route(testApp.Group(""))
@@ -188,4 +176,37 @@ func printRegisteredRoutes(app *fiber.App) {
 		fmt.Printf("%-6s %s\n", route.Method, route.Path)
 	}
 	fmt.Println("=========================")
+}
+
+func initTestDb(err error) string {
+	testContainer, err = postgres.Run(
+		testCtx,
+		"postgres:17",
+		postgres.WithDatabase("testdb"),
+		postgres.WithUsername("postgres"),
+		postgres.WithPassword("password"),
+	)
+	if err != nil {
+		log.Fatalf("failed to start postgres container: %v", err)
+	}
+
+	dsn, err := testContainer.ConnectionString(testCtx, "sslmode=disable")
+	if err != nil {
+		log.Fatalf("failed to get connection string: %v", err)
+	}
+	log.Println("Postgres container started")
+	testDB, err = sql.Open("pgx", dsn)
+	if err != nil {
+		log.Fatalf("failed to open sql.DB: %v", err)
+	}
+	return dsn
+}
+
+func setUpMigrations(testDB *sql.DB, err error) {
+	if err = goose.SetDialect("postgres"); err != nil {
+		log.Fatalf("set goose dialect: %v", err)
+	}
+	if err = goose.Up(testDB, "../../../migrations"); err != nil {
+		log.Fatalf("run migrations: %v", err)
+	}
 }

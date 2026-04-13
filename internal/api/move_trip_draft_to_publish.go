@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/requestid"

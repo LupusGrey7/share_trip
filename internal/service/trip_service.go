@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"job4j.ru/share_trip/internal/domain/trip"
 	"job4j.ru/share_trip/internal/repository"

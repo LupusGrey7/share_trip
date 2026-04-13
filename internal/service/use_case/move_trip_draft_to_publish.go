@@ -16,7 +16,7 @@ func (t *TripUsecase) MoveTripDraftToPublishTx(
 	repo repository.BaseTxTripRepository,
 	req trip.MoveTripDraftToPublishModel,
 ) (*trip.MoveTripDraftToPublishModelResponse, error) {
-	log.Info("update trip tx", req)
+	log.Info("move draft to publish tx", req)
 
 	resp, err := repo.GetForUpdateByIDTx(ctx, tx, req.ID)
 

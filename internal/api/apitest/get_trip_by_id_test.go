@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 	"io"
-	"job4j.ru/share_trip/internal/domain/trip"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+	"job4j.ru/share_trip/internal/domain/trip"
 )
 
 func TestServer_GetTripById(t *testing.T) {
@@ -29,7 +30,7 @@ func TestServer_GetTripById(t *testing.T) {
 
 		req, err := http.NewRequest(
 			http.MethodPost,
-			"/trip/create",
+			"/trip/createTripDraft",
 			bytes.NewReader(body),
 		)
 		require.NoError(t, err)
