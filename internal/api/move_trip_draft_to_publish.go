@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"job4j.ru/share_trip/internal/service/use_case"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -14,7 +15,9 @@ import (
 //api сценарий - перевода поездки из состояния draft в published.
 
 const (
-	invalidValidateError string = "Validation errors: %v\n"
+	invalidValidateError = "Validation errors: %v\n"
+	statusNotFound       = "trip not found"
+	errorForbidden       = "forbidden"
 )
 
 func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
@@ -51,13 +54,20 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 
 	resp, err := s.TripService.MoveTripDraftToPublish(ctx, request.ToRequest())
 	if err != nil {
-		log.Error("error move trip to publish is: ", err)
-		if errors.As(err, &errs.RequestValidationError{}) {
-			return apierr.ErrResponse(c, fiber.StatusBadRequest, err.Error())
+		switch { // Проверяем конкретное значение в цепочке
+		case errors.Is(err, use_case.ErrForbidden): //403
+			return apierr.ErrResponse(c, fiber.StatusForbidden, errors.Unwrap(err).Error()) //  разыменовать цепочку ошибок(вынуть основное описание)
+		case errors.Is(err, use_case.ErrTripNotFound): //404
+			return apierr.ErrResponse(c, fiber.StatusNotFound, statusNotFound) //404
+		case errors.Is(err, use_case.ErrConflict):
+			return apierr.ErrResponse(c, fiber.StatusConflict, errors.Unwrap(err).Error()) //409
+		default:
+			return apierr.ErrResponse(c, fiber.StatusInternalServerError, err.Error()) //500
 		}
-
-		return apierr.ErrResponse(c, fiber.StatusInternalServerError, internalServerError)
-
 	}
-	return c.Status(fiber.StatusOK).JSON(resp)
+	if resp.DriverID == uuid.Nil {
+		return c.Status(fiber.StatusNoContent).JSON(resp) //204
+	}
+
+	return c.Status(fiber.StatusOK).JSON(resp) //200
 }

@@ -15,7 +15,7 @@ func (t *TripUsecase) GetTripById(
 	repo repository.BaseTxTripRepository,
 	req trip.GetByIdModelRequest,
 ) (*trip.GetTripByIdModelResponse, error) {
-	entity, err := repo.GetById(ctx, tx, req.ID)
+	entity, err := repo.GetByID(ctx, tx, req.ID)
 	if err != nil {
 		log.Debug("error create entity: ", err)
 		return nil, err

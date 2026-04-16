@@ -10,9 +10,12 @@ import (
 // В данном классе мы будем хранить api-ошибки
 
 var (
-	ErrNotFound        = errors.New("not found")
-	ErrNotSupported    = errors.New("not supported")
-	ErrIllegalArgument = errors.New("illegal argument provided")
+	ErrConflict            = errors.New("conflict")
+	ErrForbidden           = errors.New("forbidden")
+	ErrInternalServerError = errors.New("internal server error")
+	ErrNotFound            = errors.New("not found")
+	ErrNotSupported        = errors.New("not supported")
+	ErrIllegalArgument     = errors.New("illegal argument provided")
 )
 
 func ErrResponse(

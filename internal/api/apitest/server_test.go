@@ -45,12 +45,12 @@ func TestMain(m *testing.M) {
 	var err error
 
 	//init BD
-	dsn := initTestDb(err)
+	dsn := initTestDb()
 
 	waitReady(testDB)
 
 	// Миграции
-	setUpMigrations(testDB, err)
+	setUpMigrations(testDB)
 
 	testPool, err = pgxpool.New(testCtx, dsn)
 	if err != nil {
@@ -178,8 +178,8 @@ func printRegisteredRoutes(app *fiber.App) {
 	fmt.Println("=========================")
 }
 
-func initTestDb(err error) string {
-	testContainer, err = postgres.Run(
+func initTestDb() string {
+	testContainer, err := postgres.Run(
 		testCtx,
 		"postgres:17",
 		postgres.WithDatabase("testdb"),
@@ -202,11 +202,11 @@ func initTestDb(err error) string {
 	return dsn
 }
 
-func setUpMigrations(testDB *sql.DB, err error) {
-	if err = goose.SetDialect("postgres"); err != nil {
+func setUpMigrations(testDB *sql.DB) {
+	if err := goose.SetDialect("postgres"); err != nil {
 		log.Fatalf("set goose dialect: %v", err)
 	}
-	if err = goose.Up(testDB, "../../../migrations"); err != nil {
+	if err := goose.Up(testDB, "../../../migrations"); err != nil {
 		log.Fatalf("run migrations: %v", err)
 	}
 }

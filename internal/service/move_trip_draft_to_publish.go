@@ -18,7 +18,7 @@ func (s *TripService) MoveTripDraftToPublish(
 		resp, err := s.useCase.MoveTripDraftToPublishTx(ctx, tx, s.repo, req)
 
 		if err != nil {
-			return nil, fmt.Errorf("err trip UseCase MoveTripDraftToPublishTx: %w", err)
+			return nil, err
 		}
 
 		//outbox
