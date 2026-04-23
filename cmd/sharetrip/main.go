@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"github.com/jackc/pgx/v5/pgxpool"
-	_ "time"
+	applog "job4j.ru/share_trip/internal/app"
+	"job4j.ru/share_trip/internal/middleware"
+	"os"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
@@ -12,7 +14,7 @@ import (
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/repository"
 	"job4j.ru/share_trip/internal/service"
-	"job4j.ru/share_trip/internal/service/use_case"
+	"job4j.ru/share_trip/internal/service/usecase"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2/log"
@@ -50,6 +52,18 @@ func main() {
 	}
 	log.Info("Connected to database successfully")
 
+	//logger
+	logger, logFile, err := applog.NewLogger()
+	if err != nil {
+		panic(err)
+	}
+	defer func(logFile *os.File) {
+		err := logFile.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(logFile)
+
 	//app
 	app := fiber.New(fiber.Config{
 		EnablePrintRoutes: true,
@@ -59,6 +73,7 @@ func main() {
 		log.Infof("Generated ID: %v", c.Locals("requestid"))
 		return c.Next()
 	})
+	app.Use(middleware.Correlation(logger)) //add custom logger, before add api
 
 	build(app, pool)
 
@@ -77,8 +92,8 @@ func build(app *fiber.App, pool *pgxpool.Pool) {
 	repoTrip := repository.NewTripRepository(pool)
 	outboxRepo := repository.NewOutboxEventRepository()
 
-	infoUseCase := use_case.NewInfoUseCase()
-	tripUseCase := use_case.NewTripUsecase()
+	infoUseCase := usecase.NewInfoUseCase()
+	tripUseCase := usecase.NewTripUsecase()
 
 	infoService := service.NewInfoService(infoUseCase, repo)
 	tripService := service.NewTripService(pool, repoTrip, outboxRepo, tripUseCase)

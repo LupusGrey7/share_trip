@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"job4j.ru/share_trip/internal/observability/logctx"
+	"log/slog"
 	"time"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -90,6 +92,16 @@ func (r *TripRepository) CreateTripTx(
 	tx pgx.Tx, // транзакция
 	t *trip.Entity,
 ) (*trip.Entity, error) {
+	logger := logctx.Logger(ctx).With(
+		slog.String("layer", "repository"),
+		slog.String("repository", "TripRepository"),
+		slog.String("operation", "Create"),
+		slog.String("trip_id", t.ID.String()),
+		slog.String("client_id", t.DriverID.String()),
+	)
+
+	logger.Info("insert trip started")
+
 	entity := &trip.Entity{} // Создаем пустую структуру в стеке
 
 	query := createNewTrip
@@ -99,6 +111,10 @@ func (r *TripRepository) CreateTripTx(
 
 	err := tx.QueryRow(ctx, query, args...).Scan(argsRslRow...)
 	if err != nil {
+		logger.Error(
+			"insert trip failed",
+			slog.Any("error", err),
+		)
 		return &trip.Entity{}, fmt.Errorf("ошибка при вставке: %w", err)
 	}
 
@@ -108,9 +124,15 @@ func (r *TripRepository) CreateTripTx(
 
 	rows, err := tx.Query(ctx, query, argsTHistory...)
 	if err != nil {
+		logger.Error(
+			"insert trip_history failed",
+			slog.Any("error", err),
+		)
 		return &trip.Entity{}, fmt.Errorf("ошибка при вставке trip_history: %w", err)
 	}
 	defer rows.Close() // обработать rows
+
+	logger.Info("insert trip completed")
 
 	return entity, nil
 }

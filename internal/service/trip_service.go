@@ -1,3 +1,5 @@
+// Оркестрация + tx[] wrapper
+
 package service
 
 import (
@@ -6,10 +8,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"job4j.ru/share_trip/internal/domain/trip"
 	"job4j.ru/share_trip/internal/repository"
-	"job4j.ru/share_trip/internal/service/use_case"
+	"job4j.ru/share_trip/internal/service/usecase"
 )
-
-// Оркестрация + tx[] wrapper
 
 type Service interface {
 	CreateTripWithTx(context.Context, trip.CreateTripRequest) (*trip.CreateTripResponse, error)
@@ -21,14 +21,14 @@ type TripService struct {
 	pool       *pgxpool.Pool
 	repo       repository.BaseTxTripRepository
 	outboxRepo repository.OutboxRepository
-	useCase    use_case.BaseUsecase
+	useCase    usecase.BaseUsecase
 }
 
 func NewTripService(
 	pool *pgxpool.Pool,
 	r repository.BaseTxTripRepository,
 	outbox repository.OutboxRepository,
-	uc use_case.BaseUsecase,
+	uc usecase.BaseUsecase,
 ) *TripService {
 	return &TripService{
 		pool:       pool,

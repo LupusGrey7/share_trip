@@ -13,7 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/repository"
-	"job4j.ru/share_trip/internal/service/use_case"
+	"job4j.ru/share_trip/internal/service/usecase"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -64,8 +64,8 @@ func TestMain(m *testing.M) {
 	repoTrip := repository.NewTripRepository(testPool)
 	outboxRepo := repository.NewOutboxEventRepository()
 
-	infoUseCase := use_case.NewInfoUseCase()
-	tripUseCase := use_case.NewTripUsecase()
+	infoUseCase := usecase.NewInfoUseCase()
+	tripUseCase := usecase.NewTripUsecase()
 
 	infoService := service.NewInfoService(infoUseCase, repo)
 	tripService := service.NewTripService(testPool, repoTrip, outboxRepo, tripUseCase)
