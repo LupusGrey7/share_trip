@@ -6,13 +6,13 @@ import (
 )
 
 type MoveTripDraftToPublishModelRequest struct {
-	ID       uuid.UUID
+	ID       string    `validate:"required,uuid"`
 	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"` //"omitempty,uuid"
 }
 
-func (req *MoveTripDraftToPublishModelRequest) ToRequest() trip.MoveTripDraftToPublishModel {
+func (req *MoveTripDraftToPublishModelRequest) ToRequest(id uuid.UUID) trip.MoveTripDraftToPublishModel {
 	return trip.MoveTripDraftToPublishModel{
-		ID:       req.ID,
+		ID:       id,
 		ClientID: req.ClientID,
 	}
 }

@@ -25,14 +25,14 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 	}
 	uuID, err := uuid.Parse(id)
 	if err != nil {
-		log.Errorf(invalidValidateError, err)
+		log.Errorf(apierr.InvalidValidateError, err)
 		return errs.JsonParseValidationError{Message: err.Error()}
 	}
 
 	request := trip.GetByIdModelRequest{ID: uuID}
 	//--validation
 	if err := s.validator.Struct(request); err != nil {
-		log.Error(invalidValidateError, err)
+		log.Error(apierr.InvalidValidateError, err)
 		return errs.RequestValidationError{Message: err.Error()}
 	}
 

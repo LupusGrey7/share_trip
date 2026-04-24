@@ -28,7 +28,7 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 	}
 
 	if err := s.validator.Struct(&request); err != nil {
-		log.Error(invalidValidateError, err)
+		log.Error(apierr.InvalidValidateError, err)
 		return errs.RequestValidationError{Message: err.Error()}
 	}
 	log.Infof("create trip with traceID: %s", traceID)
