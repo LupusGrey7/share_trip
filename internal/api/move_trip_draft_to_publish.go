@@ -3,9 +3,6 @@
 package api
 
 import (
-	"errors"
-	"job4j.ru/share_trip/internal/service/usecase"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
