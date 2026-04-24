@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/gofiber/fiber/v2/log"
+
 	"github.com/jackc/pgx/v5"
 	"job4j.ru/share_trip/internal/domain/trip"
 	"job4j.ru/share_trip/internal/repository"
@@ -17,7 +17,6 @@ func (t *TripUsecase) MoveTripDraftToPublishTx(
 	repo repository.BaseTxTripRepository,
 	req trip.MoveTripDraftToPublishModel,
 ) (*trip.MoveTripDraftToPublishModelResponse, error) {
-	log.Info("move draft to publish: ", req)
 
 	resp, err := repo.GetForUpdateByIDTx(ctx, tx, req.ID)
 
@@ -50,5 +49,6 @@ func (t *TripUsecase) MoveTripDraftToPublishTx(
 		return nil, fmt.Errorf("error tripRepository.Update: %w", err)
 	}
 
+	log.Info("move draft to publish: ", req)
 	return updatedTrip.UpdateToPublishModelResponse(), nil
 }

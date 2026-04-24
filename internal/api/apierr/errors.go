@@ -1,3 +1,5 @@
+// В данном классе мы будем хранить api-ошибки
+
 package apierr
 
 import (
@@ -7,7 +9,12 @@ import (
 	"job4j.ru/share_trip/internal/domain/http"
 )
 
-// В данном классе мы будем хранить api-ошибки
+const (
+	InvalidValidateError = "Validation errors: %v\n"
+	StatusNotFound       = "trip not found"
+	ErrorForbidden       = "forbidden"
+	InternalServerError  = "internal server error"
+)
 
 var (
 	ErrConflict            = errors.New("conflict")

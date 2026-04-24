@@ -41,6 +41,7 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 	}
 
 	if err := s.validator.Struct(&request); err != nil {
+		log.Error(apierr.InvalidValidateError, err)
 		log.Error(invalidValidateError, err)
 		logger.Warn("create trip failed: client_id is required")
 
