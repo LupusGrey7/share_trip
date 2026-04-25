@@ -10,10 +10,11 @@ import (
 )
 
 const (
-	InvalidValidateError = "Validation errors: %v\n"
-	StatusNotFound       = "trip not found"
-	ErrorForbidden       = "forbidden"
-	InternalServerError  = "internal server error"
+	InvalidValidateError    = "Validation errors: %v\n"
+	StatusNotFound          = "trip not found"
+	ErrorForbidden          = "forbidden"
+	InternalServerError     = "internal server error"
+	InternalServerErrorWith = "internal server error, %v"
 )
 
 var (

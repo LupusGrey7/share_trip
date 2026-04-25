@@ -14,7 +14,7 @@ import (
 type Service interface {
 	CreateTripWithTx(context.Context, trip.CreateTripRequest) (*trip.CreateTripResponse, error)
 	MoveTripDraftToPublish(ctx context.Context, req trip.MoveTripDraftToPublishModel) (*trip.MoveTripDraftToPublishModelResponse, error)
-	GetTripByID(ctx context.Context, req trip.GetByIdModelRequest) (*trip.GetTripByIdModelResponse, error)
+	GetTripByID(ctx context.Context, req trip.GetByIDModelRequest) (*trip.GetTripByIDModelResponse, error)
 }
 
 type TripService struct {

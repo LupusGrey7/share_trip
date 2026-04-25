@@ -7,7 +7,10 @@ import (
 	"job4j.ru/share_trip/internal/domain/trip"
 )
 
-func (s *TripService) CreateTripWithTx(ctx context.Context, req trip.CreateTripRequest) (*trip.CreateTripResponse, error) {
+func (s *TripService) CreateTripWithTx(
+	ctx context.Context,
+	req trip.CreateTripRequest,
+) (*trip.CreateTripResponse, error) {
 	res, err := tx(ctx, s.pool, func(tx pgx.Tx) (*trip.CreateTripResponse, error) {
 
 		resp, err := s.useCase.CreateTrip(ctx, tx, s.repo, req)

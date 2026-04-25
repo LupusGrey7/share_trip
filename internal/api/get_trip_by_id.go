@@ -1,53 +1,52 @@
+//api сценарий - поиска поездки
+
 package api
 
 import (
-	"errors"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/google/uuid"
 	"job4j.ru/share_trip/internal/api/apierr"
-	"job4j.ru/share_trip/internal/domain/errs"
 	"job4j.ru/share_trip/internal/domain/trip"
 )
-
-//api сценарий - поиска поездки
 
 func (s *Server) GetTripById(c *fiber.Ctx) error {
 	ctx := c.UserContext()
 	// Достаем ID, который сгенерировал requestid.New()
 	traceID := c.GetRespHeader(requestid.ConfigDefault.Header)
+	var t trip.GetByIDModelRequest
 
-	id := c.Params("tripId")
-	if id == "" {
+	tripID := c.Params("tripId")
+	if tripID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
 	}
-	uuID, err := uuid.Parse(id)
-	if err != nil {
-		log.Errorf(apierr.InvalidValidateError, err)
-		return errs.JsonParseValidationError{Message: err.Error()}
-	}
 
-	request := trip.GetByIdModelRequest{ID: uuID}
+	request := GetByIDModelRequest{ID: tripID}
 	//--validation
 	if err := s.validator.Struct(request); err != nil {
 		log.Error(apierr.InvalidValidateError, err)
-		return errs.RequestValidationError{Message: err.Error()}
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	log.Infof("find Bytrip ID: %s with traceID: %s ", id, traceID)
-	resp, err := s.TripService.GetTripByID(ctx, request)
+	uuID, err := uuid.Parse(tripID)
 	if err != nil {
-		log.Error("error when FindById trip is: ", err)
-
-		switch {
-		case errors.As(err, &errs.RequestValidationError{}):
-			return apierr.ErrResponse(c, fiber.StatusBadRequest, err.Error())
-
-		default:
-			return apierr.ErrResponse(c, fiber.StatusInternalServerError, internalServerError)
-		}
+		log.Errorf(apierr.InternalServerErrorWith, err)
+		return c.SendStatus(fiber.StatusInternalServerError)
 	}
+	t.ID = uuID
+	log.Infof("find By Trip ID: %s with traceID: %s ", tripID, traceID)
+
+	resp, err := s.TripService.GetTripByID(ctx, t)
+	if err != nil {
+		log.Errorw(
+			"get trip failed",
+			"error", err.Error(),
+			"trip_id", tripID,
+			"trace_id", traceID,
+		)
+		return HandleError(c, err)
+	}
+
 	return c.Status(fiber.StatusOK).JSON(resp)
 }

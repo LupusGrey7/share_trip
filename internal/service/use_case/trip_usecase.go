@@ -11,7 +11,7 @@ import (
 type BaseUsecase interface {
 	CreateTrip(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req trip.CreateTripRequest) (*trip.CreateTripResponse, error)
 	MoveTripDraftToPublishTx(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req trip.MoveTripDraftToPublishModel) (*trip.MoveTripDraftToPublishModelResponse, error)
-	GetTripById(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req trip.GetByIdModelRequest) (*trip.GetTripByIdModelResponse, error)
+	GetTripById(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req trip.GetByIDModelRequest) (*trip.GetTripByIDModelResponse, error)
 }
 
 type TripUsecase struct {

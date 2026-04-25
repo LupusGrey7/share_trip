@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"job4j.ru/share_trip/internal/domain/trip"
@@ -69,7 +68,7 @@ func (r *TripRepository) GetByID(
 
 	//Критически важно: переходим на первую строку
 	if !rows.Next() {
-		return &trip.Entity{}, fmt.Errorf("trip with id %s not found", id)
+		return nil, ErrTripNotFound
 	}
 
 	argsRslRow := []interface{}{
@@ -78,8 +77,10 @@ func (r *TripRepository) GetByID(
 	}
 	err = rows.Scan(argsRslRow...)
 	if err != nil {
-		log.Error("error : ", err)
-		return &trip.Entity{}, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrTripNotFound
+		}
+		return nil, fmt.Errorf(errQueryByID, id, err)
 	}
 
 	return &entity, nil
@@ -138,7 +139,7 @@ func (r *TripRepository) UpdateTripTx(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrTripNotFound
 		}
-		return nil, fmt.Errorf("query trip by id %s: %w", t.ID, err)
+		return nil, fmt.Errorf(errQueryByID, t.ID, err)
 	}
 
 	args = []interface{}{t.Status, t.ID}
@@ -148,7 +149,7 @@ func (r *TripRepository) UpdateTripTx(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrTripNotFound
 		}
-		return nil, fmt.Errorf("query trip_history by id %s: %w", t.ID, err)
+		return nil, fmt.Errorf(errQueryTripHistoryByID, t.ID, err)
 	}
 	defer rows.Close() // обработать rows
 
@@ -177,7 +178,7 @@ func (r *TripRepository) GetForUpdateByIDTx(
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrTripNotFound
 		}
-		return nil, fmt.Errorf("query trip by id %s: %w", id, err)
+		return nil, fmt.Errorf(errQueryByID, id, err)
 	}
 	return &tp, nil // Возвращаем указатель на заполненную структуру
 }
