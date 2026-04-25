@@ -5,19 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"job4j.ru/share_trip/internal/domain/trip/model"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"job4j.ru/share_trip/internal/domain/trip"
 )
 
 func TestServer_GetTripById(t *testing.T) {
 
 	t.Run("success - получение поездки по ID", func(t *testing.T) {
-		payload := trip.CreateTripRequest{
+		payload := model.CreateTripRequest{
 			DriverID:       uuid.New(),
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
@@ -49,10 +49,10 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got trip.CreateTripResponse
+		var got model.CreateTripResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
-		response := trip.CreateTripResponse{
+		response := model.CreateTripResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got.FromPoint,
@@ -87,10 +87,10 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err1 = io.ReadAll(resp.Body)
 		require.NoError(t, err1)
 
-		var got1 trip.CreateTripResponse
+		var got1 model.CreateTripResponse
 		err1 = json.Unmarshal(respBody, &got1)
 		require.NoError(t, err1)
-		response1 := trip.CreateTripResponse{
+		response1 := model.CreateTripResponse{
 			ID:            got1.ID,
 			DriverID:      got.DriverID,
 			FromPoint:     got1.FromPoint,
@@ -98,7 +98,7 @@ func TestServer_GetTripById(t *testing.T) {
 			CreatedAt:     got1.CreatedAt,
 			DepartureTime: got1.DepartureTime,
 			Seats:         got1.Seats,
-			Status:        trip.StatusDraft,
+			Status:        model.StatusDraft,
 		}
 
 		require.Equal(t, response1, got1)

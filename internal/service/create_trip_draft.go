@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v5"
-	"job4j.ru/share_trip/internal/domain/trip"
+	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
 	"log/slog"
 )
 
-func (s *TripService) CreateTripWithTx(ctx context.Context, req trip.CreateTripRequest) (*trip.CreateTripResponse, error) {
+func (s *TripService) CreateTripWithTx(ctx context.Context, req model.CreateTripRequest) (*model.CreateTripResponse, error) {
 	logger := logctx.Logger(ctx).With(
 		slog.String("service", "TripService"),
 		slog.String("operation", "CreateTrip"),
@@ -18,7 +18,7 @@ func (s *TripService) CreateTripWithTx(ctx context.Context, req trip.CreateTripR
 
 	logger.Info("create trip started")
 
-	res, err := tx(ctx, s.pool, func(tx pgx.Tx) (*trip.CreateTripResponse, error) {
+	res, err := tx(ctx, s.pool, func(tx pgx.Tx) (*model.CreateTripResponse, error) {
 
 		txLogger := logger.With(
 			slog.String("layer", "transaction"),

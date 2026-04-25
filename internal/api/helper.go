@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/gofiber/fiber/v2"
 	"job4j.ru/share_trip/internal/api/apierr"
-	"job4j.ru/share_trip/internal/service/usecase"
+	"job4j.ru/share_trip/internal/domain/trip/usecase"
 )
 
 func HandleError(c *fiber.Ctx, err error) error {

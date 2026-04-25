@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"job4j.ru/share_trip/internal/domain/trip/model"
 	"net/http"
 	"testing"
 	"time"
@@ -12,13 +13,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"job4j.ru/share_trip/internal/api"
-	"job4j.ru/share_trip/internal/domain/trip"
 )
 
 func TestServer_MoveTripDraftToPublish(t *testing.T) {
 
 	t.Run("success - обновление поездки", func(t *testing.T) {
-		payload := trip.CreateTripRequest{
+		payload := model.CreateTripRequest{
 			DriverID:       uuid.New(),
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
@@ -51,10 +51,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got trip.CreateTripResponse
+		var got model.CreateTripResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
-		response := trip.CreateTripResponse{
+		response := model.CreateTripResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got.FromPoint,
@@ -101,13 +101,13 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err2 = io.ReadAll(resp2.Body)
 		require.NoError(t, err2)
 
-		var got1 trip.MoveTripDraftToPublishModelResponse
+		var got1 model.MoveTripDraftToPublishModelResponse
 		err1 = json.Unmarshal(respBody, &got1)
 		require.NoError(t, err1)
 
 		t.Logf("Response body2: %s", string(respBody)) // Выведем тело ответа для диагностики
 
-		response1 := trip.MoveTripDraftToPublishModelResponse{
+		response1 := model.MoveTripDraftToPublishModelResponse{
 			ID:            got1.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got1.FromPoint,
@@ -115,13 +115,13 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 			CreatedAt:     got1.CreatedAt,
 			DepartureTime: got1.DepartureTime,
 			Seats:         got1.Seats,
-			Status:        trip.StatusPublished,
+			Status:        model.StatusPublished,
 		}
 
 		require.Equal(t, response1, got1)
 	})
 	t.Run("forbidden - обновление поездки", func(t *testing.T) { //403
-		payload := trip.CreateTripRequest{
+		payload := model.CreateTripRequest{
 			DriverID:       uuid.New(),
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
@@ -154,10 +154,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got trip.CreateTripResponse
+		var got model.CreateTripResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
-		response := trip.CreateTripResponse{
+		response := model.CreateTripResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got.FromPoint,
@@ -207,7 +207,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 
 	})
 	t.Run("statusNotFound - обновление поездки", func(t *testing.T) { //404
-		payload := trip.CreateTripRequest{
+		payload := model.CreateTripRequest{
 			DriverID:       uuid.New(),
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
@@ -240,10 +240,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got trip.CreateTripResponse
+		var got model.CreateTripResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
-		response := trip.CreateTripResponse{
+		response := model.CreateTripResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got.FromPoint,
@@ -290,7 +290,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, resp2.StatusCode)
 	})
 	t.Run("StatusConflict - обновление поездки", func(t *testing.T) { //409
-		payload := trip.CreateTripRequest{
+		payload := model.CreateTripRequest{
 			DriverID:       uuid.New(),
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
@@ -323,10 +323,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got trip.CreateTripResponse
+		var got model.CreateTripResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
-		response := trip.CreateTripResponse{
+		response := model.CreateTripResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got.FromPoint,
@@ -374,7 +374,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		require.Equal(t, http.StatusConflict, resp2.StatusCode)
 	})
 	t.Run("internalServerError - обновление поездки", func(t *testing.T) { // 500
-		payload := trip.CreateTripRequest{
+		payload := model.CreateTripRequest{
 			DriverID:       uuid.New(),
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
@@ -407,10 +407,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got trip.CreateTripResponse
+		var got model.CreateTripResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
-		response := trip.CreateTripResponse{
+		response := model.CreateTripResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got.FromPoint,

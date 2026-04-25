@@ -4,22 +4,21 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"log"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
-	"job4j.ru/share_trip/internal/api"
-	"job4j.ru/share_trip/internal/repository"
-	"job4j.ru/share_trip/internal/service/usecase"
-
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"job4j.ru/share_trip/internal/api"
+	"job4j.ru/share_trip/internal/repository"
 
 	"job4j.ru/share_trip/internal/service"
 )

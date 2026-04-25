@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
+	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"job4j.ru/share_trip/internal/repository"
-	"job4j.ru/share_trip/internal/service/usecase"
 )
 
 type CommonService interface {

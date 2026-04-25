@@ -3,10 +3,10 @@ package repository
 import (
 	"context"
 	"fmt"
+	"job4j.ru/share_trip/internal/domain/outbox/model"
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"job4j.ru/share_trip/internal/domain/outbox"
 )
 
 // repository/outbox_repo.go
@@ -18,7 +18,7 @@ values($1, $2, $3, $4)`
 )
 
 type OutboxRepository interface {
-	CreateNotificationTripPublishTx(ctx context.Context, tx pgx.Tx, o *outbox.Entity) error
+	CreateNotificationTripPublishTx(ctx context.Context, tx pgx.Tx, o *model.Entity) error
 }
 
 type OutboxEventRepository struct {
@@ -28,7 +28,7 @@ func NewOutboxEventRepository() *OutboxEventRepository {
 	return &OutboxEventRepository{}
 }
 
-func (r *OutboxEventRepository) CreateNotificationTripPublishTx(ctx context.Context, tx pgx.Tx, o *outbox.Entity) error {
+func (r *OutboxEventRepository) CreateNotificationTripPublishTx(ctx context.Context, tx pgx.Tx, o *model.Entity) error {
 
 	query := createEvent
 	args := []interface{}{o.EventName, o.AggregateId, o.Payload, time.Now()}

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gofiber/fiber/v2/log"
+	"job4j.ru/share_trip/internal/domain/trip/model"
 
 	"github.com/jackc/pgx/v5"
-	"job4j.ru/share_trip/internal/domain/trip"
 	"job4j.ru/share_trip/internal/repository"
 )
 
@@ -15,8 +15,8 @@ func (t *TripUsecase) MoveTripDraftToPublishTx(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo repository.BaseTxTripRepository,
-	req trip.MoveTripDraftToPublishModel,
-) (*trip.MoveTripDraftToPublishModelResponse, error) {
+	req model.MoveTripDraftToPublishModel,
+) (*model.MoveTripDraftToPublishModelResponse, error) {
 
 	resp, err := repo.GetForUpdateByIDTx(ctx, tx, req.ID)
 
@@ -32,17 +32,17 @@ func (t *TripUsecase) MoveTripDraftToPublishTx(
 		return nil, fmt.Errorf("%w: client %s is not driver of trip %s", ErrForbidden, req.ClientID, req.ID)
 	}
 
-	if resp.Status == trip.StatusPublished {
-		return &trip.MoveTripDraftToPublishModelResponse{
+	if resp.Status == model.StatusPublished {
+		return &model.MoveTripDraftToPublishModelResponse{
 			ID: resp.ID,
 		}, nil
 	}
 
-	if resp.Status != trip.StatusDraft {
-		return nil, fmt.Errorf("%w: invalid entity status: expected %s", ErrConflict, trip.StatusDraft)
+	if resp.Status != model.StatusDraft {
+		return nil, fmt.Errorf("%w: invalid entity status: expected %s", ErrConflict, model.StatusDraft)
 	}
 
-	resp.Status = trip.StatusPublished
+	resp.Status = model.StatusPublished
 
 	updatedTrip, err := repo.UpdateTripTx(ctx, tx, resp)
 	if err != nil {

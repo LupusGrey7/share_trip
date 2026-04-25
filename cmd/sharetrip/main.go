@@ -4,20 +4,19 @@ import (
 	"context"
 	"github.com/jackc/pgx/v5/pgxpool"
 	applog "job4j.ru/share_trip/internal/app"
+	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"job4j.ru/share_trip/internal/middleware"
 	"os"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/joho/godotenv"
 	"job4j.ru/share_trip/configs"
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/repository"
 	"job4j.ru/share_trip/internal/service"
-	"job4j.ru/share_trip/internal/service/usecase"
-
-	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2/log"
 	"job4j.ru/share_trip/internal/storage"
 )
 

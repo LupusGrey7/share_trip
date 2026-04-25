@@ -1,4 +1,4 @@
-package trip
+package model
 
 import (
 	"time"

@@ -1,4 +1,4 @@
-package outbox
+package model
 
 import (
 	"database/sql/driver"

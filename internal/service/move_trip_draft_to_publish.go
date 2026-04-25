@@ -3,18 +3,18 @@ package service
 import (
 	"context"
 	"fmt"
+	model2 "job4j.ru/share_trip/internal/domain/outbox/model"
+	"job4j.ru/share_trip/internal/domain/trip/model"
 
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/jackc/pgx/v5"
-	"job4j.ru/share_trip/internal/domain/outbox"
-	"job4j.ru/share_trip/internal/domain/trip"
 )
 
 func (s *TripService) MoveTripDraftToPublish(
 	ctx context.Context,
-	req trip.MoveTripDraftToPublishModel,
-) (*trip.MoveTripDraftToPublishModelResponse, error) {
-	res, err := tx(ctx, s.pool, func(tx pgx.Tx) (*trip.MoveTripDraftToPublishModelResponse, error) {
+	req model.MoveTripDraftToPublishModel,
+) (*model.MoveTripDraftToPublishModelResponse, error) {
+	res, err := tx(ctx, s.pool, func(tx pgx.Tx) (*model.MoveTripDraftToPublishModelResponse, error) {
 		resp, err := s.useCase.MoveTripDraftToPublishTx(ctx, tx, s.repo, req)
 
 		if err != nil {
@@ -22,9 +22,9 @@ func (s *TripService) MoveTripDraftToPublish(
 		}
 
 		//outbox
-		payload := outbox.PayloadEvent{TripID: resp.ID}
-		event := outbox.Entity{
-			EventName:   string(outbox.EventPublished),
+		payload := model2.PayloadEvent{TripID: resp.ID}
+		event := model2.Entity{
+			EventName:   string(model2.EventPublished),
 			AggregateId: resp.ID,
 			Payload:     payload,
 		}

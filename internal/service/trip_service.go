@@ -4,17 +4,17 @@ package service
 
 import (
 	"context"
+	"job4j.ru/share_trip/internal/domain/trip/model"
+	"job4j.ru/share_trip/internal/domain/trip/usecase"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"job4j.ru/share_trip/internal/domain/trip"
 	"job4j.ru/share_trip/internal/repository"
-	"job4j.ru/share_trip/internal/service/usecase"
 )
 
 type Service interface {
-	CreateTripWithTx(context.Context, trip.CreateTripRequest) (*trip.CreateTripResponse, error)
-	MoveTripDraftToPublish(ctx context.Context, req trip.MoveTripDraftToPublishModel) (*trip.MoveTripDraftToPublishModelResponse, error)
-	GetTripByID(ctx context.Context, req trip.GetByIdModelRequest) (*trip.GetTripByIdModelResponse, error)
+	CreateTripWithTx(context.Context, model.CreateTripRequest) (*model.CreateTripResponse, error)
+	MoveTripDraftToPublish(ctx context.Context, req model.MoveTripDraftToPublishModel) (*model.MoveTripDraftToPublishModelResponse, error)
+	GetTripByID(ctx context.Context, req model.GetByIdModelRequest) (*model.GetTripByIdModelResponse, error)
 }
 
 type TripService struct {

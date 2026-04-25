@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
 	"log/slog"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/domain/errs"
-	"job4j.ru/share_trip/internal/domain/trip"
 )
 
 //api сценарий - поездки из состояния draft (в транзакции БД)
@@ -25,7 +25,7 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 
 	// Достаем ID, который сгенерировал requestid.New()
 	traceID := c.GetRespHeader(requestid.ConfigDefault.Header)
-	var request trip.CreateTripRequest
+	var request model.CreateTripRequest
 
 	// Парсим тело запроса
 	if err := c.BodyParser(&request); err != nil {

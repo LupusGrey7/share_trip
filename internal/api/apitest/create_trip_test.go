@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"job4j.ru/share_trip/internal/domain/trip/model"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"job4j.ru/share_trip/internal/domain/trip"
 )
 
 /*
@@ -26,7 +26,7 @@ PATCH  /trip/moveTripDraft-ToPublish/:tripId
 func TestServer_CreateTrip(t *testing.T) {
 
 	t.Run("success - создание поездки", func(t *testing.T) {
-		payload := trip.CreateTripRequest{
+		payload := model.CreateTripRequest{
 			DriverID:       uuid.New(),
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
@@ -58,10 +58,10 @@ func TestServer_CreateTrip(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got trip.CreateTripResponse
+		var got model.CreateTripResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
-		response := trip.CreateTripResponse{
+		response := model.CreateTripResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got.FromPoint,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
 	"log/slog"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"job4j.ru/share_trip/internal/domain/trip"
 )
 
 const (
@@ -49,29 +49,29 @@ where trip_id = $2
 )
 
 type BaseTxTripRepository interface {
-	GetByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*trip.Entity, error)
-	GetForUpdateByIDTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*trip.Entity, error)
-	UpdateTripTx(ctx context.Context, tx pgx.Tx, t *trip.Entity) (*trip.Entity, error)
-	CreateTripTx(ctx context.Context, tx pgx.Tx, t *trip.Entity) (*trip.Entity, error)
+	GetByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*model.Entity, error)
+	GetForUpdateByIDTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*model.Entity, error)
+	UpdateTripTx(ctx context.Context, tx pgx.Tx, t *model.Entity) (*model.Entity, error)
+	CreateTripTx(ctx context.Context, tx pgx.Tx, t *model.Entity) (*model.Entity, error)
 }
 
 func (r *TripRepository) GetByID(
 	ctx context.Context,
 	tx pgx.Tx,
 	id uuid.UUID,
-) (*trip.Entity, error) {
-	var entity trip.Entity
+) (*model.Entity, error) {
+	var entity model.Entity
 
 	query := getTripByID
 	rows, err := r.pool.Query(ctx, query, id)
 	if err != nil {
-		return &trip.Entity{}, fmt.Errorf("error while query: %w", err)
+		return &model.Entity{}, fmt.Errorf("error while query: %w", err)
 	}
 	defer rows.Close()
 
 	//Критически важно: переходим на первую строку
 	if !rows.Next() {
-		return &trip.Entity{}, fmt.Errorf("trip with id %s not found", id)
+		return &model.Entity{}, fmt.Errorf("trip with id %s not found", id)
 	}
 
 	argsRslRow := []interface{}{
@@ -81,7 +81,7 @@ func (r *TripRepository) GetByID(
 	err = rows.Scan(argsRslRow...)
 	if err != nil {
 		log.Error("error : ", err)
-		return &trip.Entity{}, err
+		return &model.Entity{}, err
 	}
 
 	return &entity, nil
@@ -90,8 +90,8 @@ func (r *TripRepository) GetByID(
 func (r *TripRepository) CreateTripTx(
 	ctx context.Context,
 	tx pgx.Tx, // транзакция
-	t *trip.Entity,
-) (*trip.Entity, error) {
+	t *model.Entity,
+) (*model.Entity, error) {
 	logger := logctx.Logger(ctx).With(
 		slog.String("layer", "repository"),
 		slog.String("repository", "TripRepository"),
@@ -102,7 +102,7 @@ func (r *TripRepository) CreateTripTx(
 
 	logger.Info("insert trip started")
 
-	entity := &trip.Entity{} // Создаем пустую структуру в стеке
+	entity := &model.Entity{} // Создаем пустую структуру в стеке
 
 	query := createNewTrip
 	id := uuid.New()
@@ -115,12 +115,12 @@ func (r *TripRepository) CreateTripTx(
 			"insert trip failed",
 			slog.Any("error", err),
 		)
-		return &trip.Entity{}, fmt.Errorf("ошибка при вставке: %w", err)
+		return &model.Entity{}, fmt.Errorf("ошибка при вставке: %w", err)
 	}
 
 	id = uuid.New()
 	query = createTripHistory
-	argsTHistory := []interface{}{id, entity.ID, trip.StatusDraft, entity.Status, time.Now()}
+	argsTHistory := []interface{}{id, entity.ID, model.StatusDraft, entity.Status, time.Now()}
 
 	rows, err := tx.Query(ctx, query, argsTHistory...)
 	if err != nil {
@@ -128,7 +128,7 @@ func (r *TripRepository) CreateTripTx(
 			"insert trip_history failed",
 			slog.Any("error", err),
 		)
-		return &trip.Entity{}, fmt.Errorf("ошибка при вставке trip_history: %w", err)
+		return &model.Entity{}, fmt.Errorf("ошибка при вставке trip_history: %w", err)
 	}
 	defer rows.Close() // обработать rows
 
@@ -140,9 +140,9 @@ func (r *TripRepository) CreateTripTx(
 func (r *TripRepository) UpdateTripTx(
 	ctx context.Context,
 	tx pgx.Tx,
-	t *trip.Entity,
-) (*trip.Entity, error) {
-	var entity trip.Entity // Создаем пустую структуру в стеке
+	t *model.Entity,
+) (*model.Entity, error) {
+	var entity model.Entity // Создаем пустую структуру в стеке
 	query := updateTrip
 	args := []interface{}{t.Status, t.ID}
 
@@ -181,8 +181,8 @@ func (r *TripRepository) GetForUpdateByIDTx(
 	ctx context.Context,
 	tx pgx.Tx, // транзакция
 	id uuid.UUID,
-) (*trip.Entity, error) {
-	tp := trip.Entity{} // Создаем пустую структуру в стеке (аналог - var tp trip.Entity)
+) (*model.Entity, error) {
+	tp := model.Entity{} // Создаем пустую структуру в стеке (аналог - var tp trip.Entity)
 
 	query := forUpdateTrip
 	err := tx.QueryRow(ctx, query, id).Scan(

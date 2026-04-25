@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"job4j.ru/share_trip/internal/domain/trip/model"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -9,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/domain/errs"
-	"job4j.ru/share_trip/internal/domain/trip"
 )
 
 //api сценарий - поиска поездки
@@ -29,7 +29,7 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 		return errs.JsonParseValidationError{Message: err.Error()}
 	}
 
-	request := trip.GetByIdModelRequest{ID: uuID}
+	request := model.GetByIdModelRequest{ID: uuID}
 	//--validation
 	if err := s.validator.Struct(request); err != nil {
 		log.Error(apierr.InvalidValidateError, err)

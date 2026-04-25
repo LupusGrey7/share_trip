@@ -3,10 +3,10 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"job4j.ru/share_trip/internal/domain/outbox/model"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"job4j.ru/share_trip/internal/domain/outbox"
 	"job4j.ru/share_trip/internal/repository"
 )
 
@@ -17,9 +17,9 @@ func (c *OutboxEventUseCase) CreateEventWhenTripToPublish(
 	id uuid.UUID,
 ) error {
 	//outbox
-	payload := outbox.PayloadEvent{TripID: id}
-	event := outbox.Entity{
-		EventName:   string(outbox.EventPublished),
+	payload := model.PayloadEvent{TripID: id}
+	event := model.Entity{
+		EventName:   string(model.EventPublished),
 		AggregateId: id,
 		Payload:     payload,
 	}

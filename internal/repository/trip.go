@@ -3,13 +3,13 @@ package repository
 import (
 	"context"
 	"fmt"
+	"job4j.ru/share_trip/internal/domain/trip/model"
 	"time"
 
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"job4j.ru/share_trip/internal/domain/trip"
 )
 
 const (
@@ -25,7 +25,7 @@ values($1, $2, $3, $4, $5)`
 )
 
 type BaseTripRepository interface {
-	CreateTrip(context.Context, *trip.Entity) (*trip.Entity, error)
+	CreateTrip(context.Context, *model.Entity) (*model.Entity, error)
 	//GetByID(ctx context.Context, id string) (*trip.Entity, error)
 	Tx(ctx context.Context, block func(tx pgx.Tx) error) error
 }
@@ -38,8 +38,8 @@ func NewTripRepository(pool *pgxpool.Pool) *TripRepository {
 	return &TripRepository{pool: pool}
 }
 
-func (r *TripRepository) CreateTrip(ctx context.Context, t *trip.Entity) (*trip.Entity, error) {
-	var entity = &trip.Entity{}
+func (r *TripRepository) CreateTrip(ctx context.Context, t *model.Entity) (*model.Entity, error) {
+	var entity = &model.Entity{}
 
 	query := createNewTrip
 	id := uuid.New()
@@ -48,16 +48,16 @@ func (r *TripRepository) CreateTrip(ctx context.Context, t *trip.Entity) (*trip.
 
 	err := r.pool.QueryRow(ctx, query, args...).Scan(argsRslRow...)
 	if err != nil {
-		return &trip.Entity{}, fmt.Errorf("ошибка при вставке: %w", err)
+		return &model.Entity{}, fmt.Errorf("ошибка при вставке: %w", err)
 	}
 
 	id = uuid.New()
 	query = createTripHistory
-	argsTHistory := []interface{}{id, entity.ID, trip.StatusDraft, entity.Status, time.Now()}
+	argsTHistory := []interface{}{id, entity.ID, model.StatusDraft, entity.Status, time.Now()}
 
 	_, err = r.pool.Query(ctx, query, argsTHistory...)
 	if err != nil {
-		return &trip.Entity{}, fmt.Errorf("ошибка при вставке trip_history: %w", err)
+		return &model.Entity{}, fmt.Errorf("ошибка при вставке trip_history: %w", err)
 	}
 
 	return entity, nil
