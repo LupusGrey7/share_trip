@@ -1,10 +1,12 @@
+//api сценарий - поездки из состояния draft (в транзакции БД)
+
 package api
 
 import (
-	"errors"
+	"log/slog"
+
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
-	"log/slog"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -12,8 +14,6 @@ import (
 	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/domain/errs"
 )
-
-//api сценарий - поездки из состояния draft (в транзакции БД)
 
 func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 	ctx := c.UserContext()
@@ -50,29 +50,25 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 	logger = logger.With(
 		slog.String("client_id", request.DriverID.String()),
 	)
-	ctx = logctx.WithLogger(ctx, logger) //update logger in Context app after add new fields
-	logger.Info("create trip request accepted")
+
+	ctx = logctx.WithLogger(ctx, logger) //update logger in Context app after add new fie0lds
+	logger.Info("create trip request accepted",
+		slog.String("trip_id", request.DriverID.String()),
+	)
 
 	resp, err := s.TripService.CreateTripWithTx(ctx, request)
 	if err != nil {
-		//log.Error("error create is: ", err)
 		logger.Error(
 			"create trip failed",
 			slog.Any("error", err),
 		)
 
-		switch {
-		case errors.As(err, &errs.RequestValidationError{}):
-			return apierr.ErrResponse(c, fiber.StatusBadRequest, err.Error())
-
-		default:
-			return apierr.ErrResponse(c, fiber.StatusInternalServerError, internalServerError)
-		}
+		return HandleError(c, err)
 	}
-
 	logger.Info(
 		"create trip completed",
 		slog.String("trip_id", resp.ID.String()),
 	)
+
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }
