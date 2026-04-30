@@ -1,13 +1,16 @@
+// trip repository
+
 package repository
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"job4j.ru/share_trip/internal/domain/trip/model"
-	"job4j.ru/share_trip/internal/observability/logctx"
 	"log/slog"
 	"time"
+
+	"job4j.ru/share_trip/internal/domain/trip/model"
+	"job4j.ru/share_trip/internal/observability/logctx"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -31,7 +34,8 @@ select
 	status,
 	created_at
 from trips
-where id = $1 FOR UPDATE
+where id = $1 
+FOR UPDATE
 `
 	updateTrip = `
 update trips
@@ -48,8 +52,8 @@ where trip_id = $2
 )
 
 type BaseTxTripRepository interface {
-	GetByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*model.Entity, error)
-	GetForUpdateByIDTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*model.Entity, error)
+	GetByID(ctx context.Context, tx pgx.Tx, id string) (*model.Entity, error)
+	GetForUpdateByIDTx(ctx context.Context, tx pgx.Tx, id string) (*model.Entity, error)
 	UpdateTripTx(ctx context.Context, tx pgx.Tx, t *model.Entity) (*model.Entity, error)
 	CreateTripTx(ctx context.Context, tx pgx.Tx, t *model.Entity) (*model.Entity, error)
 }
@@ -57,19 +61,37 @@ type BaseTxTripRepository interface {
 func (r *TripRepository) GetByID(
 	ctx context.Context,
 	tx pgx.Tx,
-	id uuid.UUID,
+	id string,
 ) (*model.Entity, error) {
+	//getting custom logger context
+	logger := logctx.Logger(ctx).With(
+		slog.String("layer", "repository"),
+		slog.String("repository", "TripRepository"),
+		slog.String("operation", "GetByID"),
+		slog.String("trip_id", id),
+	)
+
+	logger.Info("select trip started")
+
 	var entity model.Entity
 
 	query := getTripByID
 	rows, err := r.pool.Query(ctx, query, id)
 	if err != nil {
+		logger.Error(
+			"select trip failed",
+			slog.Any("error", err),
+		)
 		return &model.Entity{}, fmt.Errorf("error while query: %w", err)
 	}
 	defer rows.Close()
 
-	//Критически важно: переходим на первую строку
+	//Critical: Jump to the first line
 	if !rows.Next() {
+		logger.Error(
+			"select trip failed",
+			slog.Any("error", err),
+		)
 		return &model.Entity{}, fmt.Errorf("trip with id %s not found", id)
 	}
 
@@ -79,9 +101,14 @@ func (r *TripRepository) GetByID(
 	}
 	err = rows.Scan(argsRslRow...)
 	if err != nil {
+		logger.Error(
+			"select trip failed",
+			slog.Any("error", err),
+		)
 		return &model.Entity{}, err
 	}
 
+	logger.Info("get trip completed")
 	return &entity, nil
 }
 
@@ -90,17 +117,18 @@ func (r *TripRepository) CreateTripTx(
 	tx pgx.Tx, // транзакция
 	t *model.Entity,
 ) (*model.Entity, error) {
+	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
 		slog.String("layer", "repository"),
 		slog.String("repository", "TripRepository"),
-		slog.String("operation", "Create"),
+		slog.String("operation", "CreateTripTx"),
 		slog.String("trip_id", t.ID.String()),
 		slog.String("client_id", t.DriverID.String()),
 	)
 
 	logger.Info("insert trip started")
 
-	entity := &model.Entity{} // Создаем пустую структуру в стеке
+	entity := &model.Entity{} // Create an empty structure on the stack
 
 	query := createNewTrip
 	id := uuid.New()
@@ -128,10 +156,9 @@ func (r *TripRepository) CreateTripTx(
 		)
 		return &model.Entity{}, fmt.Errorf("ошибка при вставке trip_history: %w", err)
 	}
-	defer rows.Close() // обработать rows
+	defer rows.Close() // process rows
 
 	logger.Info("insert trip completed")
-
 	return entity, nil
 }
 
@@ -140,7 +167,16 @@ func (r *TripRepository) UpdateTripTx(
 	tx pgx.Tx,
 	t *model.Entity,
 ) (*model.Entity, error) {
-	var entity model.Entity // Создаем пустую структуру в стеке
+	var entity model.Entity // Create an empty structure on the stack
+	//getting custom logger context
+	logger := logctx.Logger(ctx).With(
+		slog.String("layer", "repository"),
+		slog.String("repository", "TripRepository"),
+		slog.String("operation", "UpdateTripTx"),
+		slog.String("trip_id", t.ID.String()),
+	)
+	logger.Info("update trip started")
+
 	query := updateTrip
 	args := []interface{}{t.Status, t.ID}
 
@@ -156,6 +192,10 @@ func (r *TripRepository) UpdateTripTx(
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			logger.Error(
+				"update trip by id failed",
+				slog.Any("error", err),
+			)
 			return nil, ErrTripNotFound
 		}
 		return nil, fmt.Errorf("query trip by id %s: %w", t.ID, err)
@@ -166,21 +206,35 @@ func (r *TripRepository) UpdateTripTx(
 	rows, err := tx.Query(ctx, query, args...)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			logger.Error(
+				"update trip history by id failed",
+				slog.Any("error", err),
+			)
 			return nil, ErrTripNotFound
 		}
 		return nil, fmt.Errorf("query trip_history by id %s: %w", t.ID, err)
 	}
-	defer rows.Close() // обработать rows
+	defer rows.Close() // process rows
 
+	logger.Info("update trip completed")
 	return &entity, nil
 }
 
 func (r *TripRepository) GetForUpdateByIDTx(
 	ctx context.Context,
-	tx pgx.Tx, // транзакция
-	id uuid.UUID,
+	tx pgx.Tx, //transaction
+	id string,
 ) (*model.Entity, error) {
-	tp := model.Entity{} // Создаем пустую структуру в стеке (аналог - var tp trip.Entity)
+	tp := model.Entity{} // We create an empty structure on the stack (analogous to - var tp trip.Entity)
+	//getting custom logger context
+	logger := logctx.Logger(ctx).With(
+		slog.String("layer", "repository"),
+		slog.String("repository", "TripRepository"),
+		slog.String("operation", "GetForUpdateByIDTx"),
+		slog.String("trip_id", id),
+	)
+
+	logger.Info("select trip started")
 
 	query := forUpdateTrip
 	err := tx.QueryRow(ctx, query, id).Scan(
@@ -195,9 +249,15 @@ func (r *TripRepository) GetForUpdateByIDTx(
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			logger.Error(
+				"select trip failed",
+				slog.Any("error", err),
+			)
 			return nil, ErrTripNotFound
 		}
 		return nil, fmt.Errorf("query trip by id %s: %w", id, err)
 	}
-	return &tp, nil // Возвращаем указатель на заполненную структуру
+
+	logger.Info("select trip completed")
+	return &tp, nil // Return a pointer to the filled structure
 }

@@ -1,10 +1,13 @@
+// transaction function - package service
+
 package service
 
 import (
 	"context"
 	"fmt"
-	"job4j.ru/share_trip/internal/observability/logctx"
 	"log/slog"
+
+	"job4j.ru/share_trip/internal/observability/logctx"
 
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/jackc/pgx/v5"
@@ -19,7 +22,6 @@ func tx[T interface{}](
 	logger := logctx.Logger(ctx).With(
 		slog.String("layer", "transaction"),
 	)
-
 	logger.Info("begin transaction")
 
 	txBegin, err := pool.Begin(ctx)
@@ -32,16 +34,6 @@ func tx[T interface{}](
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	//defer func() {
-	//	err := txBegin.Rollback(ctx)
-	//	if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-	//		logger.Error(
-	//			"rollback transaction failed",
-	//			slog.Any("error", err),
-	//		)
-	//	}
-	//}()
-
 	res, err := block(txBegin)
 	if err != nil {
 		logger.Error(
@@ -49,11 +41,11 @@ func tx[T interface{}](
 			slog.Any("error", err),
 		)
 
-		return nil, fmt.Errorf("err block() txBegin with: %w", err)
+		return nil, fmt.Errorf("err tx block() with: %w", err)
 	}
 
 	if err = txBegin.Commit(ctx); err != nil {
-		// Если коммит не удался, тоже пробуем откатить (хотя это может не сработать)
+		// If the commit fails, we also try to roll back (although this may not work)
 		logger.Error(
 			"failed to commit transaction",
 			slog.Any("error", err),
@@ -70,6 +62,5 @@ func tx[T interface{}](
 	}
 
 	logger.Info("commit transaction")
-
 	return res, nil
 }

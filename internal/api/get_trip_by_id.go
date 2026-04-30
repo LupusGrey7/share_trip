@@ -3,42 +3,59 @@
 package api
 
 import (
+	"log/slog"
+
 	"job4j.ru/share_trip/internal/domain/trip/model"
+	"job4j.ru/share_trip/internal/observability/logctx"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
-	"github.com/google/uuid"
 	"job4j.ru/share_trip/internal/domain/errs"
 )
 
 func (s *Server) GetTripById(c *fiber.Ctx) error {
 	ctx := c.UserContext()
-	// Достаем ID, который сгенерировал requestid.New()
+	// We get the ID that was generated requestid.New()
 	traceID := c.GetRespHeader(requestid.ConfigDefault.Header)
+	//getting custom logger context
+	logger := logctx.Logger(ctx).With(
+		slog.String("server", "TripServer"),
+		slog.String("handler", "CreateTrip"),
+		slog.String("traceID", traceID),
+	)
 
 	id := c.Params("tripId")
 	if id == "" {
 		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
 	}
-	uuID, err := uuid.Parse(id)
-	if err != nil {
-		return errs.JsonParseValidationError{Message: err.Error()}
-	}
 
-	request := model.GetByIdModelRequest{ID: uuID}
+	request := GetTripByIdRequestModel{ID: id}
 
 	//--validation
 	if err := s.validator.Struct(request); err != nil {
+		logger.Warn("trip get validation failed",
+			slog.String("tripId", id),
+			slog.String("error", err.Error()),
+		)
 		return errs.RequestValidationError{Message: err.Error()}
 	}
-	// логирование на границе компонента.
-	log.Infof("findByTrip ID: %s with traceID: %s ", id, traceID)
+	// logging at the component boundary
+	logger.Info("get Trip By ID",
+		"trip_id", id,
+	)
 
-	resp, err := s.TripService.GetTripByID(ctx, request)
+	resp, err := s.TripService.GetTripByID(ctx, model.GetByIdModelRequest{ID: request.ID})
 	if err != nil {
+		logger.Error(
+			"get Trip By ID failed",
+			slog.Any("error", err),
+		)
 		return HandleError(c, err)
 	}
 
+	logger.Info(
+		"get Trip By ID completed",
+		slog.String("trip_id", resp.ID.String()),
+	)
 	return c.Status(fiber.StatusOK).JSON(resp)
 }
