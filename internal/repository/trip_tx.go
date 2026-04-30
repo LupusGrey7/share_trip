@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"job4j.ru/share_trip/internal/domain/trip"
@@ -78,7 +77,6 @@ func (r *TripRepository) GetByID(
 	}
 	err = rows.Scan(argsRslRow...)
 	if err != nil {
-		log.Error("error : ", err)
 		return &trip.Entity{}, err
 	}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/gofiber/fiber/v2/log"
 
 	"github.com/jackc/pgx/v5"

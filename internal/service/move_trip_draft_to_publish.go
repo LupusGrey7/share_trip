@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/jackc/pgx/v5"
 	"job4j.ru/share_trip/internal/domain/outbox"
 	"job4j.ru/share_trip/internal/domain/trip"
@@ -39,7 +38,6 @@ func (s *TripService) MoveTripDraftToPublish(
 	})
 
 	if err != nil {
-		log.Error("error moving trip Draft to Publish: ", err)
 		return nil, err
 	}
 

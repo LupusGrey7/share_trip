@@ -28,14 +28,13 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 	}
 
 	if err := s.validator.Struct(&request); err != nil {
-		log.Error(apierr.InvalidValidateError, err)
 		return errs.RequestValidationError{Message: err.Error()}
 	}
+	// логирование на границе компонента.
 	log.Infof("create trip with traceID: %s", traceID)
 
 	resp, err := s.TripService.CreateTripWithTx(ctx, request)
 	if err != nil {
-		log.Error("error create is: ", err)
 		switch {
 		case errors.As(err, &errs.RequestValidationError{}):
 			return apierr.ErrResponse(c, fiber.StatusBadRequest, err.Error())

@@ -1,18 +1,15 @@
+//api сценарий - поиска поездки
+
 package api
 
 import (
-	"errors"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/google/uuid"
-	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/domain/errs"
 	"job4j.ru/share_trip/internal/domain/trip"
 )
-
-//api сценарий - поиска поездки
 
 func (s *Server) GetTripById(c *fiber.Ctx) error {
 	ctx := c.UserContext()
@@ -25,29 +22,21 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 	}
 	uuID, err := uuid.Parse(id)
 	if err != nil {
-		log.Errorf(apierr.InvalidValidateError, err)
 		return errs.JsonParseValidationError{Message: err.Error()}
 	}
 
 	request := trip.GetByIdModelRequest{ID: uuID}
 	//--validation
 	if err := s.validator.Struct(request); err != nil {
-		log.Error(apierr.InvalidValidateError, err)
 		return errs.RequestValidationError{Message: err.Error()}
 	}
+	// логирование на границе компонента.
+	log.Infof("findByTrip ID: %s with traceID: %s ", id, traceID)
 
-	log.Infof("find Bytrip ID: %s with traceID: %s ", id, traceID)
 	resp, err := s.TripService.GetTripByID(ctx, request)
 	if err != nil {
-		log.Error("error when FindById trip is: ", err)
-
-		switch {
-		case errors.As(err, &errs.RequestValidationError{}):
-			return apierr.ErrResponse(c, fiber.StatusBadRequest, err.Error())
-
-		default:
-			return apierr.ErrResponse(c, fiber.StatusInternalServerError, internalServerError)
-		}
+		return HandleError(c, err)
 	}
+
 	return c.Status(fiber.StatusOK).JSON(resp)
 }
