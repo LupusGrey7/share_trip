@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -80,7 +79,6 @@ func (r *TripRepository) GetByID(
 	}
 	err = rows.Scan(argsRslRow...)
 	if err != nil {
-		log.Error("error : ", err)
 		return &model.Entity{}, err
 	}
 

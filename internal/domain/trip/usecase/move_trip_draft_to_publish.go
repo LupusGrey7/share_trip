@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/gofiber/fiber/v2/log"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 

@@ -6,7 +6,6 @@ import (
 	model2 "job4j.ru/share_trip/internal/domain/outbox/model"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -39,7 +38,6 @@ func (s *TripService) MoveTripDraftToPublish(
 	})
 
 	if err != nil {
-		log.Error("error moving trip Draft to Publish: ", err)
 		return nil, err
 	}
 

@@ -43,16 +43,13 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 	request.ID = id
 	//--validation
 	if err := s.validator.Struct(&request); err != nil {
-		log.Error(apierr.InvalidValidateError, err)
 		return errs.RequestValidationError{Message: err.Error()}
 	}
 
 	uuID, err := uuid.Parse(id)
 	if err != nil {
-		log.Error(apierr.InvalidValidateError, err)
 		return apierr.ErrResponse(c, fiber.StatusInternalServerError, apierr.InternalServerError)
 	}
-
 	// логирование на границе компонента.
 	log.Infof("move trip to publish ID: %v with traceID: %s ", uuID, traceID)
 

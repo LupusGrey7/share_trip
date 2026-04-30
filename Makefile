@@ -23,7 +23,7 @@ LDFLAGS=-ldflags "-X main.Version=${VERSION}"
 help:
 	@echo "Available targets:"
 	@echo "  deps        	  - Install tools or check their availability"
-	@echo "  fmt         	  - Code formattingа"
+	@echo "  fmt         	  - Code formating"
 	@echo "  lint        	  - Running the linter"
 	@echo "  test        	  - Run all tests"
 	@echo "  build           - Build a binary file"

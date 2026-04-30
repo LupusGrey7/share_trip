@@ -46,6 +46,7 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 
 		return errs.RequestValidationError{Message: err.Error()}
 	}
+	// логирование на границе компонента.
 	log.Infof("create trip with traceID: %s", traceID)
 	logger = logger.With(
 		slog.String("client_id", request.DriverID.String()),
