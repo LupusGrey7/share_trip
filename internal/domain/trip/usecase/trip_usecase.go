@@ -3,9 +3,8 @@ package usecase
 import (
 	"context"
 
-	"job4j.ru/share_trip/internal/domain/trip/model"
-
 	"github.com/jackc/pgx/v5"
+	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/repository"
 )
 

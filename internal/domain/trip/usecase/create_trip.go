@@ -28,7 +28,6 @@ func (t *TripUsecase) CreateTrip(
 
 	entity := req.ToEntity()
 	entity.Status = model.StatusDraft
-	entity.Seats = 1
 
 	resp, err := repo.CreateTripTx(ctx, tx, entity)
 

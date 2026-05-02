@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
+	"os"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	applog "job4j.ru/share_trip/internal/app"
 	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"job4j.ru/share_trip/internal/middleware"
-	"os"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -45,7 +46,7 @@ func main() {
 
 	defer pool.Close()
 
-	// логирование подключения
+	// logging connection to DB
 	if pingErr := pool.Ping(ctx); pingErr != nil {
 		log.Fatalf("failed to ping database: %v", pingErr)
 	}
