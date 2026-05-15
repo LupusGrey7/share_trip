@@ -3,8 +3,9 @@ package repository
 import (
 	"context"
 	"fmt"
-	"job4j.ru/share_trip/internal/domain/outbox/model"
 	"time"
+
+	"job4j.ru/share_trip/internal/domain/outbox/model"
 
 	"github.com/jackc/pgx/v5"
 )

@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"job4j.ru/share_trip/internal/domain/trip/usecase"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"

@@ -1,38 +1,40 @@
+//api сценарий - поездки из состояния draft (в транзакции БД)
+
 package api
 
 import (
+	"log/slog"
+
+	"job4j.ru/share_trip/internal/domain/trip/model"
+	"job4j.ru/share_trip/internal/observability/logctx"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
 	"log/slog"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
-	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/domain/errs"
 )
 
-//api сценарий - поездки из состояния draft (в транзакции БД)
-
 func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 	ctx := c.UserContext()
-	//getting custom logger
+	// We get the ID that was generated requestid.New()
+	traceID := c.GetRespHeader(requestid.ConfigDefault.Header)
+	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
 		slog.String("server", "TripServer"),
 		slog.String("handler", "CreateTrip"),
+		slog.String("traceID", traceID),
 	)
 
-	// Достаем ID, который сгенерировал requestid.New()
-	traceID := c.GetRespHeader(requestid.ConfigDefault.Header)
-	var request model.CreateTripRequest
+	var request CreateTripRequestModel
 
-	// Парсим тело запроса
+	// Parsing the request body
 	if err := c.BodyParser(&request); err != nil {
 		logger.Warn(
-			"create trip failed: invalid JSON body",
+			"create trip failed: invalid json body",
 			slog.Any("error", err),
 		)
-
 		return c.Status(fiber.StatusBadRequest).JSON(
 			fiber.Map{
 				"error": invalidParseJson,
@@ -40,9 +42,10 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 	}
 
 	if err := s.validator.Struct(&request); err != nil {
-		log.Error(apierr.InvalidValidateError, err)
-		logger.Warn("create trip failed: client_id is required")
-
+		logger.Warn(
+			"create trip failed: invalid request",
+			slog.Any("error", err),
+		)
 		return errs.RequestValidationError{Message: err.Error()}
 	}
 
@@ -55,8 +58,28 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 		slog.Any("traceID:", traceID),
 	)
 
-	resp, err := s.TripService.CreateTripWithTx(ctx, request)
+	logger = logger.With(
+		slog.String("client_id", request.DriverID.String()),
+	)
+	ctx = logctx.WithLogger(ctx, logger)        //update logger in Context app after add new fields
+	logger.Info("create trip request accepted") // logging at the component boundary
+
+	resp, err := s.TripService.CreateTripWithTx(
+		ctx,
+		model.CreateTripRequestModel{
+			DriverID:       request.DriverID,
+			FromPoint:      request.FromPoint,
+			ToPoint:        request.ToPoint,
+			DepartureTime:  request.DepartureTime,
+			AvailableSeats: request.AvailableSeats,
+		},
+	)
 	if err != nil {
+		logger.Error(
+			"create trip failed",
+			slog.Any("error", err),
+		)
+		return HandleError(c, err)
 		logger.Error(
 			"create trip failed",
 			slog.Any("error", err),

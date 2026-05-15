@@ -2,21 +2,35 @@ package usecase
 
 import (
 	"context"
+	"log/slog"
+
 	"errors"
 	"github.com/jackc/pgx/v5"
 	"job4j.ru/share_trip/internal/domain/trip/model"
+	"job4j.ru/share_trip/internal/observability/logctx"
 	"job4j.ru/share_trip/internal/repository"
 )
 
-func (t *TripUseCase) GetTripById(
+func (t *TripUseCase) GetTripByID(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo repository.BaseTxTripRepository,
 	req model.GetByIDModelRequest,
 ) (*model.GetTripByIDModelResponse, error) {
-	entity, err := repo.GetByID(ctx, tx, req.ID)
+	//getting custom logger context
+	logger := logctx.Logger(ctx).With(
+		slog.String("layer", "usecase"),
+		slog.String("usecase", "TripUsecase.GetTripByID"),
+		slog.String("client_id", req.ID),
+	)
+	logger.Info("create trip usecase started")
 
+	resp, err := repo.GetByID(ctx, tx, req.ID)
 	if err != nil {
+		logger.Error(
+			"get trip by ID failed",
+			slog.Any("error", err),
+		)
 		if errors.Is(err, repository.ErrTripNotFound) {
 			return nil, ErrTripNotFound
 		}
@@ -24,5 +38,9 @@ func (t *TripUseCase) GetTripById(
 		return nil, err
 	}
 
-	return entity.ToGetByIdModelResponse(), nil
+	logger.Info(
+		"get trip by ID usecase success",
+		slog.String("trip_id", resp.ID.String()),
+	)
+	return resp.ToGetByIdModelResponse(), nil
 }

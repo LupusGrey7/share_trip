@@ -3,11 +3,11 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"job4j.ru/share_trip/internal/domain/trip/model"
-	"job4j.ru/share_trip/internal/observability/logctx"
 	"log/slog"
 
 	"github.com/jackc/pgx/v5"
+	"job4j.ru/share_trip/internal/domain/trip/model"
+	"job4j.ru/share_trip/internal/observability/logctx"
 	"job4j.ru/share_trip/internal/repository"
 )
 
@@ -15,8 +15,9 @@ func (t *TripUseCase) CreateTrip(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo repository.BaseTxTripRepository,
-	req model.CreateTripRequest,
+	req model.CreateTripRequestModel,
 ) (*model.CreateTripResponse, error) {
+	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
 		slog.String("layer", "usecase"),
 		slog.String("usecase", "TripUseCase.CreateTrip"),
@@ -27,7 +28,6 @@ func (t *TripUseCase) CreateTrip(
 
 	entity := req.ToEntity()
 	entity.Status = model.StatusDraft
-	entity.Seats = 1
 
 	resp, err := repo.CreateTripTx(ctx, tx, entity)
 

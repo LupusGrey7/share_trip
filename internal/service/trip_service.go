@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/domain/trip/usecase"
 
@@ -12,7 +13,7 @@ import (
 )
 
 type Service interface {
-	CreateTripWithTx(context.Context, model.CreateTripRequest) (*model.CreateTripResponse, error)
+	CreateTripWithTx(context.Context, model.CreateTripRequestModel) (*model.CreateTripResponse, error)
 	MoveTripDraftToPublish(ctx context.Context, req model.MoveTripDraftToPublishModel) (*model.MoveTripDraftToPublishModelResponse, error)
 	GetTripByID(ctx context.Context, req model.GetByIDModelRequest) (*model.GetTripByIDModelResponse, error)
 }

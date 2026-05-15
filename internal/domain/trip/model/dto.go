@@ -55,7 +55,7 @@ type GetTripByIDModelResponse struct {
 	Status        StatusEnum `json:"status"`
 }
 
-type CreateTripRequest struct {
+type CreateTripRequestModel struct {
 	DriverID       uuid.UUID
 	FromPoint      string
 	ToPoint        string
@@ -63,13 +63,13 @@ type CreateTripRequest struct {
 	AvailableSeats int
 }
 
-type MoveTripDraftToPublishModelRequest struct {
+type MoveTripDraftToPublishRequestModel struct {
 	ID       string
 	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"` //"omitempty,uuid"
 }
 
 type MoveTripDraftToPublishModel struct {
-	ID       uuid.UUID
+	ID       string
 	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"` //"omitempty,uuid"
 }
 
@@ -94,7 +94,7 @@ type PageResponse struct {
 	Total      int64                `json:"total"`
 }
 
-func (req *CreateTripRequest) ToEntity() *Entity {
+func (req *CreateTripRequestModel) ToEntity() *Entity {
 	return &Entity{
 		DriverID:      req.DriverID,
 		FromPoint:     req.FromPoint,

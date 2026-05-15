@@ -3,17 +3,26 @@
 package api
 
 import (
+	"log/slog"
+
+	"job4j.ru/share_trip/internal/domain/trip/model"
+	"job4j.ru/share_trip/internal/observability/logctx"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"job4j.ru/share_trip/internal/domain/errs"
-	"job4j.ru/share_trip/internal/domain/trip/model"
 )
 
 func (s *Server) GetTripById(c *fiber.Ctx) error {
 	ctx := c.UserContext()
-	// Достаем ID, который сгенерировал requestid.New()
+	// We get the ID that was generated requestid.New()
 	traceID := c.GetRespHeader(requestid.ConfigDefault.Header)
+	//getting custom logger context
+	logger := logctx.Logger(ctx).With(
+		slog.String("server", "TripServer"),
+		slog.String("handler", "CreateTrip"),
+		slog.String("traceID", traceID),
+	)
 
 	tripID := c.Params("tripId")
 	if tripID == "" {
@@ -21,28 +30,25 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 	}
 
 	request := GetByIDModelRequest{ID: tripID}
-	//--validation
+
 	if err := s.validator.Struct(request); err != nil {
 		return errs.RequestValidationError{Message: err.Error()}
 	}
-	//FIXME логирование на границе компонента.
-	log.Infof("findByTrip ID: %s with traceID: %s ", tripID, traceID)
+	// logging at the component boundary
+	logger.Info("get Trip By ID", slog.String("tripId", tripID))
 
 	resp, err := s.TripService.GetTripByID(ctx, model.GetByIDModelRequest{ID: request.ID})
 	if err != nil {
-		log.Errorw(
-			"get trip failed",
-			"error", err.Error(),
-			"trip_id", tripID,
-			"trace_id", traceID,
+		logger.Error(
+			"get Trip By ID failed",
+			slog.Any("error", err),
 		)
 		return HandleError(c, err)
 	}
 
-	log.Info(
-		"get trip success",
-		"trip_id", tripID,
-		"trace_id", traceID,
+	logger.Info(
+		"get Trip By ID completed",
+		slog.String("trip_id", request.ID),
 	)
 	return c.Status(fiber.StatusOK).JSON(resp)
 }

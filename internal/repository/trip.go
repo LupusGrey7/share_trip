@@ -3,8 +3,9 @@ package repository
 import (
 	"context"
 	"fmt"
-	"job4j.ru/share_trip/internal/domain/trip/model"
 	"time"
+
+	"job4j.ru/share_trip/internal/domain/trip/model"
 
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/google/uuid"
@@ -26,7 +27,6 @@ values($1, $2, $3, $4, $5)`
 
 type BaseTripRepository interface {
 	CreateTrip(context.Context, *model.Entity) (*model.Entity, error)
-	//GetByID(ctx context.Context, id string) (*trip.Entity, error)
 	Tx(ctx context.Context, block func(tx pgx.Tx) error) error
 }
 

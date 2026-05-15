@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"job4j.ru/share_trip/internal/domain/trip/model"
 	"net/http"
 	"testing"
 	"time"
+
+	"job4j.ru/share_trip/internal/api"
+	"job4j.ru/share_trip/internal/domain/trip/model"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -17,7 +19,7 @@ import (
 func TestServer_GetTripById(t *testing.T) {
 
 	t.Run("success - получение поездки по ID", func(t *testing.T) {
-		payload := model.CreateTripRequest{
+		payload := api.CreateTripRequestModel{
 			DriverID:       uuid.New(),
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",

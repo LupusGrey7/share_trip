@@ -41,6 +41,7 @@ help:
 	@echo "  check           - A full run, like in CI: formatting, linter, tests"
 	@echo "  coverage    	  - Run tests and generate HTML coverage report"
 	@echo "  cover       	  - Alias for coverage"
+	@echo "  vulncheck        - Vulnerability detection tool"
 	@echo "  all         	  - Run lint, tests and coverage"
 	@echo "  help        	  - Show this help"
 
@@ -142,6 +143,11 @@ migrate-status:
 # Полный прогон, как в CI: форматирование, линтер, тесты
 .PHONY: check
 check: fmt lint test coverage
+
+# Vulnerability detection tool
+.PHONY: vulncheck
+vulncheck:
+	$(GO)vulncheck $(GO_PKG)
 
 # Генерация отчёта о покрытии в формате HTML
 .PHONY: coverage

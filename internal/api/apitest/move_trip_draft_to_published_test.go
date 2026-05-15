@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"job4j.ru/share_trip/internal/domain/trip/model"
 	"net/http"
 	"testing"
 	"time"
+
+	"job4j.ru/share_trip/internal/domain/trip/model"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,7 @@ import (
 func TestServer_MoveTripDraftToPublish(t *testing.T) {
 
 	t.Run("success - обновление поездки", func(t *testing.T) {
-		payload := model.CreateTripRequest{
+		payload := api.CreateTripRequestModel{
 			DriverID:       uuid.New(),
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
@@ -69,7 +70,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		fmt.Println("-00->", got.ID)
 
 		//---update
-		publishModelRequest := api.MoveTripDraftToPublishModelRequest{
+		publishModelRequest := api.MoveTripDraftToPublishRequestModel{
 			ClientID: payload.DriverID,
 		}
 
@@ -121,7 +122,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		require.Equal(t, response1, got1)
 	})
 	t.Run("forbidden - обновление поездки", func(t *testing.T) { //403
-		payload := model.CreateTripRequest{
+		payload := api.CreateTripRequestModel{
 			DriverID:       uuid.New(),
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
@@ -176,7 +177,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		if err != nil {
 			t.Errorf("err parse uuid: %v", err)
 		}
-		publishModelRequest := api.MoveTripDraftToPublishModelRequest{
+		publishModelRequest := api.MoveTripDraftToPublishRequestModel{
 			ClientID: uuID,
 		}
 
@@ -207,7 +208,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 
 	})
 	t.Run("statusNotFound - обновление поездки", func(t *testing.T) { //404
-		payload := model.CreateTripRequest{
+		payload := api.CreateTripRequestModel{
 			DriverID:       uuid.New(),
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
@@ -260,7 +261,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		//---update
 		uuID := "d4733715-0fc7-42fa-b13a-f068e33c6d80"
 
-		publishModelRequest := api.MoveTripDraftToPublishModelRequest{
+		publishModelRequest := api.MoveTripDraftToPublishRequestModel{
 			ClientID: payload.DriverID,
 		}
 
@@ -290,7 +291,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, resp2.StatusCode)
 	})
 	t.Run("StatusConflict - обновление поездки", func(t *testing.T) { //409
-		payload := model.CreateTripRequest{
+		payload := api.CreateTripRequestModel{
 			DriverID:       uuid.New(),
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
@@ -344,7 +345,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		// Принудительно меняем статус созданной поездки на "cancelled"
 		_, err = testDB.ExecContext(testCtx, "UPDATE trips SET status = $1 WHERE id = $2", "cancelled", got.ID)
 		require.NoError(t, err)
-		publishModelRequest := api.MoveTripDraftToPublishModelRequest{
+		publishModelRequest := api.MoveTripDraftToPublishRequestModel{
 			ClientID: payload.DriverID,
 		}
 
@@ -374,7 +375,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		require.Equal(t, http.StatusConflict, resp2.StatusCode)
 	})
 	t.Run("internalServerError - обновление поездки", func(t *testing.T) { // 500
-		payload := model.CreateTripRequest{
+		payload := api.CreateTripRequestModel{
 			DriverID:       uuid.New(),
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
@@ -425,7 +426,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		fmt.Println("-00->", got.ID)
 
 		//---update
-		publishModelRequest := api.MoveTripDraftToPublishModelRequest{
+		publishModelRequest := api.MoveTripDraftToPublishRequestModel{
 			ClientID: uuid.Nil,
 		}
 
