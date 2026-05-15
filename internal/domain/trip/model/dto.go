@@ -40,11 +40,11 @@ type CreateTripResponse struct {
 	Status        StatusEnum `json:"status"`
 }
 
-type GetByIdModelRequest struct {
-	ID uuid.UUID `json:"id" validate:"required,uuid"`
+type GetByIDModelRequest struct {
+	ID uuid.UUID
 }
 
-type GetTripByIdModelResponse struct {
+type GetTripByIDModelResponse struct {
 	ID            uuid.UUID  `json:"id"`
 	DriverID      uuid.UUID  `json:"driverId"`
 	FromPoint     string     `json:"fromPoint"`
@@ -56,11 +56,11 @@ type GetTripByIdModelResponse struct {
 }
 
 type CreateTripRequest struct {
-	DriverID       uuid.UUID `json:"driverId" validate:"required,uuid"`
-	FromPoint      string    `json:"fromPoint" validate:"required,min=20,max=155"`
-	ToPoint        string    `json:"toPoint" validate:"required,min=20,max=155"`
-	DepartureTime  time.Time `json:"departureTime" validate:"required"`
-	AvailableSeats int       `json:"seats" validate:"required,min=1,max=3"`
+	DriverID       uuid.UUID
+	FromPoint      string
+	ToPoint        string
+	DepartureTime  time.Time
+	AvailableSeats int
 }
 
 type MoveTripDraftToPublishModelRequest struct {
@@ -169,8 +169,8 @@ func (req *Entity) UpdateToPublishModelResponse() *MoveTripDraftToPublishModelRe
 	}
 }
 
-func (req *Entity) ToGetByIdModelResponse() *GetTripByIdModelResponse {
-	return &GetTripByIdModelResponse{
+func (req *Entity) ToGetByIdModelResponse() *GetTripByIDModelResponse {
+	return &GetTripByIDModelResponse{
 		ID:            req.ID,
 		DriverID:      req.DriverID,
 		FromPoint:     req.FromPoint,

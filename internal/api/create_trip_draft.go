@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
 	"log/slog"
@@ -46,28 +45,24 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 
 		return errs.RequestValidationError{Message: err.Error()}
 	}
-	log.Infof("create trip with traceID: %s", traceID)
+
 	logger = logger.With(
 		slog.String("client_id", request.DriverID.String()),
 	)
 	ctx = logctx.WithLogger(ctx, logger) //update logger in Context app after add new fields
-	logger.Info("create trip request accepted")
+	logger.Info(
+		"create trip request accepted",
+		slog.Any("traceID:", traceID),
+	)
 
 	resp, err := s.TripService.CreateTripWithTx(ctx, request)
 	if err != nil {
-		//log.Error("error create is: ", err)
 		logger.Error(
 			"create trip failed",
 			slog.Any("error", err),
+			slog.String("trip_id", request.DriverID.String()),
 		)
-
-		switch {
-		case errors.As(err, &errs.RequestValidationError{}):
-			return apierr.ErrResponse(c, fiber.StatusBadRequest, err.Error())
-
-		default:
-			return apierr.ErrResponse(c, fiber.StatusInternalServerError, internalServerError)
-		}
+		return HandleError(c, err)
 	}
 
 	logger.Info(

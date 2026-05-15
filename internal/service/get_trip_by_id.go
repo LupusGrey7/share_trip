@@ -16,11 +16,10 @@ func (s *TripService) GetTripByID(
 		resp, err := s.useCase.GetTripById(ctx, tx, s.repo, req)
 
 		if err != nil {
-			return nil, fmt.Errorf("err trip UseCaseGetTrip By ID: %w", err)
+			return nil, err
 		}
 
 		return resp, nil
-
 	})
 
 	if err != nil {
