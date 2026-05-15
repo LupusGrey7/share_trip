@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+
 	"github.com/gofiber/fiber/v2"
 	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/service/use_case"

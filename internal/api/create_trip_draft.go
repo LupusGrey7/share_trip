@@ -29,6 +29,7 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 		log.Error(apierr.InvalidValidateError, err)
 		return errs.RequestValidationError{Message: err.Error()}
 	}
+	// логирование на границе компонента.
 	log.Infof("create trip with traceID: %s, DriveID : %v", traceID, request.DriverID)
 
 	resp, err := s.TripService.CreateTripWithTx(ctx, request.ToCreateTripDomainRequest())
