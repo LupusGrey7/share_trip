@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"job4j.ru/share_trip/internal/domain/trip/model"
-	"time"
 )
 
 type GetTripByIdRequestModel struct {

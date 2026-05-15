@@ -5,15 +5,11 @@ package api
 import (
 	"log/slog"
 
-	"job4j.ru/share_trip/internal/domain/trip/model"
-	"job4j.ru/share_trip/internal/observability/logctx"
-	"job4j.ru/share_trip/internal/domain/trip/model"
-	"job4j.ru/share_trip/internal/observability/logctx"
-	"log/slog"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"job4j.ru/share_trip/internal/domain/errs"
+	"job4j.ru/share_trip/internal/domain/trip/model"
+	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
 func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
@@ -79,12 +75,7 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 			"create trip failed",
 			slog.Any("error", err),
 		)
-		return HandleError(c, err)
-		logger.Error(
-			"create trip failed",
-			slog.Any("error", err),
-			slog.String("trip_id", request.DriverID.String()),
-		)
+
 		return HandleError(c, err)
 	}
 

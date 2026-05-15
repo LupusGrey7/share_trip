@@ -12,8 +12,8 @@ import (
 
 func (s *TripService) GetTripByID(
 	ctx context.Context,
-	req model.GetByIdModelRequest,
-) (*model.GetTripByIdModelResponse, error) {
+	req model.GetByIDModelRequest,
+) (*model.GetTripByIDModelResponse, error) {
 	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
 		slog.String("service", "TripService"),
@@ -22,7 +22,7 @@ func (s *TripService) GetTripByID(
 	)
 	logger.Info("get trip started")
 
-	res, err := tx(ctx, s.pool, func(tx pgx.Tx) (*model.GetTripByIdModelResponse, error) {
+	res, err := tx(ctx, s.pool, func(tx pgx.Tx) (*model.GetTripByIDModelResponse, error) {
 		txLogger := logger.With(
 			slog.String("layer", "transaction"),
 		)
