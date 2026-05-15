@@ -8,12 +8,12 @@ import (
 	"job4j.ru/share_trip/internal/repository"
 )
 
-func (t *TripUsecase) GetTripById(
+func (t *TripUseCase) GetTripById(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo repository.BaseTxTripRepository,
-	req model.GetByIdModelRequest,
-) (*model.GetTripByIdModelResponse, error) {
+	req model.GetByIDModelRequest,
+) (*model.GetTripByIDModelResponse, error) {
 	entity, err := repo.GetByID(ctx, tx, req.ID)
 
 	if err != nil {

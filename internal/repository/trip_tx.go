@@ -48,7 +48,7 @@ where trip_id = $2
 )
 
 type BaseTxTripRepository interface {
-	GetByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*model.Entity, error)
+	GetByID(ctx context.Context, tx pgx.Tx, id string) (*model.Entity, error)
 	GetForUpdateByIDTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*model.Entity, error)
 	UpdateTripTx(ctx context.Context, tx pgx.Tx, t *model.Entity) (*model.Entity, error)
 	CreateTripTx(ctx context.Context, tx pgx.Tx, t *model.Entity) (*model.Entity, error)
@@ -57,7 +57,7 @@ type BaseTxTripRepository interface {
 func (r *TripRepository) GetByID(
 	ctx context.Context,
 	tx pgx.Tx,
-	id uuid.UUID,
+	id string,
 ) (*model.Entity, error) {
 	var entity model.Entity
 

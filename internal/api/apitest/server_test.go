@@ -64,7 +64,7 @@ func TestMain(m *testing.M) {
 	outboxRepo := repository.NewOutboxEventRepository()
 
 	infoUseCase := usecase.NewInfoUseCase()
-	tripUseCase := usecase.NewTripUsecase()
+	tripUseCase := usecase.NewTripUseCase()
 
 	infoService := service.NewInfoService(infoUseCase, repo)
 	tripService := service.NewTripService(testPool, repoTrip, outboxRepo, tripUseCase)

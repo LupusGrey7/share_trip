@@ -14,21 +14,21 @@ import (
 type Service interface {
 	CreateTripWithTx(context.Context, model.CreateTripRequest) (*model.CreateTripResponse, error)
 	MoveTripDraftToPublish(ctx context.Context, req model.MoveTripDraftToPublishModel) (*model.MoveTripDraftToPublishModelResponse, error)
-	GetTripByID(ctx context.Context, req model.GetByIdModelRequest) (*model.GetTripByIdModelResponse, error)
+	GetTripByID(ctx context.Context, req model.GetByIDModelRequest) (*model.GetTripByIDModelResponse, error)
 }
 
 type TripService struct {
 	pool       *pgxpool.Pool
 	repo       repository.BaseTxTripRepository
 	outboxRepo repository.OutboxRepository
-	useCase    usecase.BaseUsecase
+	useCase    usecase.BaseUseCase
 }
 
 func NewTripService(
 	pool *pgxpool.Pool,
 	r repository.BaseTxTripRepository,
 	outbox repository.OutboxRepository,
-	uc usecase.BaseUsecase,
+	uc usecase.BaseUseCase,
 ) *TripService {
 	return &TripService{
 		pool:       pool,

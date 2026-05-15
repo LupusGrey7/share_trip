@@ -8,15 +8,15 @@ import (
 	"job4j.ru/share_trip/internal/repository"
 )
 
-type BaseUsecase interface {
+type BaseUseCase interface {
 	CreateTrip(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req model.CreateTripRequest) (*model.CreateTripResponse, error)
 	MoveTripDraftToPublishTx(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req model.MoveTripDraftToPublishModel) (*model.MoveTripDraftToPublishModelResponse, error)
-	GetTripById(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req model.GetByIdModelRequest) (*model.GetTripByIdModelResponse, error)
+	GetTripById(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req model.GetByIDModelRequest) (*model.GetTripByIDModelResponse, error)
 }
 
-type TripUsecase struct {
+type TripUseCase struct {
 }
 
-func NewTripUsecase() *TripUsecase {
-	return &TripUsecase{}
+func NewTripUseCase() *TripUseCase {
+	return &TripUseCase{}
 }

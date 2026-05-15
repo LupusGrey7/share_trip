@@ -11,7 +11,7 @@ import (
 	"job4j.ru/share_trip/internal/repository"
 )
 
-func (t *TripUsecase) CreateTrip(
+func (t *TripUseCase) CreateTrip(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo repository.BaseTxTripRepository,
@@ -19,7 +19,7 @@ func (t *TripUsecase) CreateTrip(
 ) (*model.CreateTripResponse, error) {
 	logger := logctx.Logger(ctx).With(
 		slog.String("layer", "usecase"),
-		slog.String("usecase", "TripUsecase.CreateTrip"),
+		slog.String("usecase", "TripUseCase.CreateTrip"),
 		slog.String("client_id", req.DriverID.String()),
 	)
 

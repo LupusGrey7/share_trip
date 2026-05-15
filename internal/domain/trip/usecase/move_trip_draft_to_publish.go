@@ -12,7 +12,7 @@ import (
 	"job4j.ru/share_trip/internal/repository"
 )
 
-func (t *TripUsecase) MoveTripDraftToPublishTx(
+func (t *TripUseCase) MoveTripDraftToPublishTx(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo repository.BaseTxTripRepository,

@@ -41,7 +41,7 @@ type CreateTripResponse struct {
 }
 
 type GetByIDModelRequest struct {
-	ID uuid.UUID
+	ID string
 }
 
 type GetTripByIDModelResponse struct {

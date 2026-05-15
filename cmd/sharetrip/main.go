@@ -92,7 +92,7 @@ func build(app *fiber.App, pool *pgxpool.Pool) {
 	outboxRepo := repository.NewOutboxEventRepository()
 
 	infoUseCase := usecase.NewInfoUseCase()
-	tripUseCase := usecase.NewTripUsecase()
+	tripUseCase := usecase.NewTripUseCase()
 
 	infoService := service.NewInfoService(infoUseCase, repo)
 	tripService := service.NewTripService(pool, repoTrip, outboxRepo, tripUseCase)
