@@ -37,8 +37,10 @@ go.work.sum
 *.iml
 
 # Local development files
+deploy/
 tmp/
 DEVELOPMENT.md
+project_info/
 
 #logs
 deploy/logs/
