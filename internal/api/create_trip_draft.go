@@ -1,4 +1,4 @@
-//api сценарий - поездки из состояния draft (в транзакции БД)
+//API scenario - trips from the draft state (in a DB transaction)
 
 package api
 
@@ -33,7 +33,8 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 		)
 		return c.Status(fiber.StatusBadRequest).JSON(
 			fiber.Map{
-				"error": invalidParseJson,
+				"error":  invalidParseJson,
+				"reason": err,
 			})
 	}
 
@@ -49,10 +50,7 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 		slog.String("client_id", request.DriverID.String()),
 	)
 	ctx = logctx.WithLogger(ctx, logger) //update logger in Context app after add new fields
-	logger.Info(
-		"create trip request accepted",
-		slog.Any("traceID:", traceID),
-	)
+	logger.Info("create trip request accepted")
 
 	logger = logger.With(
 		slog.String("client_id", request.DriverID.String()),

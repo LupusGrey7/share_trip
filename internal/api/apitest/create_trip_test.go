@@ -16,14 +16,13 @@ import (
 )
 
 /*
-*
 === Registered Routes ===
-GET    /ready
-GET    /trip/:tripId
-HEAD   /ready
-HEAD   /trip/:tripId
-POST   /trip/createTripDraft
-PATCH  /trip/moveTripDraft-ToPublish/:tripId
+GET /ready
+GET /trip/:tripId
+HEAD /ready
+HEAD /trip/:tripId
+POST /trip/createTripDraft
+PATCH /trip/moveTripDraft-ToPublish/:tripId
 */
 func TestServer_CreateTrip(t *testing.T) {
 

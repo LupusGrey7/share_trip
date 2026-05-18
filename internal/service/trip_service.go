@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+	"job4j.ru/share_trip/internal/observability/metrics"
 
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/domain/trip/usecase"
@@ -19,6 +20,7 @@ type Service interface {
 }
 
 type TripService struct {
+	metrics    *metrics.Metrics
 	pool       *pgxpool.Pool
 	repo       repository.BaseTxTripRepository
 	outboxRepo repository.OutboxRepository
@@ -26,12 +28,14 @@ type TripService struct {
 }
 
 func NewTripService(
+	m *metrics.Metrics,
 	pool *pgxpool.Pool,
 	r repository.BaseTxTripRepository,
 	outbox repository.OutboxRepository,
 	uc usecase.BaseUseCase,
 ) *TripService {
 	return &TripService{
+		metrics:    m,
 		pool:       pool,
 		repo:       r,
 		outboxRepo: outbox,

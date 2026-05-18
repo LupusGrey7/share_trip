@@ -7,7 +7,7 @@ import (
 	"job4j.ru/share_trip/internal/domain/trip/model"
 )
 
-type GetTripByIdRequestModel struct {
+type GetTripByIDRequestModel struct {
 	ID string `validate:"required,uuid"`
 }
 
@@ -21,7 +21,7 @@ type CreateTripRequestModel struct {
 	FromPoint      string    `json:"fromPoint" validate:"required,min=20,max=155"`
 	ToPoint        string    `json:"toPoint" validate:"required,min=20,max=155"`
 	DepartureTime  time.Time `json:"departureTime" validate:"required"`
-	AvailableSeats int       `json:"seats" validate:"required,min=1,max=3"`
+	AvailableSeats int       `json:"seats" validate:"required,min=1,max=4"`
 }
 
 func (req *MoveTripDraftToPublishRequestModel) ToRequest() model.MoveTripDraftToPublishModel {
@@ -31,7 +31,7 @@ func (req *MoveTripDraftToPublishRequestModel) ToRequest() model.MoveTripDraftTo
 	}
 }
 
-type GetByIDModelRequest struct {
+type GetByIDRequestModel struct {
 	ID string `validate:"required,uuid"`
 }
 
