@@ -23,11 +23,6 @@ import (
 	"job4j.ru/share_trip/internal/storage"
 )
 
-const (
-	APIPrefix   = "/api/v1"
-	APIPrefixV2 = "/api/v2"
-)
-
 // init is invoked before main()
 func init() {
 	// loads values from .env into the system
@@ -79,9 +74,10 @@ func main() {
 		log.Infof("Generated ID: %v", c.Locals("requestid"))
 		return c.Next()
 	})
-	app.Use(middleware.Correlation(logger))  //add custom logger, before add api
-	app.Use(api.NewHTTPMetricsMiddleware(m)) //
+	app.Use(middleware.Correlation(logger)) //add custom logger, before add api
+	app.Use(api.NewHTTPMetricsMiddleware(m))
 
+	//build Server
 	build(app, pool, registry, m)
 
 	err = app.Listen(":8080")
@@ -113,10 +109,7 @@ func build(
 	server := api.NewServer(registry, validate, infoService, tripService) // ← add all service`s
 
 	//route
-	server.Route(app.Group(APIPrefix))
-	server.RouteV2(app.Group(APIPrefixV2))
-	// Prometheus (deploy/prometheus/prometheus.yml) scrapes :8080/metrics — must be on the app root.
-	server.RouteV3(app)
+	server.SetupRoutes(app)
 }
 
 func readCfg() storage.Config {

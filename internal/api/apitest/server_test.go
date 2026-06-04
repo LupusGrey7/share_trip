@@ -26,6 +26,11 @@ import (
 	"job4j.ru/share_trip/internal/service"
 )
 
+const (
+	GroupPrefixV1 = "/api/v1"
+	GroupPrefixV2 = "/api/v2"
+)
+
 // var TestApp *fiber.App
 var (
 	testCtx       context.Context
@@ -97,8 +102,9 @@ func TestMain(m *testing.M) {
 		return c.Next()
 	})
 
-	server.Route(testApp.Group(""))
-	server.RouteV2(testApp.Group(""))
+	// build test Server with Routes
+	server.SetupRoutes(testApp)
+
 	// Вывод всех зарегистрированных маршрутов в консоль (явно)
 	printRegisteredRoutes(testApp)
 	log.Println("=== Test application ready ===")

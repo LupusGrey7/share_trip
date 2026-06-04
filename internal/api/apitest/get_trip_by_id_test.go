@@ -30,9 +30,10 @@ func TestServer_GetTripById(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
+		url := GroupPrefixV2 + "/trip/createTripDraft"
 		req, err := http.NewRequest(
 			http.MethodPost,
-			"/trip/createTripDraft",
+			url,
 			bytes.NewReader(body),
 		)
 		require.NoError(t, err)
@@ -54,6 +55,7 @@ func TestServer_GetTripById(t *testing.T) {
 		var got model.CreateTripResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
+
 		response := model.CreateTripResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
@@ -66,11 +68,11 @@ func TestServer_GetTripById(t *testing.T) {
 		}
 		require.Equal(t, response, got)
 
-		//---update
-
+		//---check
+		urlCheck := GroupPrefixV2 + fmt.Sprintf("/trip/%s", got.ID)
 		req, err1 := http.NewRequest(
 			http.MethodGet,
-			fmt.Sprintf("/trip/%s", got.ID),
+			urlCheck,
 			bytes.NewReader(nil),
 		)
 		require.NoError(t, err1)
