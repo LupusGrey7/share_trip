@@ -37,8 +37,11 @@ go.work.sum
 *.iml
 
 # Local development files
+deploy/
+deploy/docker-compose.yml
 tmp/
 DEVELOPMENT.md
+project_info/
 
 #logs
 deploy/logs/
