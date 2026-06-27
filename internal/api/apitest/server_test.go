@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"job4j.ru/share_trip/internal/observability/metrics"
 	"log"
 	"os"
 	"testing"
@@ -22,6 +24,11 @@ import (
 	"job4j.ru/share_trip/internal/repository"
 
 	"job4j.ru/share_trip/internal/service"
+)
+
+const (
+	GroupPrefixV1 = "/api/v1"
+	GroupPrefixV2 = "/api/v2"
 )
 
 // var TestApp *fiber.App
@@ -57,20 +64,32 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to create pgxpool: %v", err)
 	}
 	log.Println("Database and pool ready, migrations applied")
+
 	// Инициализация зависимостей (validator, сервисы и т.д.)
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
+	// 1. Создаем чистый локальный реестр для теста, чтобы не загрязнять глобальный
+	//registry Prometheus
+	registry := prometheus.NewRegistry()
+
+	counter := prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "updates_skipped_total",
+		Help: "Total skipped updates",
+	})
+	registry.MustRegister(counter)
+	mu := metrics.New(registry)
+
 	repo := repository.NewRepoPg(testPool)
-	repoTrip := repository.NewTripRepository(testPool)
+	repoTrip := repository.NewTripRepository(mu, testPool)
 	outboxRepo := repository.NewOutboxEventRepository()
 
 	infoUseCase := usecase.NewInfoUseCase()
 	tripUseCase := usecase.NewTripUseCase()
 
 	infoService := service.NewInfoService(infoUseCase, repo)
-	tripService := service.NewTripService(testPool, repoTrip, outboxRepo, tripUseCase)
+	tripService := service.NewTripService(mu, testPool, repoTrip, outboxRepo, tripUseCase)
 
-	server := api.NewServer(validate, infoService, tripService) // ← add to service
+	server := api.NewServer(registry, validate, infoService, tripService) // ← add to service
 
 	// === 2. Создание Fiber приложения ===
 	//testApp = fiber.New()
@@ -83,8 +102,9 @@ func TestMain(m *testing.M) {
 		return c.Next()
 	})
 
-	server.Route(testApp.Group(""))
-	server.RouteV2(testApp.Group(""))
+	// build test Server with Routes
+	server.SetupRoutes(testApp)
+
 	// Вывод всех зарегистрированных маршрутов в консоль (явно)
 	printRegisteredRoutes(testApp)
 	log.Println("=== Test application ready ===")

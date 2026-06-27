@@ -30,11 +30,13 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
+		url := GroupPrefixV2 + "/trip/createTripDraft"
 		req, err := http.NewRequest(
 			http.MethodPost,
-			"/trip/createTripDraft",
+			url,
 			bytes.NewReader(body),
 		)
+
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 
@@ -67,7 +69,6 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		}
 
 		require.Equal(t, response, got)
-		fmt.Println("-00->", got.ID)
 
 		//---update
 		publishModelRequest := api.MoveTripDraftToPublishRequestModel{
@@ -76,12 +77,11 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 
 		marshalBody, err1 := json.Marshal(publishModelRequest)
 		require.NoError(t, err1)
-		fmt.Println("-->", got.ID)
-		fmt.Printf("/trip/moveTripDraft-ToPublish/%s\n", got.ID)
 
+		urlUpdate := GroupPrefixV2 + fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", got.ID)
 		req, err1 = http.NewRequest(
 			http.MethodPatch,
-			fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", got.ID),
+			urlUpdate,
 			bytes.NewReader(marshalBody),
 		)
 		require.NoError(t, err1)
@@ -133,9 +133,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
+		url := GroupPrefixV2 + "/trip/createTripDraft"
 		req, err := http.NewRequest(
 			http.MethodPost,
-			"/trip/createTripDraft",
+			url,
 			bytes.NewReader(body),
 		)
 		require.NoError(t, err)
@@ -170,7 +171,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		}
 
 		require.Equal(t, response, got)
-		fmt.Println("-00->", got.ID)
+		t.Logf("Response ID: %v", got.ID)
 
 		//---update
 		uuID, err := uuid.Parse("d4733715-0fc7-42fa-b13a-f068e33c6d80")
@@ -184,11 +185,12 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		marshalBody, err1 := json.Marshal(publishModelRequest)
 		require.NoError(t, err1)
 
-		fmt.Printf("/trip/moveTripDraft-ToPublish/%s\n", got.ID)
+		t.Logf("/trip/moveTripDraft-ToPublish/%s\n", got.ID)
 
+		urlUpdate := GroupPrefixV2 + fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", got.ID)
 		req, err1 = http.NewRequest(
 			http.MethodPatch,
-			fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", got.ID),
+			urlUpdate,
 			bytes.NewReader(marshalBody),
 		)
 		require.NoError(t, err1)
@@ -219,9 +221,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
+		url := GroupPrefixV2 + "/trip/createTripDraft"
 		req, err := http.NewRequest(
 			http.MethodPost,
-			"/trip/createTripDraft",
+			url,
 			bytes.NewReader(body),
 		)
 		require.NoError(t, err)
@@ -256,23 +259,21 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		}
 
 		require.Equal(t, response, got)
-		fmt.Println("-00->", got.ID)
+		t.Logf("Response ID: %v", got.ID)
 
 		//---update
 		uuID := "d4733715-0fc7-42fa-b13a-f068e33c6d80"
-
 		publishModelRequest := api.MoveTripDraftToPublishRequestModel{
 			ClientID: payload.DriverID,
 		}
-
 		marshalBody, err1 := json.Marshal(publishModelRequest)
+
 		require.NoError(t, err1)
 
-		fmt.Printf("/trip/moveTripDraft-ToPublish/%s\n", uuID)
-
+		urlUpdate := GroupPrefixV2 + fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", uuID)
 		req, err1 = http.NewRequest(
 			http.MethodPatch,
-			fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", uuID),
+			urlUpdate,
 			bytes.NewReader(marshalBody),
 		)
 		require.NoError(t, err1)
@@ -302,9 +303,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
+		url := GroupPrefixV2 + "/trip/createTripDraft"
 		req, err := http.NewRequest(
 			http.MethodPost,
-			"/trip/createTripDraft",
+			url,
 			bytes.NewReader(body),
 		)
 		require.NoError(t, err)
@@ -339,7 +341,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		}
 
 		require.Equal(t, response, got)
-		fmt.Println("-00->", got.ID)
+		t.Logf("Response ID: %v", got.ID)
 
 		//---update
 		// Принудительно меняем статус созданной поездки на "cancelled"
@@ -352,11 +354,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		marshalBody, err1 := json.Marshal(publishModelRequest)
 		require.NoError(t, err1)
 
-		fmt.Printf("/trip/moveTripDraft-ToPublish/%s\n", got.ID)
-
+		urlUpdate := GroupPrefixV2 + fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", got.ID)
 		req, err1 = http.NewRequest(
 			http.MethodPatch,
-			fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", got.ID),
+			urlUpdate,
 			bytes.NewReader(marshalBody),
 		)
 		require.NoError(t, err1)
@@ -386,9 +387,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
+		url := GroupPrefixV2 + "/trip/createTripDraft"
 		req, err := http.NewRequest(
 			http.MethodPost,
-			"/trip/createTripDraft",
+			url,
 			bytes.NewReader(body),
 		)
 		require.NoError(t, err)
@@ -423,7 +425,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		}
 
 		require.Equal(t, response, got)
-		fmt.Println("-00->", got.ID)
+		t.Logf("Response ID: %v", got.ID)
 
 		//---update
 		publishModelRequest := api.MoveTripDraftToPublishRequestModel{
@@ -432,11 +434,11 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 
 		marshalBody, err1 := json.Marshal(publishModelRequest)
 		require.NoError(t, err1)
-		fmt.Printf("/trip/moveTripDraft-ToPublish/%s\n", got.ID)
 
+		urlUpdate := GroupPrefixV2 + fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", got.ID)
 		req, err1 = http.NewRequest(
 			http.MethodPatch,
-			fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", got.ID),
+			urlUpdate,
 			bytes.NewReader(marshalBody),
 		)
 		require.NoError(t, err1)

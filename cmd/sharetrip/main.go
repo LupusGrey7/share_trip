@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"github.com/prometheus/client_golang/prometheus"
+	"job4j.ru/share_trip/internal/observability/metrics"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -19,11 +21,6 @@ import (
 	"job4j.ru/share_trip/internal/repository"
 	"job4j.ru/share_trip/internal/service"
 	"job4j.ru/share_trip/internal/storage"
-)
-
-const (
-	APIPrefix   = "/api/v1"
-	APIPrefixV2 = "/api/v2"
 )
 
 // init is invoked before main()
@@ -64,6 +61,10 @@ func main() {
 		}
 	}(logFile)
 
+	//registry Prometheus
+	registry := prometheus.NewRegistry()
+	m := metrics.New(registry)
+
 	//app
 	app := fiber.New(fiber.Config{
 		EnablePrintRoutes: true,
@@ -74,8 +75,10 @@ func main() {
 		return c.Next()
 	})
 	app.Use(middleware.Correlation(logger)) //add custom logger, before add api
+	app.Use(api.NewHTTPMetricsMiddleware(m))
 
-	build(app, pool)
+	//build Server
+	build(app, pool, registry, m)
 
 	err = app.Listen(":8080")
 	if err != nil {
@@ -84,24 +87,29 @@ func main() {
 }
 
 // build - build server
-func build(app *fiber.App, pool *pgxpool.Pool) {
+func build(
+	app *fiber.App,
+	pool *pgxpool.Pool,
+	registry *prometheus.Registry,
+	m *metrics.Metrics,
+) {
 	// Initialize the validator instance
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	repo := repository.NewRepoPg(pool)
-	repoTrip := repository.NewTripRepository(pool)
+	repoTrip := repository.NewTripRepository(m, pool)
 	outboxRepo := repository.NewOutboxEventRepository()
 
 	infoUseCase := usecase.NewInfoUseCase()
 	tripUseCase := usecase.NewTripUseCase()
 
 	infoService := service.NewInfoService(infoUseCase, repo)
-	tripService := service.NewTripService(pool, repoTrip, outboxRepo, tripUseCase)
+	tripService := service.NewTripService(m, pool, repoTrip, outboxRepo, tripUseCase)
 
-	server := api.NewServer(validate, infoService, tripService) // ← add to service
+	server := api.NewServer(registry, validate, infoService, tripService) // ← add all service`s
 
-	server.Route(app.Group(APIPrefix))
-	server.RouteV2(app.Group(APIPrefixV2))
+	//route
+	server.SetupRoutes(app)
 }
 
 func readCfg() storage.Config {

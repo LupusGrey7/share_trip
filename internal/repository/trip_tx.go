@@ -17,6 +17,9 @@ import (
 )
 
 const (
+	ErrSelectEntityFailed = "select trip failed"
+	MetricsResultSuccess  = "success"
+
 	getTripByID = `
 select *
 from trips 
@@ -70,7 +73,6 @@ func (r *TripRepository) GetByID(
 		slog.String("operation", "GetByID"),
 		slog.String("trip_id", id),
 	)
-
 	logger.Info("select trip started")
 
 	var entity model.Entity
@@ -79,7 +81,7 @@ func (r *TripRepository) GetByID(
 	rows, err := r.pool.Query(ctx, query, id)
 	if err != nil {
 		logger.Error(
-			"select trip failed",
+			ErrSelectEntityFailed,
 			slog.Any("error", err),
 		)
 		return &model.Entity{}, fmt.Errorf("error while query: %w", err)
@@ -89,7 +91,7 @@ func (r *TripRepository) GetByID(
 	//Critical: Jump to the first line
 	if !rows.Next() {
 		logger.Error(
-			"select trip failed",
+			ErrSelectEntityFailed,
 			slog.Any("error", err),
 		)
 		return nil, ErrTripNotFound
@@ -102,7 +104,7 @@ func (r *TripRepository) GetByID(
 	err = rows.Scan(argsRslRow...)
 	if err != nil {
 		logger.Error(
-			"select trip failed",
+			ErrSelectEntityFailed,
 			slog.Any("error", err),
 		)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -121,6 +123,20 @@ func (r *TripRepository) CreateTripTx(
 	tx pgx.Tx, // транзакция
 	t *model.Entity,
 ) (*model.Entity, error) {
+	// prometheus
+	started := time.Now()
+	name := "repo_trips_create_duration_seconds" //metric name
+	result := MetricsResultSuccess               //metric result
+
+	defer func() {
+		r.metrics.RepositoryQueryTotal.
+			WithLabelValues(name, result).
+			Inc()
+		r.metrics.RepositoryQueryDuration.
+			WithLabelValues(name, result).
+			Observe(time.Since(started).Seconds())
+	}()
+
 	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
 		slog.String("layer", "repository"),
@@ -129,14 +145,12 @@ func (r *TripRepository) CreateTripTx(
 		slog.String("trip_id", t.ID.String()),
 		slog.String("client_id", t.DriverID.String()),
 	)
-
 	logger.Info("insert trip started")
 
 	entity := &model.Entity{} // Create an empty structure on the stack
-
 	query := createNewTrip
 	id := uuid.New()
-	args := []interface{}{id, t.DriverID, t.FromPoint, t.ToPoint, time.Now(), t.Seats, t.Status, time.Now()}
+	args := []interface{}{id, t.DriverID, t.FromPoint, t.ToPoint, t.DepartureTime, t.Seats, t.Status, time.Now()}
 	argsRslRow := []interface{}{&entity.ID, &entity.DriverID, &entity.FromPoint, &entity.ToPoint, &entity.DepartureTime, &entity.Seats, &entity.Status, &entity.CreatedAt}
 
 	err := tx.QueryRow(ctx, query, args...).Scan(argsRslRow...)
@@ -171,7 +185,20 @@ func (r *TripRepository) UpdateTripTx(
 	tx pgx.Tx,
 	t *model.Entity,
 ) (*model.Entity, error) {
-	var entity model.Entity // Create an empty structure on the stack
+	//prometheus log
+	started := time.Now()                        //metric time
+	name := "repo_trips_update_duration_seconds" //metric name
+	result := MetricsResultSuccess               //metric result
+
+	defer func() {
+		r.metrics.RepositoryQueryTotal.
+			WithLabelValues(name, result).
+			Inc()
+		r.metrics.RepositoryQueryDuration.
+			WithLabelValues(name, result).
+			Observe(time.Since(started).Seconds())
+	}()
+
 	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
 		slog.String("layer", "repository"),
@@ -181,9 +208,9 @@ func (r *TripRepository) UpdateTripTx(
 	)
 	logger.Info("update trip started")
 
+	var entity model.Entity // Create an empty structure on the stack
 	query := updateTrip
 	args := []interface{}{t.Status, t.ID}
-
 	err := tx.QueryRow(ctx, query, args...).Scan(
 		&entity.ID,
 		&entity.DriverID,
@@ -229,7 +256,20 @@ func (r *TripRepository) GetForUpdateByIDTx(
 	tx pgx.Tx, //transaction
 	id string,
 ) (*model.Entity, error) {
-	tp := model.Entity{} // We create an empty structure on the stack (analogous to - var tp trip.Entity)
+	//prometheus log
+	started := time.Now()                      //metric time
+	name := "repo_trips_lock_duration_seconds" //metric name
+	result := MetricsResultSuccess             //metric result
+
+	defer func() {
+		r.metrics.RepositoryQueryTotal.
+			WithLabelValues(name, result).
+			Inc()
+		r.metrics.RepositoryQueryDuration.
+			WithLabelValues(name, result).
+			Observe(time.Since(started).Seconds())
+	}()
+
 	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
 		slog.String("layer", "repository"),
@@ -237,10 +277,11 @@ func (r *TripRepository) GetForUpdateByIDTx(
 		slog.String("operation", "GetForUpdateByIDTx"),
 		slog.String("trip_id", id),
 	)
-
 	logger.Info("select trip started")
 
+	tp := model.Entity{} // We create an empty structure on the stack (analogous to - var tp trip.Entity)
 	query := forUpdateTrip
+
 	err := tx.QueryRow(ctx, query, id).Scan(
 		&tp.ID,
 		&tp.DriverID,
@@ -254,7 +295,7 @@ func (r *TripRepository) GetForUpdateByIDTx(
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			logger.Error(
-				"select trip failed",
+				ErrSelectEntityFailed,
 				slog.Any("error", err),
 			)
 			return nil, ErrTripNotFound

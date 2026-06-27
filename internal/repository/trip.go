@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"job4j.ru/share_trip/internal/observability/metrics"
 	"time"
 
 	"job4j.ru/share_trip/internal/domain/trip/model"
@@ -31,11 +32,14 @@ type BaseTripRepository interface {
 }
 
 type TripRepository struct {
-	pool *pgxpool.Pool
+	metrics *metrics.Metrics
+	pool    *pgxpool.Pool
 }
 
-func NewTripRepository(pool *pgxpool.Pool) *TripRepository {
-	return &TripRepository{pool: pool}
+func NewTripRepository(m *metrics.Metrics, pool *pgxpool.Pool) *TripRepository {
+	return &TripRepository{
+		metrics: m,
+		pool:    pool}
 }
 
 func (r *TripRepository) CreateTrip(ctx context.Context, t *model.Entity) (*model.Entity, error) {

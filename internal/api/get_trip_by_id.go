@@ -29,7 +29,7 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
 	}
 
-	request := GetByIDModelRequest{ID: tripID}
+	request := GetByIDRequestModel{ID: tripID}
 
 	if err := s.validator.Struct(request); err != nil {
 		return errs.RequestValidationError{Message: err.Error()}

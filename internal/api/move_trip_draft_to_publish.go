@@ -1,4 +1,4 @@
-//api сценарий - перевода поездки из состояния draft в published.
+//api scenario - transferring a trip from the draft to published state.
 
 package api
 
@@ -26,36 +26,39 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 	var request MoveTripDraftToPublishRequestModel
 
 	// request param
-	id := c.Params("tripId")
-	if id == "" {
+	tripID := c.Params("tripId")
+	if tripID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
 	}
 	// Parse request body
 	if err := c.BodyParser(&request); err != nil {
-		logger.Warn("trip get validation failed",
-			slog.String("tripId", id),
-			slog.String("error", err.Error()),
+		logger.Warn("move trip to publish: invalid json body",
+			slog.String("tripId", tripID),
+			slog.Any("error", err),
 		)
 		return c.Status(fiber.StatusBadRequest).JSON(
 			fiber.Map{
-				"error": invalidParseJson,
+				"error":  invalidParseJson,
+				"reason": err,
 			})
 	}
-	request.ID = id
+	request.ID = tripID
 
 	//--validation
 	if err := s.validator.Struct(&request); err != nil {
-		logger.Warn("trip get validation failed",
-			slog.String("tripId", id),
-			slog.String("error", err.Error()),
+		logger.Warn("move trip to publish invalid request",
+			slog.String("tripId", tripID),
+			slog.Any("error", err),
 		)
 		return errs.RequestValidationError{Message: err.Error()}
 	}
-	// logging at the component boundary
-	logger.Info(
-		"move trip to publish",
-		"trip_id", request.ID,
+
+	logger = logger.With(
+		slog.String("tripId", request.ID),
+		slog.String("client_id", request.ClientID.String()),
 	)
+	ctx = logctx.WithLogger(ctx, logger) //update logger in Context app after add new fields
+	logger.Info("move trip to publish")  // logging at the component boundary
 
 	resp, err := s.TripService.MoveTripDraftToPublish(ctx, request.ToRequest())
 	if err != nil {
@@ -67,11 +70,12 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 	}
 
 	if resp.DriverID == uuid.Nil {
-		return c.Status(fiber.StatusNoContent).JSON(resp) //204
+		logger.Info(
+			"move trip to publish skipped: no changes detected",
+		)
+		return c.SendStatus(fiber.StatusNoContent) //http code -204, MUST NOT return a body (JSON)
 	}
-	logger.Info(
-		"move trip to publish completed",
-		slog.String("trip_id", resp.ID.String()),
-	)
+
+	logger.Info("move trip to publish completed")
 	return c.Status(fiber.StatusOK).JSON(resp) //200
 }

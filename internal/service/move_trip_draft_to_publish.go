@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	model2 "job4j.ru/share_trip/internal/domain/outbox/model"
 	"job4j.ru/share_trip/internal/domain/trip/model"
@@ -16,17 +17,27 @@ func (s *TripService) MoveTripDraftToPublish(
 	ctx context.Context,
 	req model.MoveTripDraftToPublishModel,
 ) (*model.MoveTripDraftToPublishModelResponse, error) {
+	//metrics
+	started := time.Now()
+	result := "success"
+
+	defer func() {
+		s.metrics.TripPublishTotal.WithLabelValues(result).Inc()
+		s.metrics.TripPublishDuration.WithLabelValues(result).
+			Observe(time.Since(started).Seconds())
+	}()
+
 	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
 		slog.String("service", "TripService"),
 		slog.String("operation", "CreateTrip"),
 		slog.String("client_id", req.ID),
 	)
-	logger.Info("move trip to publish started") //move trip to publish
+	logger.Info("move trip to publish started")
 
 	res, err := tx(ctx, s.pool, func(tx pgx.Tx) (*model.MoveTripDraftToPublishModelResponse, error) {
 		txLogger := logger.With(
-			slog.String("layer", "transaction"),
+			slog.String("layer", "transaction"), //added new key/value to logger
 		)
 		txLogger.Info("transaction started")
 

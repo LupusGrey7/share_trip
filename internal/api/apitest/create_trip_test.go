@@ -16,14 +16,13 @@ import (
 )
 
 /*
-*
 === Registered Routes ===
-GET    /ready
-GET    /trip/:tripId
-HEAD   /ready
-HEAD   /trip/:tripId
-POST   /trip/createTripDraft
-PATCH  /trip/moveTripDraft-ToPublish/:tripId
+GET /ready
+GET /trip/:tripId
+HEAD /ready
+HEAD /trip/:tripId
+POST /trip/createTripDraft
+PATCH /trip/moveTripDraft-ToPublish/:tripId
 */
 func TestServer_CreateTrip(t *testing.T) {
 
@@ -39,9 +38,10 @@ func TestServer_CreateTrip(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
+		url := GroupPrefixV2 + "/trip/createTripDraft"
 		req, err := http.NewRequest(
 			http.MethodPost,
-			"/trip/createTripDraft",
+			url,
 			bytes.NewReader(body),
 		)
 		require.NoError(t, err)
