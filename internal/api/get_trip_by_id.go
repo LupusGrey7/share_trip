@@ -1,9 +1,12 @@
-//api сценарий - поиска поездки
+//api http handler for getting trip by ID
 
 package api
 
 import (
 	"log/slog"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
@@ -14,9 +17,15 @@ import (
 )
 
 func (s *Server) GetTripById(c *fiber.Ctx) error {
-	ctx := c.UserContext()
+	// OpenTelemetry with Jaeger
+	tracer := otel.Tracer("trip-api") //
+	ctx, span := tracer.Start(c.UserContext(), "GetTripByIDHandler")
+	defer span.End()
+	c.Set("trace-id", span.SpanContext().TraceID().String())
+
 	// We get the ID that was generated requestid.New()
 	traceID := c.GetRespHeader(requestid.ConfigDefault.Header)
+
 	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
 		slog.String("server", "TripServer"),
@@ -34,8 +43,15 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 	if err := s.validator.Struct(request); err != nil {
 		return errs.RequestValidationError{Message: err.Error()}
 	}
+	//tracing
+	span.SetAttributes(
+		attribute.String("trip_id", tripID),
+	)
 	// logging at the component boundary
-	logger.Info("get Trip By ID", slog.String("tripId", tripID))
+	logger.Debug(
+		"get Trip By ID",
+		slog.String("tripId", tripID),
+	)
 
 	resp, err := s.TripService.GetTripByID(ctx, model.GetByIDModelRequest{ID: request.ID})
 	if err != nil {
@@ -46,7 +62,7 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 		return HandleError(c, err)
 	}
 
-	logger.Info(
+	logger.Debug(
 		"get Trip By ID completed",
 		slog.String("trip_id", request.ID),
 	)

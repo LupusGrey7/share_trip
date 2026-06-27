@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"go.opentelemetry.io/otel"
 	"log/slog"
 
 	"errors"
@@ -17,6 +18,10 @@ func (t *TripUseCase) GetTripByID(
 	repo repository.BaseTxTripRepository,
 	req model.GetByIDModelRequest,
 ) (*model.GetTripByIDModelResponse, error) {
+	//tracing
+	ctx, span := otel.Tracer("TripService").Start(ctx, "TripService.GetTripByID")
+	defer span.End()
+
 	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
 		slog.String("layer", "usecase"),

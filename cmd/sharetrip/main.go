@@ -4,7 +4,9 @@ import (
 	"context"
 	"github.com/prometheus/client_golang/prometheus"
 	"job4j.ru/share_trip/internal/observability/metrics"
+	"job4j.ru/share_trip/internal/observability/tracing"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	applog "job4j.ru/share_trip/internal/app"
@@ -65,6 +67,9 @@ func main() {
 	registry := prometheus.NewRegistry()
 	m := metrics.New(registry)
 
+	//init Tracing (OpenTelemetry and Jaeger)
+	initTracing(ctx)
+
 	//app
 	app := fiber.New(fiber.Config{
 		EnablePrintRoutes: true,
@@ -121,4 +126,29 @@ func readCfg() storage.Config {
 		DBName:   configs.Env("DB_NAME", "share_trip"),
 		SSLMode:  configs.Env("DB_SSLMODE", "disable"),
 	}
+}
+
+func initTracing(ctx context.Context) {
+	tp, err := tracing.NewProvider(ctx, tracing.Config{
+		ServiceName:    "share-trip",
+		ServiceVersion: "1.0.0",
+		Environment:    "local",
+		Endpoint:       "localhost:4319",
+	})
+	if err != nil {
+		log.Error("init tracing failed", "error", err)
+		os.Exit(1)
+	}
+
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(
+			context.Background(),
+			5*time.Second,
+		)
+		defer cancel()
+
+		if err := tp.Shutdown(shutdownCtx); err != nil {
+			log.Error("shutdown tracing failed", "error", err)
+		}
+	}()
 }

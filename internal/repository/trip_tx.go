@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel"
 	"log/slog"
 	"time"
 
@@ -66,6 +67,11 @@ func (r *TripRepository) GetByID(
 	tx pgx.Tx,
 	id string,
 ) (*model.Entity, error) {
+	//tracing
+	tracer := otel.Tracer("TripRepository")
+	ctx, span := tracer.Start(ctx, "TripRepository.GetByID")
+	defer span.End()
+
 	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
 		slog.String("layer", "repository"),
@@ -73,7 +79,7 @@ func (r *TripRepository) GetByID(
 		slog.String("operation", "GetByID"),
 		slog.String("trip_id", id),
 	)
-	logger.Info("select trip started")
+	logger.Debug("select trip started")
 
 	var entity model.Entity
 
@@ -114,7 +120,7 @@ func (r *TripRepository) GetByID(
 		return nil, fmt.Errorf(errQueryByID, id, err)
 	}
 
-	logger.Info("get trip completed")
+	logger.Debug("get trip completed")
 	return &entity, nil
 }
 
