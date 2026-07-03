@@ -42,6 +42,7 @@ deploy/
 deploy/docker-compose.yml
 tmp/
 project_info/
+scripts/
 
 #logs
 deploy/logs/
