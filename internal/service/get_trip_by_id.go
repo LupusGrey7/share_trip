@@ -11,10 +11,7 @@ import (
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
-func (s *TripService) GetTripByID(
-	ctx context.Context,
-	req model.GetByIDModelRequest,
-) (*model.GetTripByIDModelResponse, error) {
+func (s *TripService) GetTripByID(ctx context.Context, req model.GetByIDModelRequest) (*model.GetTripByIDModelResponse, error) {
 	//tracing
 	ctx, span := otel.Tracer("TripService").Start(ctx, "TripService.GetTripByID")
 	defer span.End()
@@ -35,7 +32,7 @@ func (s *TripService) GetTripByID(
 
 		resp, err := s.useCase.GetTripByID(ctx, tx, s.repo, req)
 		if err != nil {
-			return nil, fmt.Errorf("usecase.GetTripByID: %w", err)
+			return nil, fmt.Errorf("useCase.GetTripByID: %w", err)
 		}
 
 		txLogger.Debug(

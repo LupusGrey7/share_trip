@@ -2,10 +2,12 @@ package usecase
 
 import (
 	"context"
-	"go.opentelemetry.io/otel"
 	"log/slog"
 
+	"go.opentelemetry.io/otel"
+
 	"errors"
+
 	"github.com/jackc/pgx/v5"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
@@ -19,16 +21,16 @@ func (t *TripUseCase) GetTripByID(
 	req model.GetByIDModelRequest,
 ) (*model.GetTripByIDModelResponse, error) {
 	//tracing
-	ctx, span := otel.Tracer("TripService").Start(ctx, "TripService.GetTripByID")
+	ctx, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.GetTripByID")
 	defer span.End()
 
 	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
-		slog.String("layer", "usecase"),
-		slog.String("usecase", "TripUsecase.GetTripByID"),
+		slog.String("layer", "useCase"),
+		slog.String("useCase", "TripUseCase.GetTripByID"),
 		slog.String("client_id", req.ID),
 	)
-	logger.Info("create trip usecase started")
+	logger.Debug("get trip useCase started")
 
 	resp, err := repo.GetByID(ctx, tx, req.ID)
 	if err != nil {
@@ -43,8 +45,8 @@ func (t *TripUseCase) GetTripByID(
 		return nil, err
 	}
 
-	logger.Info(
-		"get trip by ID usecase success",
+	logger.Debug(
+		"get trip by ID useCase success",
 		slog.String("trip_id", resp.ID.String()),
 	)
 	return resp.ToGetByIdModelResponse(), nil

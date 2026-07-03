@@ -6,9 +6,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.opentelemetry.io/otel"
 	"log/slog"
 	"time"
+
+	"go.opentelemetry.io/otel"
 
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
@@ -133,7 +134,6 @@ func (r *TripRepository) CreateTripTx(
 	started := time.Now()
 	name := "repo_trips_create_duration_seconds" //metric name
 	result := MetricsResultSuccess               //metric result
-
 	defer func() {
 		r.metrics.RepositoryQueryTotal.
 			WithLabelValues(name, result).
@@ -151,7 +151,7 @@ func (r *TripRepository) CreateTripTx(
 		slog.String("trip_id", t.ID.String()),
 		slog.String("client_id", t.DriverID.String()),
 	)
-	logger.Info("insert trip started")
+	logger.Debug("insert trip started")
 
 	entity := &model.Entity{} // Create an empty structure on the stack
 	query := createNewTrip
@@ -165,7 +165,7 @@ func (r *TripRepository) CreateTripTx(
 			"insert trip failed",
 			slog.Any("error", err),
 		)
-		return &model.Entity{}, fmt.Errorf("ошибка при вставке: %w", err)
+		return &model.Entity{}, fmt.Errorf("insert trip failed: %w", err)
 	}
 
 	id = uuid.New()
@@ -178,11 +178,11 @@ func (r *TripRepository) CreateTripTx(
 			"insert trip_history failed",
 			slog.Any("error", err),
 		)
-		return &model.Entity{}, fmt.Errorf("ошибка при вставке trip_history: %w", err)
+		return &model.Entity{}, fmt.Errorf("error while insert trip_history: %w", err)
 	}
 	defer rows.Close() // process rows
 
-	logger.Info("insert trip completed")
+	logger.Debug("insert new trip completed successfully")
 	return entity, nil
 }
 
@@ -212,7 +212,7 @@ func (r *TripRepository) UpdateTripTx(
 		slog.String("operation", "UpdateTripTx"),
 		slog.String("trip_id", t.ID.String()),
 	)
-	logger.Info("update trip started")
+	logger.Debug("update trip started")
 
 	var entity model.Entity // Create an empty structure on the stack
 	query := updateTrip
@@ -253,7 +253,7 @@ func (r *TripRepository) UpdateTripTx(
 	}
 	defer rows.Close() // process rows
 
-	logger.Info("update trip completed")
+	logger.Debug("update trip completed")
 	return &entity, nil
 }
 

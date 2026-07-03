@@ -67,14 +67,26 @@ func main() {
 	registry := prometheus.NewRegistry()
 	m := metrics.New(registry)
 
-	//init Tracing (OpenTelemetry and Jaeger)
-	initTracing(ctx)
+	// init Tracing (OpenTelemetry → otel-collector → Jaeger)
+	tp, err := initTracing(ctx)
+	if err != nil {
+		log.Error("init tracing failed", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if shutdownErr := tp.Shutdown(shutdownCtx); shutdownErr != nil {
+			log.Error("shutdown tracing failed", "error", shutdownErr)
+		}
+	}()
 
 	//app
 	app := fiber.New(fiber.Config{
 		EnablePrintRoutes: true,
 	})
 	app.Use(requestid.New())
+	app.Use(tracing.NewFiberMiddleware())
 	app.Use(func(c *fiber.Ctx) error {
 		log.Infof("Generated ID: %v", c.Locals("requestid"))
 		return c.Next()
@@ -128,27 +140,11 @@ func readCfg() storage.Config {
 	}
 }
 
-func initTracing(ctx context.Context) {
-	tp, err := tracing.NewProvider(ctx, tracing.Config{
-		ServiceName:    "share-trip",
-		ServiceVersion: "1.0.0",
-		Environment:    "local",
-		Endpoint:       "localhost:4319",
+func initTracing(ctx context.Context) (*tracing.TracerProvider, error) {
+	return tracing.NewProvider(ctx, tracing.Config{
+		ServiceName:    configs.Env("OTEL_SERVICE_NAME", "share-trip"),
+		ServiceVersion: configs.Env("OTEL_SERVICE_VERSION", "1.0.0"),
+		Environment:    configs.Env("OTEL_ENVIRONMENT", "local"),
+		Endpoint:       configs.Env("OTEL_EXPORTER_ENDPOINT", "localhost:4319"),
 	})
-	if err != nil {
-		log.Error("init tracing failed", "error", err)
-		os.Exit(1)
-	}
-
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(
-			context.Background(),
-			5*time.Second,
-		)
-		defer cancel()
-
-		if err := tp.Shutdown(shutdownCtx); err != nil {
-			log.Error("shutdown tracing failed", "error", err)
-		}
-	}()
 }

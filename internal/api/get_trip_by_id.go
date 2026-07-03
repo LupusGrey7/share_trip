@@ -17,20 +17,21 @@ import (
 )
 
 func (s *Server) GetTripById(c *fiber.Ctx) error {
-	// OpenTelemetry with Jaeger
-	tracer := otel.Tracer("trip-api") //
+	// OpenTelemetry: child span внутри root HTTP span от otelfiber middleware
+	tracer := otel.Tracer("trip-api")
 	ctx, span := tracer.Start(c.UserContext(), "GetTripByIDHandler")
 	defer span.End()
-	c.Set("trace-id", span.SpanContext().TraceID().String())
 
-	// We get the ID that was generated requestid.New()
-	traceID := c.GetRespHeader(requestid.ConfigDefault.Header)
+	traceID := span.SpanContext().TraceID().String()
+	c.Set("trace-id", traceID)
 
-	//getting custom logger context
+	requestID := c.GetRespHeader(requestid.ConfigDefault.Header)
+
 	logger := logctx.Logger(ctx).With(
 		slog.String("server", "TripServer"),
-		slog.String("handler", "CreateTrip"),
-		slog.String("traceID", traceID),
+		slog.String("handler", "GetTripByID"),
+		slog.String("trace_id", traceID),
+		slog.String("request_id", requestID),
 	)
 
 	tripID := c.Params("tripId")

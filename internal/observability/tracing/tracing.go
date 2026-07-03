@@ -14,6 +14,9 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
+// TracerProvider — алиас для shutdown в main (lifecycle снаружи пакета tracing).
+type TracerProvider = sdktrace.TracerProvider
+
 type Config struct {
 	ServiceName    string
 	ServiceVersion string
