@@ -16,57 +16,56 @@ import (
 )
 
 func (s *TripService) MoveTripDraftToPublish(
-	cx context.Context,
+	ctx context.Context,
 	req model.MoveTripDraftToPublishModel,
 ) (res *model.MoveTripDraftToPublishModelResponse, err error) {
-	// 1. Интеграция с Jaeger: создаем дочерний спан для этого слоя(ctx теперь содержит ID этого спана)
-	ctx, span := otel.Tracer("trip-service").Start(cx, "TripService.PublishTrip")
+	// 1. Integration with Jaeger: create a child span for this layer (ctx now contains the ID of this span)
+	ctxSpc, span := otel.Tracer("TripService").Start(ctx, "TripService.MoveTripDraftToPublishTx")
 
-	//2. metrics - time fo Prometheus + Grafana (Интеграция с Prometheus)
+	//2. metrics - time fo Prometheus + Grafana (Integration with Prometheus)
 	started := time.Now()
 	result := "success"
 
 	defer func() {
-		// Теперь 'err' берется из возврата функции. Если ниже по стеку упала ошибка, err != nil
+		// Now 'err' is taken from the return of the function. If an error occurred below in the stack, err != nil
 		if err != nil {
 			result = "error"
-			span.RecordError(err)                    // Логируем ошибку в Егерь
-			span.SetStatus(codes.Error, err.Error()) // Красим спан в Егере в красный цвет
+			span.RecordError(err)                    // Log error in Jaeger
+			span.SetStatus(codes.Error, err.Error()) // Color the span in Jaeger in red color
 		}
 
-		// Фиксируем метрики в Prometheus
-		s.metrics.TripPublishTotal.WithLabelValues(result).Inc()
-		s.metrics.TripPublishDuration.WithLabelValues(result).
+		// metrics - time for Prometheus + Grafana (Integration with Prometheus)
+		s.metrics.TripDraftToPublishTotal.WithLabelValues(result).Inc()
+		s.metrics.TripDraftToPublishDuration.WithLabelValues(result).
 			Observe(time.Since(started).Seconds())
 
-		span.End() // Закрываем спан ВСЕГДА в самом конце
+		span.End() // span always ends in the end. Jaeger will measure the time between Start and End!
 	}()
 
 	// 3. getting custom logger context
-	logger := logctx.Logger(ctx).With(
+	logger := logctx.Logger(ctxSpc).With(
 		slog.String("service", "TripService"),
-		slog.String("operation", "MoveTripDraftToPublish"),
+		slog.String("operation", "MoveTripDraftToPublishTx"),
 		slog.String("client_id", req.ID),
 	)
-	logger.Debug("move trip draft to publish started")
+	logger.Debug("move trip draft to publish transaction started")
 
-	// 4. Открываем транзакцию базы данных
-	// Обязательно создаем под-спан для транзакции, чтобы замерить ее чистую длительность
-	txCtx, txSpan := otel.Tracer("database").Start(ctx, "DB.Transaction")
+	// 4. Open a database transaction
+	// Mandatory to create a sub-span for the transaction to measure its clean duration
+	txCtx, txSpan := otel.Tracer("database").Start(ctxSpc, "DB.Transaction")
 	defer txSpan.End()
 
 	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*model.MoveTripDraftToPublishModelResponse, error) {
-		txLogger := logger.With(
-			slog.String("layer", "transaction"), //added new key/value to logger
-		)
-		txLogger.Debug("transaction execution started")
+		txLogger := logger.With(slog.String("layer", "transaction")) //added new key/value to logger
+		txLogger.Debug("move trip draft to publish transaction execution started")
 
 		resp, err := s.useCase.MoveTripDraftToPublishTx(txCtx, tx, s.repo, req)
 		if err != nil {
+			txLogger.Error("move trip draft to publish usecase failed", slog.Any("error", err))
 			return nil, err
 		}
 
-		//outbox
+		// outbox
 		payload := model2.PayloadEvent{TripID: resp.ID}
 		event := model2.Entity{
 			EventName:   string(model2.EventPublished),
@@ -74,38 +73,26 @@ func (s *TripService) MoveTripDraftToPublish(
 			Payload:     payload,
 		}
 
-		err = s.outboxRepo.CreateNotificationTripPublishTx(ctx, tx, &event)
+		err = s.outboxRepo.CreateNotificationTripPublishTx(ctxSpc, tx, &event)
 		if err != nil {
-			return nil, fmt.Errorf("err MoveTripDraftToPublish create Notification: %w", err)
+			txLogger.Error("move trip draft to publish outbox create notification failed", slog.Any("error", err))
+			return nil, fmt.Errorf("error while MoveTripDraftToPublish create Notification: %w", err)
 		}
 
-		txLogger.Debug(
-			"transaction execution completed",
-			slog.String("trip_id", resp.ID.String()),
-		)
+		txLogger.Debug("transaction execution completed", slog.String("trip_id", resp.ID.String()))
 		return resp, nil
 	})
 
-	// business
+	// business logic / 6. Use txSpan to fix the transaction error (if COMMIT failed or logic inside failed)
 	if err != nil {
-		logger.Error(
-			"MoveTripDraftToPublish failed",
-			slog.Any("error", err),
-		)
+		logger.Error("move trip draft to publish failed", slog.Any("error", err))
+
+		txSpan.RecordError(err)
+		txSpan.SetStatus(codes.Error, err.Error())
+		// Span will be closed automatically through defer txSpan.End() above
 		return nil, err
 	}
 
-	// 5. Используем txSpan для фиксации ошибки транзакции (если упал COMMIT или логика внутри)
-	if err != nil {
-		txSpan.RecordError(err)
-		txSpan.SetStatus(codes.Error, err.Error())
-		// Span закроется автоматически через defer txSpan.End() выше
-		return nil, fmt.Errorf("transaction failed: %w", err)
-	}
-
-	logger.Debug(
-		"MoveTripDraftToPublish completed",
-		slog.String("trip_id", res.ID.String()),
-	)
+	logger.Debug("move trip draft to publish completed", slog.String("trip_id", res.ID.String()))
 	return res, nil
 }

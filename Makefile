@@ -12,9 +12,11 @@ endif
 ifeq ($(OS),Windows_NT)
     DETECTED_OS := Windows
     YAML_CHECK_SCRIPT := scripts\yaml-check.bat
+    RM_RF = if exist "$(BUILD_DIR)" rmdir /s /q "$(BUILD_DIR)"
 else
     DETECTED_OS := $(shell uname -s)
     YAML_CHECK_SCRIPT := bash scripts/yaml-check.sh
+    RM_RF = rm -rf
 endif
 
 # ============================================================
@@ -101,7 +103,11 @@ test:
 .PHONY: clean
 clean:
 	@echo "Cleaning..."
-	$(GO) rm -rf $(BUILD_DIR)
+ifeq ($(OS),Windows_NT)
+	$(RM_RF)
+else
+	$(RM_RF) $(BUILD_DIR)
+endif
 
 # Task - Compile Go code to a binary file
 .PHONY: build
@@ -117,7 +123,11 @@ run:
 # Task - Local application check (including adding a check for the response body:)
 .PHONY: e2e
 e2e:
-	curl -f http://localhost:8080/api/ready | grep -q "OK"
+ifeq ($(OS),Windows_NT)
+	powershell -NoProfile -Command "$$r = Invoke-WebRequest -Uri http://localhost:8080/ready -UseBasicParsing; if ($$r.Content -notmatch 'OK') { exit 1 }"
+else
+	curl -f http://localhost:8080/ready | grep -q "OK"
+endif
 
 # ============================================================
 # Task - Raise infrastructure (PostgreSQL in Docker)
@@ -150,7 +160,11 @@ down:
 # Task - Clean all: containers, networks and volumes (carefully!) will be deleted ALL!
 clean-image:
 	docker-compose -f $(DC) --project-name $(APP_NAME) down -v
-	rm -rf $(BUILD_DIR)
+ifeq ($(OS),Windows_NT)
+	$(RM_RF)
+else
+	$(RM_RF) $(BUILD_DIR)
+endif
 
 # Task - Apply all pending migrations
 .PHONY: migrate-up
@@ -213,10 +227,10 @@ yaml-check:
 .PHONY: info
 info:
 	@echo "OS: $(DETECTED_OS)"
+ifeq ($(OS),Windows_NT)
+	@where yq >nul 2>&1 && yq --version || echo yq: not installed
+else
 	@echo "yq: $$(yq --version 2>/dev/null || echo 'not installed')"
+endif
 
-# ==============================================================================
-# Определение команд под конкретную ОС
-# ==============================================================================
-# Проверяем, содержит ли DETECTED_OS намек на Windows
-IS_WINDOWS := $(filter Windows_NT windows Windows,$(DETECTED_OS))
+# DETECTED_OS: Windows | Linux | Darwin — для yaml-check и info

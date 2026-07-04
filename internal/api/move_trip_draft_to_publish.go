@@ -15,16 +15,16 @@ import (
 func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 	// OpenTelemetry: child span внутри root HTTP span от otelfiber middleware
 	tracer := otel.Tracer("trip-api")
-	ctx, span := tracer.Start(c.UserContext(), "MoveTripDraftToPublishDHandler")
+	ctx, span := tracer.Start(c.UserContext(), "MoveTripDraftToPublishTxHandler")
 	traceID := span.SpanContext().TraceID().String()
 	c.Set("X-Request-ID", traceID)
 	defer span.End()
 
-	//getting custom logger
+	// getting custom logger for logging
 	logger := logctx.Logger(ctx).With(
 		slog.String("server", "TripServer"),
 		slog.String("handler", "MoveTripDraftToPublish"),
-		slog.String("trace_id", traceID), // Ключевое поле для Grafana
+		slog.String("trace_id", traceID), // Key field for Grafana
 	)
 
 	var request MoveTripDraftToPublishRequestModel

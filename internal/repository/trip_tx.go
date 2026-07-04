@@ -132,7 +132,7 @@ func (r *TripRepository) CreateTripTx(
 ) (*model.Entity, error) {
 	//tracing Jaeger
 	tracer := otel.Tracer("TripRepository")
-	ctxSpc, span := tracer.Start(ctx, "TripRepository.GetByID")
+	ctxSpc, span := tracer.Start(ctx, "TripRepository.CreateTripTx")
 
 	// prometheus
 	started := time.Now()
@@ -146,7 +146,7 @@ func (r *TripRepository) CreateTripTx(
 			WithLabelValues(name, result).
 			Observe(time.Since(started).Seconds())
 
-			span.End() // always in the end
+		span.End() // always in the end
 	}()
 
 	//getting custom logger context
@@ -199,7 +199,7 @@ func (r *TripRepository) UpdateTripTx(
 ) (*model.Entity, error) {
 	//tracing Jaeger
 	tracer := otel.Tracer("TripRepository")
-	ctxSpc, span := tracer.Start(ctx, "TripRepository.GetByID")
+	ctxSpc, span := tracer.Start(ctx, "TripRepository.UpdateTripTx")
 
 	//prometheus log
 	started := time.Now()                        //metric time

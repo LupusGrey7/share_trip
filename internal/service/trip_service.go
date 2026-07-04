@@ -1,9 +1,10 @@
-// Оркестрация + tx[] wrapper
+// Orchestration + tx[] wrapper
 
 package service
 
 import (
 	"context"
+
 	"job4j.ru/share_trip/internal/observability/metrics"
 
 	"job4j.ru/share_trip/internal/domain/trip/model"
