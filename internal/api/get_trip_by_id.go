@@ -1,4 +1,4 @@
-//api http handler for getting trip by ID
+//api scenario - http handler for getting trip by ID.
 
 package api
 
@@ -12,7 +12,6 @@ import (
 	"job4j.ru/share_trip/internal/observability/logctx"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"job4j.ru/share_trip/internal/domain/errs"
 )
 
@@ -20,18 +19,15 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 	// OpenTelemetry: child span внутри root HTTP span от otelfiber middleware
 	tracer := otel.Tracer("trip-api")
 	ctx, span := tracer.Start(c.UserContext(), "GetTripByIDHandler")
-	defer span.End()
-
 	traceID := span.SpanContext().TraceID().String()
 	c.Set("trace-id", traceID)
+	defer span.End()
 
-	requestID := c.GetRespHeader(requestid.ConfigDefault.Header)
 
 	logger := logctx.Logger(ctx).With(
 		slog.String("server", "TripServer"),
 		slog.String("handler", "GetTripByID"),
-		slog.String("trace_id", traceID),
-		slog.String("request_id", requestID),
+		slog.String("trace_id", traceID), // Ключевое поле для Grafana
 	)
 
 	tripID := c.Params("tripId")

@@ -6,21 +6,25 @@ import (
 	"log/slog"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
 	"job4j.ru/share_trip/internal/domain/errs"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
 func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
-	ctx := c.UserContext()
-	// We get the ID that was generated requestid.New()
-	traceID := c.GetRespHeader(requestid.ConfigDefault.Header)
+	// OpenTelemetry: child span внутри root HTTP span от otelfiber middleware
+	tracer := otel.Tracer("trip-api")
+	ctx, span := tracer.Start(c.UserContext(), "MoveTripDraftToPublishDHandler")
+	traceID := span.SpanContext().TraceID().String()
+	c.Set("X-Request-ID", traceID)
+	defer span.End()
+
 	//getting custom logger
 	logger := logctx.Logger(ctx).With(
 		slog.String("server", "TripServer"),
-		slog.String("handler", "CreateTrip"),
-		slog.String("traceID", traceID),
+		slog.String("handler", "MoveTripDraftToPublish"),
+		slog.String("trace_id", traceID), // Ключевое поле для Grafana
 	)
 
 	var request MoveTripDraftToPublishRequestModel
@@ -44,9 +48,9 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 	}
 	request.ID = tripID
 
-	//--validation
+	// validation
 	if err := s.validator.Struct(&request); err != nil {
-		logger.Warn("move trip to publish invalid request",
+		logger.Warn("move trip draft to publish invalid request",
 			slog.String("tripId", tripID),
 			slog.Any("error", err),
 		)
@@ -58,24 +62,19 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 		slog.String("client_id", request.ClientID.String()),
 	)
 	ctx = logctx.WithLogger(ctx, logger) //update logger in Context app after add new fields
-	logger.Info("move trip to publish")  // logging at the component boundary
+	logger.Debug("move trip to publish") // logging at the component boundary
 
 	resp, err := s.TripService.MoveTripDraftToPublish(ctx, request.ToRequest())
 	if err != nil {
-		logger.Error(
-			"move trip to publish failed",
-			slog.Any("error", err),
-		)
+		logger.Error("move trip to publish failed", slog.Any("error", err))
 		return HandleError(c, err)
 	}
 
 	if resp.DriverID == uuid.Nil {
-		logger.Info(
-			"move trip to publish skipped: no changes detected",
-		)
+		logger.Debug("move trip to publish skipped: no changes detected")
 		return c.SendStatus(fiber.StatusNoContent) //http code -204, MUST NOT return a body (JSON)
 	}
 
-	logger.Info("move trip to publish completed")
+	logger.Debug("move trip to publish completed")
 	return c.Status(fiber.StatusOK).JSON(resp) //200
 }

@@ -21,18 +21,18 @@ func (t *TripUseCase) GetTripByID(
 	req model.GetByIDModelRequest,
 ) (*model.GetTripByIDModelResponse, error) {
 	//tracing
-	ctx, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.GetTripByID")
+	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.GetTripByID")
 	defer span.End()
 
 	//getting custom logger context
-	logger := logctx.Logger(ctx).With(
+	logger := logctx.Logger(ctxSpc).With(
 		slog.String("layer", "useCase"),
 		slog.String("useCase", "TripUseCase.GetTripByID"),
 		slog.String("client_id", req.ID),
 	)
-	logger.Debug("get trip useCase started")
+	logger.Debug("get trip by ID useCase started")
 
-	resp, err := repo.GetByID(ctx, tx, req.ID)
+	resp, err := repo.GetByID(ctxSpc, tx, req.ID)
 	if err != nil {
 		logger.Error(
 			"get trip by ID failed",
@@ -45,9 +45,6 @@ func (t *TripUseCase) GetTripByID(
 		return nil, err
 	}
 
-	logger.Debug(
-		"get trip by ID useCase success",
-		slog.String("trip_id", resp.ID.String()),
-	)
+	logger.Debug("get trip by ID useCase completed", slog.String("trip_id", resp.ID.String()))
 	return resp.ToGetByIdModelResponse(), nil
 }

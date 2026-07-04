@@ -78,15 +78,19 @@ deps:
 fmt:
 	$(GO) fmt $(GO_PKG)
 
-# Task - Check code with golangci-lint
+# Task - Check code with golangci-lint (start with check OS),
 .PHONY: lint
 lint:
+ifeq ($(OS),Windows_NT)
+	golangci-lint run
+else
 	@if ! command -v golangci-lint >/dev/null 2>&1; then \
 		echo "❌ golangci-lint is not installed. Please install it:"; \
-		echo "   https://golangci-lint.run/usage/install/"; \
+		echo "   https://golangci-lint.run"; \
 		exit 1; \
 	fi
 	golangci-lint run
+endif
 
 # Task - Run tests (detailed output (test names and PASS/FAIL))
 .PHONY: test
@@ -210,3 +214,9 @@ yaml-check:
 info:
 	@echo "OS: $(DETECTED_OS)"
 	@echo "yq: $$(yq --version 2>/dev/null || echo 'not installed')"
+
+# ==============================================================================
+# Определение команд под конкретную ОС
+# ==============================================================================
+# Проверяем, содержит ли DETECTED_OS намек на Windows
+IS_WINDOWS := $(filter Windows_NT windows Windows,$(DETECTED_OS))

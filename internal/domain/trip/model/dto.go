@@ -156,7 +156,7 @@ func (req *MoveTripDraftToPublishModelResponse) ToPublishModelResponse(entity En
 	}
 }
 
-func (req *Entity) UpdateToPublishModelResponse() *MoveTripDraftToPublishModelResponse {
+func (req *Entity) ToUpdatedPublishModelResponse() *MoveTripDraftToPublishModelResponse {
 	return &MoveTripDraftToPublishModelResponse{
 		ID:            req.ID,
 		DriverID:      req.DriverID,

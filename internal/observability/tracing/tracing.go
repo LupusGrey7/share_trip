@@ -66,5 +66,5 @@ func NewProvider(
 }
 
 func NewFiberMiddleware() fiber.Handler {
-	return otelfiber.Middleware()
+	return otelfiber.Middleware() // под капотом генерирует traceID
 }

@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
-	"github.com/prometheus/client_golang/prometheus"
-	"job4j.ru/share_trip/internal/observability/metrics"
-	"job4j.ru/share_trip/internal/observability/tracing"
 	"os"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/trace"
+	"job4j.ru/share_trip/internal/observability/metrics"
+	"job4j.ru/share_trip/internal/observability/tracing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	applog "job4j.ru/share_trip/internal/app"
@@ -16,7 +18,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/joho/godotenv"
 	"job4j.ru/share_trip/configs"
 	"job4j.ru/share_trip/internal/api"
@@ -85,10 +86,20 @@ func main() {
 	app := fiber.New(fiber.Config{
 		EnablePrintRoutes: true,
 	})
-	app.Use(requestid.New())
-	app.Use(tracing.NewFiberMiddleware())
+	app.Use(tracing.NewFiberMiddleware()) // init Tracing opentelemetry
 	app.Use(func(c *fiber.Ctx) error {
 		log.Infof("Generated ID: %v", c.Locals("requestid"))
+
+		ctx := c.UserContext()
+            // Извлекаем TraceID, который сгенерировал OpenTelemetry
+            traceID := trace.SpanFromContext(ctx).SpanContext().TraceID().String()
+
+            // Устанавливаем его как Request-ID в ответе, чтобы клиент его видел
+            c.Set("X-Request-ID", traceID)
+
+            // Сохраняем в locals, если нужно локально внутри Fiber
+            c.Locals("requestid", traceID)
+
 		return c.Next()
 	})
 	app.Use(middleware.Correlation(logger)) //add custom logger, before add api
