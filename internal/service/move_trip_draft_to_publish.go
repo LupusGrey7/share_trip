@@ -83,7 +83,7 @@ func (s *TripService) MoveTripDraftToPublish(
 		return resp, nil
 	})
 
-	// business logic / 6. Use txSpan to fix the transaction error (if COMMIT failed or logic inside failed)
+	// 6. Fix the transaction error (if COMMIT failed or logic inside failed) using txSpan
 	if err != nil {
 		logger.Error("move trip draft to publish failed", slog.Any("error", err))
 

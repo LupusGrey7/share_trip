@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/gofiber/fiber/v2/log"
 	"go.opentelemetry.io/otel"
+
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
+	"job4j.ru/share_trip/internal/repository"
 
 	"github.com/jackc/pgx/v5"
-	"job4j.ru/share_trip/internal/repository"
 )
 
 func (t *TripUseCase) MoveTripDraftToPublishTx(
@@ -70,6 +70,6 @@ func (t *TripUseCase) MoveTripDraftToPublishTx(
 		return nil, err
 	}
 
-	log.Debug("move draft to publish completed", slog.String("trip_id", resp.ID.String()))
+	logger.Debug("move draft to publish completed", slog.String("trip_id", resp.ID.String()))
 	return updatedTrip.ToUpdatedPublishModelResponse(), nil
 }
