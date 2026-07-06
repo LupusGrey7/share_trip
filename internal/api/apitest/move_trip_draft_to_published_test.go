@@ -54,10 +54,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripResponse
+		var got model.CreateTripDraftResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
-		response := model.CreateTripResponse{
+		response := model.CreateTripDraftResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got.FromPoint,
@@ -156,10 +156,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripResponse
+		var got model.CreateTripDraftResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
-		response := model.CreateTripResponse{
+		response := model.CreateTripDraftResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got.FromPoint,
@@ -244,10 +244,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripResponse
+		var got model.CreateTripDraftResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
-		response := model.CreateTripResponse{
+		response := model.CreateTripDraftResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got.FromPoint,
@@ -326,10 +326,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripResponse
+		var got model.CreateTripDraftResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
-		response := model.CreateTripResponse{
+		response := model.CreateTripDraftResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got.FromPoint,
@@ -410,10 +410,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripResponse
+		var got model.CreateTripDraftResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
-		response := model.CreateTripResponse{
+		response := model.CreateTripDraftResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got.FromPoint,

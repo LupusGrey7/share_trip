@@ -6,31 +6,32 @@ import (
 	"log/slog"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"go.opentelemetry.io/otel"
 	"job4j.ru/share_trip/internal/domain/errs"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
 func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
-	ctx := c.UserContext()
-	// We get the ID that was generated requestid.New()
-	traceID := c.GetRespHeader(requestid.ConfigDefault.Header)
+	// OpenTelemetry: child span внутри root HTTP span от otelfiber middleware
+	tracer := otel.Tracer("trip-api")
+	ctx, span := tracer.Start(c.UserContext(), "CreateTripDraftHandler")
+	traceID := span.SpanContext().TraceID().String()
+	c.Set("X-Request-ID", traceID)
+	defer span.End()
+
 	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
 		slog.String("server", "TripServer"),
-		slog.String("handler", "CreateTrip"),
-		slog.String("traceID", traceID),
+		slog.String("handler", "CreateTripDraft"),
+		slog.String("trace_id", traceID), // Key field for Grafana
 	)
 
 	var request CreateTripRequestModel
 
 	// Parsing the request body
 	if err := c.BodyParser(&request); err != nil {
-		logger.Warn(
-			"create trip failed: invalid json body",
-			slog.Any("error", err),
-		)
+		logger.Warn("create trip draft failed: invalid json body", slog.Any("error", err))
 		return c.Status(fiber.StatusBadRequest).JSON(
 			fiber.Map{
 				"error":  invalidParseJson,
@@ -40,25 +41,17 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 
 	if err := s.validator.Struct(&request); err != nil {
 		logger.Warn(
-			"create trip failed: invalid request",
+			"create trip draft failed: invalid request",
 			slog.Any("error", err),
 		)
 		return errs.RequestValidationError{Message: err.Error()}
 	}
 
-	logger = logger.With(
-		slog.String("client_id", request.DriverID.String()),
-	)
-	ctx = logctx.WithLogger(ctx, logger) //update logger in Context app after add new fields
-	logger.Info("create trip request accepted")
+	logger = logger.With(slog.String("client_id", request.DriverID.String()))
+	ctx = logctx.WithLogger(ctx, logger)               //update logger in Context app after add new fields
+	logger.Debug("create trip draft request accepted") // logging at the component boundary
 
-	logger = logger.With(
-		slog.String("client_id", request.DriverID.String()),
-	)
-	ctx = logctx.WithLogger(ctx, logger)        //update logger in Context app after add new fields
-	logger.Info("create trip request accepted") // logging at the component boundary
-
-	resp, err := s.TripService.CreateTripWithTx(
+	resp, err := s.TripService.CreateTripDraft(
 		ctx,
 		model.CreateTripRequestModel{
 			DriverID:       request.DriverID,
@@ -69,17 +62,10 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 		},
 	)
 	if err != nil {
-		logger.Error(
-			"create trip failed",
-			slog.Any("error", err),
-		)
-
+		logger.Error("create trip draft failed", slog.Any("error", err))
 		return HandleError(c, err)
 	}
 
-	logger.Info(
-		"create trip completed",
-		slog.String("trip_id", resp.ID.String()),
-	)
+	logger.Debug("create trip draft completed") // logging at the component boundary
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }

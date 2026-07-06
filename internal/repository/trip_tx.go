@@ -57,13 +57,13 @@ where trip_id = $2
 )
 
 type BaseTxTripRepository interface {
-	GetByID(ctx context.Context, tx pgx.Tx, id string) (*model.Entity, error)
+	GetTripByID(ctx context.Context, tx pgx.Tx, id string) (*model.Entity, error)
 	GetForUpdateByIDTx(ctx context.Context, tx pgx.Tx, id string) (*model.Entity, error)
 	UpdateTripTx(ctx context.Context, tx pgx.Tx, t *model.Entity) (*model.Entity, error)
-	CreateTripTx(ctx context.Context, tx pgx.Tx, t *model.Entity) (*model.Entity, error)
+	CreateTripDraftTx(ctx context.Context, tx pgx.Tx, t *model.Entity) (*model.Entity, error)
 }
 
-func (r *TripRepository) GetByID(
+func (r *TripRepository) GetTripByID(
 	ctx context.Context,
 	tx pgx.Tx,
 	id string,
@@ -125,39 +125,43 @@ func (r *TripRepository) GetByID(
 	return &entity, nil
 }
 
-func (r *TripRepository) CreateTripTx(
+func (r *TripRepository) CreateTripDraftTx(
 	ctx context.Context,
-	tx pgx.Tx, // транзакция
+	tx pgx.Tx,
 	t *model.Entity,
 ) (*model.Entity, error) {
 	//tracing Jaeger
 	tracer := otel.Tracer("TripRepository")
-	ctxSpc, span := tracer.Start(ctx, "TripRepository.CreateTripTx")
+	ctxSpc, span := tracer.Start(ctx, "TripRepository.CreateTripDraftTx")
 
 	// prometheus
 	started := time.Now()
 	name := "repo_trips_create_duration_seconds" //metric name
 	result := MetricsResultSuccess               //metric result
+	var rows pgx.Rows                            // for history to defer
+
 	defer func() {
+		rows.Close() // process rows sql
+
 		r.metrics.RepositoryQueryTotal.
 			WithLabelValues(name, result).
-			Inc()
+			Inc() // Increment the counter for the result
 		r.metrics.RepositoryQueryDuration.
 			WithLabelValues(name, result).
-			Observe(time.Since(started).Seconds())
+			Observe(time.Since(started).Seconds()) // Observe the duration of the operation
 
-		span.End() // always in the end
+		span.End() // Span always ends in the end. Jaeger will measure the time between Start and End!
 	}()
 
 	//getting custom logger context
 	logger := logctx.Logger(ctxSpc).With(
 		slog.String("layer", "repository"),
 		slog.String("repository", "TripRepository"),
-		slog.String("operation", "CreateTripTx"),
+		slog.String("operation", "CreateTripDraftTx"),
 		slog.String("trip_id", t.ID.String()),
 		slog.String("client_id", t.DriverID.String()),
 	)
-	logger.Debug("create trip started")
+	logger.Debug("create trip draft started")
 
 	entity := &model.Entity{} // Create an empty structure on the stack
 	query := createNewTrip
@@ -167,10 +171,7 @@ func (r *TripRepository) CreateTripTx(
 
 	err := tx.QueryRow(ctxSpc, query, args...).Scan(argsRslRow...)
 	if err != nil {
-		logger.Error(
-			"create trip failed",
-			slog.Any("error", err),
-		)
+		logger.Error("create trip draft failed", slog.Any("error", err))
 		return &model.Entity{}, fmt.Errorf("insert new trip failed: %w", err)
 	}
 
@@ -178,17 +179,14 @@ func (r *TripRepository) CreateTripTx(
 	query = createTripHistory
 	argsTHistory := []interface{}{id, entity.ID, model.StatusDraft, entity.Status, time.Now()}
 
-	rows, err := tx.Query(ctxSpc, query, argsTHistory...)
+	rows, err = tx.Query(ctxSpc, query, argsTHistory...)
 	if err != nil {
-		logger.Error(
-			"create trip_history failed",
-			slog.Any("error", err),
-		)
+		logger.Error("create trip_history repository failed", slog.Any("error", err))
 		return &model.Entity{}, fmt.Errorf("error while create trip_history: %w", err)
 	}
-	defer rows.Close() // process rows
+	defer rows.Close() // process rows sql
 
-	logger.Debug("create new trip completed")
+	logger.Debug("create trip draft completed", slog.String("trip_id", entity.ID.String()))
 	return entity, nil
 }
 

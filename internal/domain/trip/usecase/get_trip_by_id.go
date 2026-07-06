@@ -32,16 +32,13 @@ func (t *TripUseCase) GetTripByID(
 	)
 	logger.Debug("get trip by ID useCase started")
 
-	resp, err := repo.GetByID(ctxSpc, tx, req.ID)
+	resp, err := repo.GetTripByID(ctxSpc, tx, req.ID)
 	if err != nil {
-		logger.Error(
-			"get trip by ID failed",
-			slog.Any("error", err),
-		)
+		logger.Error("get trip by ID useCase failed", slog.Any("error", err))
 		if errors.Is(err, repository.ErrTripNotFound) {
 			return nil, ErrTripNotFound
 		}
-		// Если это не ErrEntityNotFound, значит это системный сбой (500 ошибка)
+		// If this is not a ErrEntityNotFound, This means it's a system failure (500 error)
 		return nil, err
 	}
 

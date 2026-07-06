@@ -52,11 +52,11 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripResponse
+		var got model.CreateTripDraftResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
 
-		response := model.CreateTripResponse{
+		response := model.CreateTripDraftResponse{
 			ID:            got.ID,
 			DriverID:      payload.DriverID,
 			FromPoint:     got.FromPoint,
@@ -91,10 +91,10 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err1 = io.ReadAll(resp.Body)
 		require.NoError(t, err1)
 
-		var got1 model.CreateTripResponse
+		var got1 model.CreateTripDraftResponse
 		err1 = json.Unmarshal(respBody, &got1)
 		require.NoError(t, err1)
-		response1 := model.CreateTripResponse{
+		response1 := model.CreateTripDraftResponse{
 			ID:            got1.ID,
 			DriverID:      got.DriverID,
 			FromPoint:     got1.FromPoint,
