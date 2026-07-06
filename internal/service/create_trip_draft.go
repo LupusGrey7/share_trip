@@ -59,7 +59,7 @@ func (s *TripService) CreateTripDraft(
 		txLogger := logger.With(slog.String("layer", "transaction"))
 		txLogger.Debug("transaction create trip draft execution started")
 
-		resp, err := s.useCase.CreateTripDraft(txCtx, tx, s.repo, req)
+		resp, err := s.useCase.CreateTripDraftTx(txCtx, tx, s.repo, req)
 
 		if err != nil {
 			txLogger.Error("create trip draft usecase failed", slog.Any("error", err))

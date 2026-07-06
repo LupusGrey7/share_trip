@@ -32,11 +32,11 @@ MIGRATIONS_DIR = ./migrations
 DEPLOY_DIR := ./deploy
 DC := $(DEPLOY_DIR)/docker-compose.yml
 
-# Версия и ldflags (для вшивания версии в бинарник)
+# Version and ldflags (for embedding the version into the binary)
 VERSION=1.0.0
 LDFLAGS=-ldflags "-X main.Version=${VERSION}"
 
-# Цель по умолчанию
+# Task - Default target
 .PHONY: help
 help:
 	@echo "Available targets:"
@@ -75,7 +75,7 @@ deps:
 	#$(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5 # install go linter
 	#$(GO) install github.com/pressly/goose/v3/cmd/goose@latest) # install Goose
 
-# Задача - Форматирует исходный код
+# Task - Formats source code
 .PHONY: fmt
 fmt:
 	$(GO) fmt $(GO_PKG)
@@ -181,7 +181,7 @@ migrate-down:
 migrate-status:
 	goose -dir $(MIGRATIONS_DIR) postgres $(DB_DSN) status
 
-# Task - Полный прогон, как в CI: форматирование, линтер, тесты
+# Task - A full run, like in CI: formatting, linter, tests
 .PHONY: check
 check:
 	$(MAKE) fmt

@@ -13,7 +13,7 @@ import (
 )
 
 func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
-	// OpenTelemetry: child span внутри root HTTP span от otelfiber middleware
+	// OpenTelemetry: child span inside root HTTP span from otelfiber middleware
 	tracer := otel.Tracer("trip-api")
 	ctx, span := tracer.Start(c.UserContext(), "CreateTripDraftHandler")
 	traceID := span.SpanContext().TraceID().String()

@@ -41,6 +41,6 @@ func (t *TripUseCase) CreateTripDraftTx(
 		return nil, fmt.Errorf("repoTrip.Create: %w", err)
 	}
 
-	logger.Debug("create trip draft usecase completed")
+	logger.Debug("create trip draft usecase completed", slog.String("trip_id", resp.ID.String()))
 	return resp.ToCreateResponse(), nil
 }

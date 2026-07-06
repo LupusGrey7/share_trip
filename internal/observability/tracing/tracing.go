@@ -14,7 +14,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
-// TracerProvider — алиас для shutdown в main (lifecycle снаружи пакета tracing).
+// TracerProvider is an alias for shutdown in main (lifecycle outside the tracing package).
 type TracerProvider = sdktrace.TracerProvider
 
 type Config struct {
@@ -66,5 +66,5 @@ func NewProvider(
 }
 
 func NewFiberMiddleware() fiber.Handler {
-	return otelfiber.Middleware() // под капотом генерирует traceID
+	return otelfiber.Middleware() // generates traceID under the hood
 }
