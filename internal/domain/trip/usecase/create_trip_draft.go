@@ -12,20 +12,20 @@ import (
 	"job4j.ru/share_trip/internal/repository"
 )
 
-func (t *TripUseCase) CreateTripDraft(
+func (t *TripUseCase) CreateTripDraftTx(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo repository.BaseTxTripRepository,
 	req model.CreateTripRequestModel,
 ) (*model.CreateTripDraftResponse, error) {
 	//tracing Jaeger
-	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.CreateTripDraft")
+	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.CreateTripDraftTx")
 	defer span.End()
 
 	//getting custom logger context
 	logger := logctx.Logger(ctxSpc).With(
 		slog.String("layer", "usecase"),
-		slog.String("usecase", "TripUseCase.CreateTripDraft"),
+		slog.String("usecase", "TripUseCase.CreateTripDraftTx"),
 		slog.String("client_id", req.DriverID.String()),
 	)
 
@@ -41,10 +41,6 @@ func (t *TripUseCase) CreateTripDraft(
 		return nil, fmt.Errorf("repoTrip.Create: %w", err)
 	}
 
-	logger.Debug(
-		"create trip draft usecase completed",
-		slog.String("trip_id", resp.ID.String()),
-	)
-
+	logger.Debug("create trip draft usecase completed")
 	return resp.ToCreateResponse(), nil
 }

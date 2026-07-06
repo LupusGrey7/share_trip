@@ -57,30 +57,30 @@ where trip_id = $2
 )
 
 type BaseTxTripRepository interface {
-	GetTripByID(ctx context.Context, tx pgx.Tx, id string) (*model.Entity, error)
+	GetTripByIDTx(ctx context.Context, tx pgx.Tx, id string) (*model.Entity, error)
 	GetForUpdateByIDTx(ctx context.Context, tx pgx.Tx, id string) (*model.Entity, error)
 	UpdateTripTx(ctx context.Context, tx pgx.Tx, t *model.Entity) (*model.Entity, error)
 	CreateTripDraftTx(ctx context.Context, tx pgx.Tx, t *model.Entity) (*model.Entity, error)
 }
 
-func (r *TripRepository) GetTripByID(
+func (r *TripRepository) GetTripByIDTx(
 	ctx context.Context,
 	tx pgx.Tx,
 	id string,
 ) (*model.Entity, error) {
 	//tracing Jaeger
 	tracer := otel.Tracer("TripRepository")
-	ctxSpc, span := tracer.Start(ctx, "TripRepository.GetByID")
+	ctxSpc, span := tracer.Start(ctx, "TripRepository.GetTripByIDTx")
 	defer span.End()
 
 	//getting custom logger context
 	logger := logctx.Logger(ctxSpc).With(
 		slog.String("layer", "repository"),
 		slog.String("repository", "TripRepository"),
-		slog.String("operation", "GetByID"),
+		slog.String("operation", "GetTripByIDTx"),
 		slog.String("trip_id", id),
 	)
-	logger.Debug("select trip by ID started")
+	logger.Debug("select trip by ID repository started")
 
 	var entity model.Entity
 
@@ -158,10 +158,9 @@ func (r *TripRepository) CreateTripDraftTx(
 		slog.String("layer", "repository"),
 		slog.String("repository", "TripRepository"),
 		slog.String("operation", "CreateTripDraftTx"),
-		slog.String("trip_id", t.ID.String()),
 		slog.String("client_id", t.DriverID.String()),
 	)
-	logger.Debug("create trip draft started")
+	logger.Debug("create trip draft repository started")
 
 	entity := &model.Entity{} // Create an empty structure on the stack
 	query := createNewTrip
@@ -184,9 +183,8 @@ func (r *TripRepository) CreateTripDraftTx(
 		logger.Error("create trip_history repository failed", slog.Any("error", err))
 		return &model.Entity{}, fmt.Errorf("error while create trip_history: %w", err)
 	}
-	defer rows.Close() // process rows sql
 
-	logger.Debug("create trip draft completed", slog.String("trip_id", entity.ID.String()))
+	logger.Debug("create trip draft repository completed")
 	return entity, nil
 }
 
@@ -199,8 +197,8 @@ func (r *TripRepository) UpdateTripTx(
 	tracer := otel.Tracer("TripRepository")
 	ctxSpc, span := tracer.Start(ctx, "TripRepository.UpdateTripTx")
 
-	//prometheus log
-	started := time.Now()                        //metric time
+	//prometheus metrics
+	started := time.Now()                        //metric started at time
 	name := "repo_trips_update_duration_seconds" //metric name
 	result := MetricsResultSuccess               //metric result
 	var rows pgx.Rows                            // for history to defer
@@ -215,7 +213,7 @@ func (r *TripRepository) UpdateTripTx(
 			WithLabelValues(name, result).
 			Observe(time.Since(started).Seconds())
 
-		span.End() // always in the end
+		span.End()
 	}()
 
 	//getting custom logger context
@@ -225,7 +223,7 @@ func (r *TripRepository) UpdateTripTx(
 		slog.String("operation", "UpdateTripTx"),
 		slog.String("trip_id", t.ID.String()),
 	)
-	logger.Debug("update trip started")
+	logger.Debug("update trip repository started")
 
 	var entity model.Entity // Create an empty structure on the stack
 	query := updateTrip
@@ -243,10 +241,7 @@ func (r *TripRepository) UpdateTripTx(
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			logger.Error(
-				"update trip by id failed",
-				slog.Any("error", err),
-			)
+			logger.Error("update trip by id repository failed", slog.Any("error", err))
 			return nil, ErrTripNotFound
 		}
 		return nil, fmt.Errorf(errQueryByID, t.ID, err)
@@ -267,7 +262,7 @@ func (r *TripRepository) UpdateTripTx(
 		return nil, fmt.Errorf(errQueryTripHistoryByID, t.ID, err)
 	}
 
-	logger.Debug("update trip completed")
+	logger.Debug("update trip repository completed")
 	return &entity, nil
 }
 
@@ -293,7 +288,7 @@ func (r *TripRepository) GetForUpdateByIDTx(
 			WithLabelValues(name, result).
 			Observe(time.Since(started).Seconds())
 
-		span.End() // always in the end
+		span.End()
 	}()
 
 	//getting custom logger context
@@ -329,6 +324,6 @@ func (r *TripRepository) GetForUpdateByIDTx(
 		return nil, fmt.Errorf(errQueryByID, id, err)
 	}
 
-	logger.Debug("select trip for update completed")
+	logger.Debug("select trip for update repository completed")
 	return &tp, nil // Return a pointer to the filled structure
 }

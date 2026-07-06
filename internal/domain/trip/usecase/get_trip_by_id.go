@@ -14,34 +14,34 @@ import (
 	"job4j.ru/share_trip/internal/repository"
 )
 
-func (t *TripUseCase) GetTripByID(
+func (t *TripUseCase) GetTripByIDTx(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo repository.BaseTxTripRepository,
 	req model.GetByIDModelRequest,
 ) (*model.GetTripByIDModelResponse, error) {
 	//tracing
-	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.GetTripByID")
+	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.GetTripByIDTx")
 	defer span.End()
 
 	//getting custom logger context
 	logger := logctx.Logger(ctxSpc).With(
 		slog.String("layer", "useCase"),
-		slog.String("useCase", "TripUseCase.GetTripByID"),
+		slog.String("useCase", "TripUseCase.GetTripByIDTx"),
 		slog.String("client_id", req.ID),
 	)
 	logger.Debug("get trip by ID useCase started")
 
-	resp, err := repo.GetTripByID(ctxSpc, tx, req.ID)
+	resp, err := repo.GetTripByIDTx(ctxSpc, tx, req.ID)
 	if err != nil {
 		logger.Error("get trip by ID useCase failed", slog.Any("error", err))
 		if errors.Is(err, repository.ErrTripNotFound) {
 			return nil, ErrTripNotFound
 		}
-		// If this is not a ErrEntityNotFound, This means it's a system failure (500 error)
+		// If this is not a ErrEntityNotFound, This means it's a system error (500 error)
 		return nil, err
 	}
 
-	logger.Debug("get trip by ID useCase completed", slog.String("trip_id", resp.ID.String()))
+	logger.Debug("get trip by ID useCase completed")
 	return resp.ToGetByIdModelResponse(), nil
 }

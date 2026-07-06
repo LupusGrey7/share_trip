@@ -10,9 +10,9 @@ import (
 )
 
 type BaseUseCase interface {
-	CreateTripDraft(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req model.CreateTripRequestModel) (*model.CreateTripDraftResponse, error)
+	CreateTripDraftTx(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req model.CreateTripRequestModel) (*model.CreateTripDraftResponse, error)
 	MoveTripDraftToPublishTx(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req model.MoveTripDraftToPublishModel) (*model.MoveTripDraftToPublishModelResponse, error)
-	GetTripByID(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req model.GetByIDModelRequest) (*model.GetTripByIDModelResponse, error)
+	GetTripByIDTx(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req model.GetByIDModelRequest) (*model.GetTripByIDModelResponse, error)
 }
 
 type TripUseCase struct {

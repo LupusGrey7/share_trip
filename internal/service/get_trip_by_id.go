@@ -55,32 +55,23 @@ func (s *TripService) GetTripByID(ctx context.Context, req model.GetByIDModelReq
 		)
 		txLogger.Debug("transaction execution started")
 
-		resp, err := s.useCase.GetTripByID(ctx, tx, s.repo, req)
+		resp, err := s.useCase.GetTripByIDTx(txCtx, tx, s.repo, req)
 		if err != nil {
+			txLogger.Error("get trip by ID useCase failed", slog.Any("error", err))
 			return nil, fmt.Errorf("useCase.GetTripByID: %w", err)
 		}
 
-		txLogger.Debug(
-			"transaction execution completed",
-			slog.String("trip_id", resp.ID.String()),
-		)
+		txLogger.Debug("transaction get trip by ID completed", slog.String("trip_id", resp.ID.String()))
 		return resp, nil
 	})
 
-	if err != nil {
-		logger.Error(
-			"get trip failed",
-			slog.Any("error", err),
-		)
-		return nil, err
-	}
-
 	// 5. Use txSpan to fix the transaction error (if COMMIT failed or logic inside failed)
 	if err != nil {
+		logger.Error("get trip by ID failed", slog.Any("error", err))
 		txSpan.RecordError(err)
 		txSpan.SetStatus(codes.Error, err.Error())
 		// Span will be closed automatically through defer txSpan.End() above
-		return nil, fmt.Errorf("transaction failed: %w", err)
+		return nil, err
 	}
 
 	logger.Debug("get trip by ID completed", slog.String("trip_id", res.ID.String()))
