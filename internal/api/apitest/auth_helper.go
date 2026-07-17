@@ -14,9 +14,7 @@ func testKeycloakAuth() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		c.Locals(middleware.KeycloakClaimsKey, &middleware.KeycloakClaims{
 			Subject: testClientID.String(),
-			ResourceAccess: map[string]struct {
-				Roles []string `json:"roles"`
-			}{
+			ResourceAccess: map[string]middleware.ResourceRoles{
 				middleware.KeycloakClientID: {Roles: []string{middleware.KeycloakClientRole}},
 			},
 		})

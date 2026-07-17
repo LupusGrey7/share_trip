@@ -15,7 +15,7 @@ const (
 )
 
 // SetupRoutes registers all HTTP routes on the server.
-// keycloakAuth — middleware для /api/v2/trip/*; nil в apitest (без Keycloak).
+// keycloakAuth — middleware to check the client role for /api/v2/trip/*; nil in apitest (without Keycloak).
 func (s *Server) SetupRoutes(app *fiber.App, keycloakAuth fiber.Handler) {
 	// === Group API infrastructure ===
 	app.Get(ReadyInfoPath, s.GetConnectInfo) // health check

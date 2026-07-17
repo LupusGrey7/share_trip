@@ -23,11 +23,10 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 	c.Set("trace-id", traceID)
 	defer span.End()
 
-
 	logger := logctx.Logger(ctx).With(
 		slog.String("server", "TripServer"),
 		slog.String("handler", "GetTripByID"),
-		slog.String("trace_id", traceID), // Ключевое поле для Grafana
+		slog.String("trace_id", traceID), // Key field for Grafana
 	)
 
 	tripID := c.Params("tripId")
@@ -45,23 +44,14 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 		attribute.String("trip_id", tripID),
 	)
 	// logging at the component boundary
-	logger.Debug(
-		"get Trip By ID",
-		slog.String("tripId", tripID),
-	)
+	logger.Debug("get trip by id", slog.String("tripId", tripID))
 
 	resp, err := s.TripService.GetTripByID(ctx, model.GetByIDModelRequest{ID: request.ID})
 	if err != nil {
-		logger.Error(
-			"get Trip By ID failed",
-			slog.Any("error", err),
-		)
+		logger.Error("get trip by id failed", slog.Any("error", err))
 		return HandleError(c, err)
 	}
 
-	logger.Debug(
-		"get Trip By ID completed",
-		slog.String("trip_id", request.ID),
-	)
+	logger.Debug("get trip by id completed", slog.String("trip_id", request.ID))
 	return c.Status(fiber.StatusOK).JSON(resp)
 }

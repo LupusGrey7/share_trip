@@ -28,29 +28,36 @@ const (
 )
 
 type KeycloakConfig struct {
-	Issuer       string
-	ClientID     string
-	ClientSecret string
-	HTTPClient   *http.Client
+	Issuer       string       // Issuer — issuer of the token
+	ClientID     string       // ClientID — client id of the token
+	ClientSecret string       // ClientSecret — client secret of the token
+	HTTPClient   *http.Client // HTTPClient — http client for the token
 }
 
-// KeycloakClaims — поля из payload access_token (JWT), которые нам нужны.
+// ResourceAccess — resource access of the token
+// ResourceRoles describes the list of roles for a specific resource
+type ResourceRoles struct {
+	Roles []string `json:"roles"` // Roles — roles of the user
+}
+
+// KeycloakClaims — fields from the payload of the access_token (JWT), that we need.
+// Claims — this is the data that lies inside the JWT. We are interested in the sub field.
+// `subject` field is the UUID of the user in the Keycloak database.
+// We will use it as client_id in our business logic.
 type KeycloakClaims struct {
-	Subject           string `json:"sub"` // UUID пользователя в Keycloak
-	PreferredUsername string `json:"preferred_username"`
-	Email             string `json:"email"`
-	AuthorizedParty   string `json:"azp"`
-	ResourceAccess    map[string]struct {
-		Roles []string `json:"roles"`
-	} `json:"resource_access"`
+	Subject           string                   `json:"sub"`                // Subject — subject of the token.UUID of the user in the Keycloak database.
+	PreferredUsername string                   `json:"preferred_username"` // PreferredUsername — preferred username of the user
+	Email             string                   `json:"email"`              // Email — email of the user
+	AuthorizedParty   string                   `json:"azp"`                // AuthorizedParty — authorized party of the token
+	ResourceAccess    map[string]ResourceRoles `json:"resource_access"`    // ResourceAccess — resource access of the token
 }
 
 type keycloakTokenResponse struct {
-	AccessToken string `json:"access_token"`
+	AccessToken string `json:"access_token"` // AccessToken — access token of the token
 }
 
-// refreshAccessToken — обмен refresh_token на новый access_token через Keycloak token endpoint.
-// Вызывается из middleware на каждый HTTP-запрос с X-Refresh-Token.
+// refreshAccessToken — exchange refresh_token for a new access_token through the Keycloak token endpoint.
+// Call from middleware for each HTTP request with X-Refresh-Token.
 func refreshAccessToken(
 	ctx context.Context,
 	client *http.Client,
@@ -64,7 +71,8 @@ func refreshAccessToken(
 		return nil, errors.New("keycloak client id is required")
 	}
 
-	form := url.Values{}
+	var form url.Values //It is typically used for query parameters and form values. (map[string][]string)
+	form = url.Values{} // initialize the form
 	form.Set("grant_type", "refresh_token")
 	form.Set("client_id", cfg.ClientID)
 	form.Set("refresh_token", refreshToken)
@@ -75,6 +83,7 @@ func refreshAccessToken(
 
 	endpoint := strings.TrimRight(cfg.Issuer, "/") + "/protocol/openid-connect/token"
 
+	//NewRequestWithContext creates a new Request and assigns it to req for Keycloak token endpoint.
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
@@ -87,8 +96,9 @@ func refreshAccessToken(
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //Do sends an HTTP request and returns an HTTP response, following policy (e.g. redirects, cookies, auth) for User-specified Host: Port.
 	if err != nil {
+		log.Printf("failed to do the request to the Keycloak token endpoint: %v", err)
 		return nil, err
 	}
 	defer func() {
@@ -97,7 +107,7 @@ func refreshAccessToken(
 		}
 	}()
 
-	body, readErr := io.ReadAll(resp.Body)
+	body, readErr := io.ReadAll(resp.Body) //var body []byte
 	if readErr != nil {
 		return nil, readErr
 	}
@@ -118,11 +128,12 @@ func refreshAccessToken(
 	return &token, nil
 }
 
-// parseAccessTokenClaims — декодирует среднюю часть JWT (payload) в KeycloakClaims.
-// Подпись не проверяется — только учебное чтение claims.
+// parseAccessTokenClaims — decodes the middle part of JWT (payload) into KeycloakClaims.
+// The signature is not checked — only the claims are read for educational purposes.
 func parseAccessTokenClaims(accessToken string) (*KeycloakClaims, error) {
 	parts := strings.Split(accessToken, ".")
 	if len(parts) != 3 {
+		log.Printf("jwt must contain three parts")
 		return nil, errors.New("jwt must contain three parts")
 	}
 
@@ -143,7 +154,7 @@ func parseAccessTokenClaims(accessToken string) (*KeycloakClaims, error) {
 	return &claims, nil
 }
 
-// HasClientRole — this function is used to check if the client has the role, it is used to check if the client has the role.
+// HasClientRole — this function is used TO CHECK IF THE CLIENT HAS THE ROLE, it is used to check if the client has the role.
 func (c KeycloakClaims) HasClientRole(clientID string, role string) bool {
 	access, ok := c.ResourceAccess[clientID]
 	if !ok {
@@ -182,8 +193,8 @@ func RequireClientRole(clientID string, role string) fiber.Handler {
 }
 
 // ClaimsFromContext — this function is used to get the claims from the context, it is used to get the claims from the context.
-func ClaimsFromContext(ctx *fiber.Ctx) (*KeycloakClaims, error) {
-	value := ctx.Locals(KeycloakClaimsKey) // get the claims from the context
+func ClaimsFromContext(с *fiber.Ctx) (*KeycloakClaims, error) {
+	value := с.Locals(KeycloakClaimsKey) // get the claims from the context
 
 	claims, ok := value.(*KeycloakClaims) // cast the claims to the KeycloakClaims type
 	if !ok {
@@ -193,10 +204,10 @@ func ClaimsFromContext(ctx *fiber.Ctx) (*KeycloakClaims, error) {
 	return claims, nil // return the claims
 }
 
-// KeycloakRefreshTokenMiddleware — основной middleware задания.
-// 1) Читает X-Refresh-Token из заголовка.
-// 2) POST в Keycloak → получает access_token.
-// 3) Парсит claims → кладёт в Locals для RequireClientRole и handlers.
+// KeycloakRefreshTokenMiddleware — the main middleware of the task.
+// 1) Reads X-Refresh-Token from the header.
+// 2) POST to Keycloak → receives access_token.
+// 3) Parses claims → puts in Locals for RequireClientRole and handlers.
 func KeycloakRefreshTokenMiddleware(cfg KeycloakConfig) fiber.Handler {
 	client := cfg.HTTPClient
 	if client == nil {
@@ -211,7 +222,7 @@ func KeycloakRefreshTokenMiddleware(cfg KeycloakConfig) fiber.Handler {
 
 		token, err := refreshAccessToken(c.UserContext(), client, cfg, refreshToken)
 		if err != nil {
-			// fiber log — видно в make run (stdlib log мог теряться)
+			// fiber log — visible in `make run` (stdlib log could be lost)
 			flog.Errorf("keycloak refresh failed: %v", err)
 			return fiber.NewError(fiber.StatusUnauthorized, "invalid refresh token")
 		}

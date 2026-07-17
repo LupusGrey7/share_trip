@@ -107,23 +107,13 @@ func main() {
 	//add metrics middleware
 	app.Use(api.NewHTTPMetricsMiddleware(m))
 
-	keycloakCfg := middleware.KeycloakConfig{
-		Issuer:       configs.Env("KEYCLOAK_ISSUER", "http://localhost:8087/realms/sharetrip"),
-		ClientID:     configs.Env("KEYCLOAK_CLIENT_ID", "sharetrip-api"),
-		ClientSecret: configs.Env("KEYCLOAK_CLIENT_SECRET", ""),
-	}
-	cwd, _ := os.Getwd()
-	log.Infof("keycloak: issuer=%s client_id=%s secret_len=%d cwd=%s",
-		keycloakCfg.Issuer, keycloakCfg.ClientID, len(keycloakCfg.ClientSecret), cwd)
-	if keycloakCfg.ClientSecret == "" || keycloakCfg.ClientSecret == "secret" {
-		log.Error("KEYCLOAK_CLIENT_SECRET empty or placeholder 'secret' — save real secret in .env, then: " +
-			"Remove-Item Env:KEYCLOAK_CLIENT_SECRET; make run")
-	}
+	keycloakCfg := getKeycloakConfig()
+	logKeycloakConfig(keycloakCfg)
 
-	//build Server
+	//build the Server
 	build(app, pool, registry, m, keycloakCfg)
 
-	//listen app
+	//listen the app
 	err = app.Listen(":8080")
 	if err != nil {
 		log.Fatal("failed to listen: %v", err)
@@ -175,4 +165,24 @@ func initTracing(ctx context.Context) (*tracing.TracerProvider, error) {
 		Environment:    configs.Env("OTEL_ENVIRONMENT", "local"),
 		Endpoint:       configs.Env("OTEL_EXPORTER_ENDPOINT", "localhost:4319"),
 	})
+}
+
+// getKeycloakConfig - get the keycloak config
+func getKeycloakConfig() middleware.KeycloakConfig {
+	return middleware.KeycloakConfig{
+		Issuer:       configs.Env("KEYCLOAK_ISSUER", "http://localhost:8087/realms/sharetrip"),
+		ClientID:     configs.Env("KEYCLOAK_CLIENT_ID", "sharetrip-api"),
+		ClientSecret: configs.Env("KEYCLOAK_CLIENT_SECRET", ""),
+	}
+}
+
+// logKeycloakConfig - log the keycloak config
+func logKeycloakConfig(keycloakCfg middleware.KeycloakConfig) {
+	cwd, _ := os.Getwd()
+	log.Infof("keycloak: issuer=%s client_id=%s secret_len=%d cwd=%s",
+		keycloakCfg.Issuer, keycloakCfg.ClientID, len(keycloakCfg.ClientSecret), cwd)
+	if keycloakCfg.ClientSecret == "" || keycloakCfg.ClientSecret == "secret" {
+		log.Error("KEYCLOAK_CLIENT_SECRET empty or placeholder 'secret' — save real secret in .env, then: " +
+			"Remove-Item Env:KEYCLOAK_CLIENT_SECRET; make run")
+	}
 }
