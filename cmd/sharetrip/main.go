@@ -100,15 +100,21 @@ func main() {
 
 		return c.Next()
 	})
-	app.Use(middleware.Correlation(logger)) //add custom logger, before add api
+	//add custom logger, before add api and metrics
+	app.Use(middleware.Correlation(logger))
+	//add metrics middleware
 	app.Use(api.NewHTTPMetricsMiddleware(m))
+
+	//set keycloak to app
+	setKeycloakToApp(app)
 
 	//build Server
 	build(app, pool, registry, m)
 
+	//listen app
 	err = app.Listen(":8080")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("failed to listen: %v", err)
 	}
 }
 
@@ -156,4 +162,14 @@ func initTracing(ctx context.Context) (*tracing.TracerProvider, error) {
 		Environment:    configs.Env("OTEL_ENVIRONMENT", "local"),
 		Endpoint:       configs.Env("OTEL_EXPORTER_ENDPOINT", "localhost:4319"),
 	})
+}
+
+func setKeycloakToApp(app *fiber.App) {
+	app.Use(middleware.KeycloakRefreshTokenMiddleware(
+		middleware.KeycloakConfig{
+			Issuer:       configs.Env("KEYCLOAK_ISSUER", "http://localhost:8087/realms/sharetrip"), // issuer of the keycloak server, he must point to the realm (http://localhost:8087/realms/your-realm)
+			ClientID:     configs.Env("KEYCLOAK_CLIENT_ID", "sharetrip-api"),                       // client id of the client, it is used to authenticate the client to the keycloak server
+			ClientSecret: configs.Env("KEYCLOAK_CLIENT_SECRET", "secret"),                          // client secret of the client, it is used to authenticate the client to the keycloak server
+		},
+	))
 }

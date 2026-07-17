@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/adaptor/v2"
 	"github.com/gofiber/fiber/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"job4j.ru/share_trip/internal/middleware"
 )
 
 const (
@@ -25,7 +26,19 @@ func (s *Server) SetupRoutes(app *fiber.App) {
 	// === Group API v2 ===
 	v2 := app.Group(GroupPrefixV2)    //root group
 	tripGroupV2 := v2.Group(TripPath) //sub group TripPath = "/ship"
-	tripGroupV2.Get("/:tripId", s.GetTripById)
-	tripGroupV2.Post("/createTripDraft", s.CreateTripDraft)
-	tripGroupV2.Patch("/moveTripDraft-ToPublish/:tripId", s.MoveTripDraftToPublishTx)
+	tripGroupV2.Get(
+		"/:tripId",
+		middleware.RequireClientRole("sharetrip-api", "get-trip-by-id"), // require the client role to get the trip by id
+		s.GetTripById,
+	)
+	tripGroupV2.Post(
+		"/createTripDraft",
+		middleware.RequireClientRole("sharetrip-api", "create-trip-draft"), // require the client role to create the trip draft
+		s.CreateTripDraft,
+	)
+	tripGroupV2.Patch(
+		"/moveTripDraft-ToPublish/:tripId",
+		middleware.RequireClientRole("sharetrip-api", "move-trip-draft-to-publish"), // require the client role to move the trip draft to publish
+		s.MoveTripDraftToPublishTx,
+	)
 }
