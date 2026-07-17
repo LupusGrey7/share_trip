@@ -61,8 +61,8 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 		slog.String("tripId", request.ID),
 		slog.String("client_id", request.ClientID.String()),
 	)
-	ctx = logctx.WithLogger(ctx, logger) //update logger in Context app after add new fields
-	logger.Debug("move trip to publish") // logging at the component boundary
+	ctx = logctx.WithLogger(ctx, logger)
+	logger.Debug("move trip to publish")
 
 	resp, err := s.TripService.MoveTripDraftToPublish(ctx, request.ToRequest())
 	if err != nil {

@@ -13,7 +13,7 @@ type GetTripByIDRequestModel struct {
 
 type MoveTripDraftToPublishRequestModel struct {
 	ID       string    `validate:"required,uuid"`
-	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"` //"omitempty,uuid"
+	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"`
 }
 
 type CreateTripRequestModel struct {

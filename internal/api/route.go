@@ -15,30 +15,34 @@ const (
 )
 
 // SetupRoutes registers all HTTP routes on the server.
-// Called once at application startup.
-func (s *Server) SetupRoutes(app *fiber.App) {
+// keycloakAuth — middleware для /api/v2/trip/*; nil в apitest (без Keycloak).
+func (s *Server) SetupRoutes(app *fiber.App, keycloakAuth fiber.Handler) {
 	// === Group API infrastructure ===
 	app.Get(ReadyInfoPath, s.GetConnectInfo) // health check
-	// === Prometheus metrics (without prefix, at the root) ===
-	// Prometheus (deploy/prometheus/prometheus.yml) scrapes :8080/metrics — must be on the app root.
 	app.Get("/metrics", adaptor.HTTPHandler(promhttp.HandlerFor(s.registry, promhttp.HandlerOpts{})))
 
 	// === Group API v2 ===
-	v2 := app.Group(GroupPrefixV2)    //root group
-	tripGroupV2 := v2.Group(TripPath) //sub group TripPath = "/ship"
+	v2 := app.Group(GroupPrefixV2) //root group - /api/v2
+
+	tripMiddlewares := []fiber.Handler{}
+	if keycloakAuth != nil {
+		tripMiddlewares = append(tripMiddlewares, keycloakAuth)
+	}
+
+	tripGroupV2 := v2.Group(TripPath, tripMiddlewares...) //sub group TripPath = "/ship"
 	tripGroupV2.Get(
 		"/:tripId",
-		middleware.RequireClientRole("sharetrip-api", "get-trip-by-id"), // require the client role to get the trip by id
+		middleware.RequireClientRole(middleware.KeycloakClientID, middleware.KeycloakClientRole),
 		s.GetTripById,
 	)
 	tripGroupV2.Post(
 		"/createTripDraft",
-		middleware.RequireClientRole("sharetrip-api", "create-trip-draft"), // require the client role to create the trip draft
+		middleware.RequireClientRole(middleware.KeycloakClientID, middleware.KeycloakClientRole),
 		s.CreateTripDraft,
 	)
 	tripGroupV2.Patch(
 		"/moveTripDraft-ToPublish/:tripId",
-		middleware.RequireClientRole("sharetrip-api", "move-trip-draft-to-publish"), // require the client role to move the trip draft to publish
+		middleware.RequireClientRole(middleware.KeycloakClientID, middleware.KeycloakClientRole),
 		s.MoveTripDraftToPublishTx,
 	)
 }

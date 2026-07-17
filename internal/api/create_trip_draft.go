@@ -48,8 +48,8 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 	}
 
 	logger = logger.With(slog.String("client_id", request.DriverID.String()))
-	ctx = logctx.WithLogger(ctx, logger)               //update logger in Context app after add new fields
-	logger.Debug("create trip draft request accepted") // logging at the component boundary
+	ctx = logctx.WithLogger(ctx, logger)
+	logger.Debug("create trip draft request accepted")
 
 	resp, err := s.TripService.CreateTripDraft(
 		ctx,
@@ -66,6 +66,6 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 		return HandleError(c, err)
 	}
 
-	logger.Debug("create trip draft completed") // logging at the component boundary
+	logger.Debug("create trip draft completed")
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }

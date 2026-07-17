@@ -97,7 +97,6 @@ func main() {
 		c.Set("X-Request-ID", traceID)
 		// Save in locals if needed locally within Fiber		c.Locals("requestid", traceID)
 		c.Locals("requestid", traceID)
-
 		return c.Next()
 	})
 	//add custom logger, before add api and metrics
@@ -105,11 +104,14 @@ func main() {
 	//add metrics middleware
 	app.Use(api.NewHTTPMetricsMiddleware(m))
 
-	//set keycloak to app
-	setKeycloakToApp(app)
+	keycloakCfg := middleware.KeycloakConfig{
+		Issuer:       configs.Env("KEYCLOAK_ISSUER", "http://localhost:8087/realms/sharetrip"),
+		ClientID:     configs.Env("KEYCLOAK_CLIENT_ID", "sharetrip-api"),
+		ClientSecret: configs.Env("KEYCLOAK_CLIENT_SECRET", "secret"),
+	}
 
 	//build Server
-	build(app, pool, registry, m)
+	build(app, pool, registry, m, keycloakCfg)
 
 	//listen app
 	err = app.Listen(":8080")
@@ -124,6 +126,7 @@ func build(
 	pool *pgxpool.Pool,
 	registry *prometheus.Registry,
 	m *metrics.Metrics,
+	keycloakCfg middleware.KeycloakConfig,
 ) {
 	// Initialize the validator instance
 	validate := validator.New(validator.WithRequiredStructEnabled())
@@ -138,10 +141,10 @@ func build(
 	infoService := service.NewInfoService(infoUseCase, repo)
 	tripService := service.NewTripService(m, pool, repoTrip, outboxRepo, tripUseCase)
 
-	server := api.NewServer(registry, validate, infoService, tripService) // ← add all service`s
+	server := api.NewServer(registry, validate, infoService, tripService)
 
-	//route
-	server.SetupRoutes(app)
+	keycloakAuth := middleware.KeycloakRefreshTokenMiddleware(keycloakCfg)
+	server.SetupRoutes(app, keycloakAuth)
 }
 
 func readCfg() storage.Config {
@@ -162,14 +165,4 @@ func initTracing(ctx context.Context) (*tracing.TracerProvider, error) {
 		Environment:    configs.Env("OTEL_ENVIRONMENT", "local"),
 		Endpoint:       configs.Env("OTEL_EXPORTER_ENDPOINT", "localhost:4319"),
 	})
-}
-
-func setKeycloakToApp(app *fiber.App) {
-	app.Use(middleware.KeycloakRefreshTokenMiddleware(
-		middleware.KeycloakConfig{
-			Issuer:       configs.Env("KEYCLOAK_ISSUER", "http://localhost:8087/realms/sharetrip"), // issuer of the keycloak server, he must point to the realm (http://localhost:8087/realms/your-realm)
-			ClientID:     configs.Env("KEYCLOAK_CLIENT_ID", "sharetrip-api"),                       // client id of the client, it is used to authenticate the client to the keycloak server
-			ClientSecret: configs.Env("KEYCLOAK_CLIENT_SECRET", "secret"),                          // client secret of the client, it is used to authenticate the client to the keycloak server
-		},
-	))
 }

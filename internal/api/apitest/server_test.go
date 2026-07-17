@@ -103,7 +103,7 @@ func TestMain(m *testing.M) {
 	})
 
 	// build test Server with Routes
-	server.SetupRoutes(testApp)
+	server.SetupRoutes(testApp, testKeycloakAuth())
 
 	// Вывод всех зарегистрированных маршрутов в консоль (явно)
 	printRegisteredRoutes(testApp)
