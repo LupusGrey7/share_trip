@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
-	"job4j.ru/share_trip/internal/observability/metrics"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"job4j.ru/share_trip/internal/observability/metrics"
 
 	"job4j.ru/share_trip/internal/domain/trip/usecase"
 
@@ -48,7 +49,7 @@ func TestMain(m *testing.M) {
 	}()
 	testCtx = context.Background()
 
-	// === 1. Запуск PostgreSQL контейнера ===
+	// === 1. Start PostgreSQL container ===
 	var err error
 
 	//init BD
@@ -56,7 +57,7 @@ func TestMain(m *testing.M) {
 
 	waitReady(testDB)
 
-	// Миграции
+	// Migrations
 	setUpMigrations(testDB)
 
 	testPool, err = pgxpool.New(testCtx, dsn)
@@ -65,10 +66,10 @@ func TestMain(m *testing.M) {
 	}
 	log.Println("Database and pool ready, migrations applied")
 
-	// Инициализация зависимостей (validator, сервисы и т.д.)
+	// Initialization of dependencies (validator, services, etc.)
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	// 1. Создаем чистый локальный реестр для теста, чтобы не загрязнять глобальный
+	// 1. Create a clean local registry for test, to not pollute the global
 	//registry Prometheus
 	registry := prometheus.NewRegistry()
 
@@ -91,10 +92,10 @@ func TestMain(m *testing.M) {
 
 	server := api.NewServer(registry, validate, infoService, tripService) // ← add to service
 
-	// === 2. Создание Fiber приложения ===
+	// === 2. Create Fiber application ===
 	//testApp = fiber.New()
 	testApp = fiber.New(fiber.Config{
-		EnablePrintRoutes: true, // ← Включаем автоматический вывод маршрутов при старте
+		EnablePrintRoutes: true, // ← Enable automatic route output at startup
 	})
 	testApp.Use(requestid.New())
 	testApp.Use(func(c *fiber.Ctx) error {
@@ -102,23 +103,23 @@ func TestMain(m *testing.M) {
 		return c.Next()
 	})
 
-	// build test Server with Routes
-	server.SetupRoutes(testApp, testKeycloakAuth())
+	// build test Server with Routes including middleware
+	server.SetupRoutes(testApp, testKeycloakAuth()) // ← add middleware Keycloak
 
-	// Вывод всех зарегистрированных маршрутов в консоль (явно)
+	// Output all registered routes to console (explicitly)
 	printRegisteredRoutes(testApp)
 	log.Println("=== Test application ready ===")
 
-	//  ===Запускаем тесты ===
+	//  ===Start tests ===
 	code := m.Run()
 
-	// === 3. Корректное завершение ресурсов ===
+	// === 3. Correct shutdown of resources ===
 	log.Println("=== Starting forced shutdown sequence ===")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 	defer cancel()
 
-	// 3.1 Fiber (даём время на graceful shutdown)
+	// 3.1 Fiber (give time for graceful shutdown)
 	if testApp != nil {
 		log.Println("Shutting down Fiber server...")
 		if err := testApp.ShutdownWithContext(shutdownCtx); err != nil {
@@ -128,7 +129,7 @@ func TestMain(m *testing.M) {
 		}
 	}
 
-	// 3.2 Закрываем пулы соединений с таймаутом
+	// 3.2 Close connection pools with timeout
 	if testPool != nil {
 		log.Println("Closing pgxpool...")
 		done := make(chan struct{})
@@ -150,7 +151,7 @@ func TestMain(m *testing.M) {
 		log.Println("sql.DB closed")
 	}
 
-	// 3.3 Завершаем Docker-контейнер с большим таймаутом
+	// 3.3 Terminate Docker container with timeout
 	if testContainer != nil {
 		log.Println("Terminating Postgres container...")
 		termCtx, termCancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -162,7 +163,7 @@ func TestMain(m *testing.M) {
 		termCancel()
 	}
 
-	// 3.4 Принудительных выход через 2 секунды (гарантирует завершение теста)
+	// 3.4 Force exit through 2 seconds (guarantees test completion)
 	log.Println("=== All cleanup done. Forcing os.Exit ===")
 	time.Sleep(2 * time.Second) // даём логам вывестись
 	os.Exit(code)
@@ -191,7 +192,7 @@ func waitReady(db *sql.DB) {
 
 func printRegisteredRoutes(app *fiber.App) {
 	fmt.Println("\n=== Registered Routes ===")
-	routes := app.GetRoutes(true) // true = исключить middleware-only роуты
+	routes := app.GetRoutes(true) // true = exclude middleware-only routes
 	for _, route := range routes {
 		fmt.Printf("%-6s %s\n", route.Method, route.Path)
 	}

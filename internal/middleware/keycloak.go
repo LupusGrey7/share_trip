@@ -1,5 +1,5 @@
 // Package middleware — Keycloak: refresh_token → access_token → claims в Fiber context.
-// Учебный вариант: payload JWT читаем без проверки подписи (в prod — JWKS Keycloak).
+// Educational variant: read payload JWT without signature verification (in prod — JWKS Keycloak).
 package middleware
 
 import (
@@ -21,10 +21,10 @@ import (
 )
 
 const (
-	RefreshTokenHeader = "X-Refresh-Token" // RefreshTokenHeader — заголовок задания: Postman шлёт refresh_token сюда.
-	KeycloakClaimsKey  = "keycloak_claims" // KeycloakClaimsKey — ключ в c.Locals(), куда middleware кладёт распарсенный JWT.
-	KeycloakClientID   = "sharetrip-api"   // KeycloakClientID — имя OAuth-client в Keycloak (приложение sharetrip-api).
-	KeycloakClientRole = "client"          // KeycloakClientRole — client role внутри sharetrip-api (задание: роль «client»).
+	RefreshTokenHeader = "X-Refresh-Token" // RefreshTokenHeader — header of the task: Postman sends refresh_token here.
+	KeycloakClaimsKey  = "keycloak_claims" // KeycloakClaimsKey — key in c.Locals(), where middleware puts the parsed JWT.
+	KeycloakClientID   = "sharetrip-api"   // KeycloakClientID — name of the OAuth-client in Keycloak (application sharetrip-api).
+	KeycloakClientRole = "client"          // KeycloakClientRole — client role inside sharetrip-api (task: role «client»).
 )
 
 type KeycloakConfig struct {

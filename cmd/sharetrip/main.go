@@ -29,8 +29,8 @@ import (
 
 // init is invoked before main()
 func init() {
-	// Явный путь к .env. Makefile делает `include .env` + `export` и может
-	// прокинуть устаревший KEYCLOAK_CLIENT_SECRET из OS env; Overload перекрывает файлом.
+	// Explicit path to .env. Makefile does `include .env` + `export` and may
+	// Pass outdated KEYCLOAK_CLIENT_SECRET from OS env; Overload overrides the file.
 	cwd, err := os.Getwd()
 	envFile := ".env"
 	if err == nil {
