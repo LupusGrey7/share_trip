@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	flog "github.com/gofiber/fiber/v2/log"
 )
 
 const (
@@ -210,11 +211,14 @@ func KeycloakRefreshTokenMiddleware(cfg KeycloakConfig) fiber.Handler {
 
 		token, err := refreshAccessToken(c.UserContext(), client, cfg, refreshToken)
 		if err != nil {
+			// fiber log — видно в make run (stdlib log мог теряться)
+			flog.Errorf("keycloak refresh failed: %v", err)
 			return fiber.NewError(fiber.StatusUnauthorized, "invalid refresh token")
 		}
 
 		claims, err := parseAccessTokenClaims(token.AccessToken)
 		if err != nil {
+			flog.Errorf("keycloak parse access token failed: %v", err)
 			return fiber.NewError(fiber.StatusUnauthorized, "invalid access token")
 		}
 
