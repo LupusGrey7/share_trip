@@ -71,8 +71,8 @@ func refreshAccessToken(
 		return nil, errors.New("keycloak client id is required")
 	}
 
-	var form url.Values //It is typically used for query parameters and form values. (map[string][]string)
-	form = url.Values{} // initialize the form
+	//var form url.Values //It is typically used for query parameters and form values. (map[string][]string)
+	form := url.Values{} // initialize the form
 	form.Set("grant_type", "refresh_token")
 	form.Set("client_id", cfg.ClientID)
 	form.Set("refresh_token", refreshToken)
