@@ -52,31 +52,30 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 	ctx = logctx.WithLogger(ctx, logger)
 	logger.Debug("create trip draft request accepted")
 
-	//check if the token is valid and the role is client
+	// client identity from Keycloak JWT (sub) — must match body driverId (IDOR guard)
 	claims, err := GetClaimsFromContext(c)
 	if err != nil {
 		logger.Error("failed to get claims from context", slog.Any("error", err))
 		return HandleError(c, err)
 	}
 
-	// in the API, get the client data from Keycloak
-	clientID, err := convertStringToUUID(claims.Subject)
+	clientID, err := ClientIDFromClaims(claims)
 	if err != nil {
-		logger.Error("failed to validate client ID", slog.Any("error", err))
+		logger.Error("failed to parse client ID from token subject", slog.Any("error", err))
 		return HandleError(c, err)
 	}
 	if request.DriverID != clientID {
-		logger.Error("client ID mismatch", slog.String("request_id", request.DriverID.String()), slog.String("client_id", clientID.String()))
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error":  apierr.ErrorForbiddenIDMismatch,
-			"reason": err,
-		})
+		logger.Error("client ID mismatch",
+			slog.String("request_driver_id", request.DriverID.String()),
+			slog.String("token_sub", clientID.String()),
+		)
+		return HandleError(c, apierr.ErrForbiddenIDMismatch)
 	}
 
 	resp, err := s.TripService.CreateTripDraft(
 		ctx,
 		model.CreateTripRequestModel{
-			DriverID:       request.DriverID, // UUID of the user in the Keycloak database
+			DriverID:       clientID, // source of truth = Keycloak sub (same as body after check)
 			FromPoint:      request.FromPoint,
 			ToPoint:        request.ToPoint,
 			DepartureTime:  request.DepartureTime,

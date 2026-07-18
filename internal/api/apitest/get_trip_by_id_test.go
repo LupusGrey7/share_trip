@@ -12,7 +12,6 @@ import (
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +19,7 @@ func TestServer_GetTripById(t *testing.T) {
 
 	t.Run("success - получение поездки по ID", func(t *testing.T) {
 		payload := api.CreateTripRequestModel{
-			DriverID:       uuid.New(),
+			DriverID:       testClientID, // must match Keycloak stub sub
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
 			DepartureTime:  time.Now(),

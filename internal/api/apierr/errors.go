@@ -16,9 +16,9 @@ const (
 	InternalServerError      = "internal server error"
 	InternalServerErrorWith  = "internal server error, %v"
 	ErrorClaimsNotFound      = "claims not found in context"
-	ErrorForbiddenRole       = "forbidden role %s"
-	ErrorForbiddenIDMismatch = "forbidden ID mismatch"
-	ErrorBadGateway          = "bad gateway error"
+	ErrorForbiddenRole       = "forbidden: missing required client role"
+	ErrorForbiddenIDMismatch = "forbidden: driverId does not match authenticated user"
+	ErrorBadGateway          = "bad gateway: invalid subject in token"
 )
 
 var (

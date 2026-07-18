@@ -8,11 +8,12 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 
+	"job4j.ru/share_trip/internal/api/apierr"
+	"job4j.ru/share_trip/internal/domain/errs"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
 
 	"github.com/gofiber/fiber/v2"
-	"job4j.ru/share_trip/internal/domain/errs"
 )
 
 func (s *Server) GetTripById(c *fiber.Ctx) error {
@@ -33,12 +34,19 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 	if tripID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
 	}
-	//check if the token is valid and the role is client
-	_, err := GetClaimsFromContext(c)
+	// identity from Keycloak (role already checked on route; helper = defense in depth)
+	claims, err := GetClaimsFromContext(c)
 	if err != nil {
 		logger.Error("failed to get claims from context", slog.Any("error", err))
 		return HandleError(c, err)
 	}
+	clientID, err := ClientIDFromClaims(claims)
+	if err != nil {
+		logger.Error("failed to parse client ID from token subject", slog.Any("error", err))
+		return HandleError(c, err)
+	}
+	logger = logger.With(slog.String("client_id", clientID.String()))
+	ctx = logctx.WithLogger(ctx, logger)
 
 	request := GetByIDRequestModel{ID: tripID}
 
@@ -56,6 +64,15 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 	if err != nil {
 		logger.Error("get trip by id failed", slog.Any("error", err))
 		return HandleError(c, err)
+	}
+
+	// ownership: only the driver from Keycloak sub may read this trip (IDOR guard)
+	if resp.DriverID != clientID {
+		logger.Error("get trip forbidden: caller is not trip owner",
+			slog.String("trip_driver_id", resp.DriverID.String()),
+			slog.String("token_sub", clientID.String()),
+		)
+		return HandleError(c, apierr.ErrForbiddenIDMismatch)
 	}
 
 	logger.Debug("get trip by id completed", slog.String("trip_id", request.ID))

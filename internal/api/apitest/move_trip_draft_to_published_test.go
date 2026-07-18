@@ -20,7 +20,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 
 	t.Run("success - обновление поездки", func(t *testing.T) {
 		payload := api.CreateTripRequestModel{
-			DriverID:       uuid.New(),
+			DriverID:       testClientID, // must match Keycloak stub sub
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
 			DepartureTime:  time.Now(),
@@ -123,7 +123,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 	})
 	t.Run("forbidden - обновление поездки", func(t *testing.T) { //403
 		payload := api.CreateTripRequestModel{
-			DriverID:       uuid.New(),
+			DriverID:       testClientID, // must match Keycloak stub sub
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
 			DepartureTime:  time.Now(),
@@ -211,7 +211,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 	})
 	t.Run("statusNotFound - обновление поездки", func(t *testing.T) { //404
 		payload := api.CreateTripRequestModel{
-			DriverID:       uuid.New(),
+			DriverID:       testClientID, // must match Keycloak stub sub
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
 			DepartureTime:  time.Now(),
@@ -293,7 +293,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 	})
 	t.Run("StatusConflict - обновление поездки", func(t *testing.T) { //409
 		payload := api.CreateTripRequestModel{
-			DriverID:       uuid.New(),
+			DriverID:       testClientID, // must match Keycloak stub sub
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
 			DepartureTime:  time.Now(),
@@ -377,7 +377,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 	})
 	t.Run("internalServerError - обновление поездки", func(t *testing.T) { // 500
 		payload := api.CreateTripRequestModel{
-			DriverID:       uuid.New(),
+			DriverID:       testClientID, // must match Keycloak stub sub
 			FromPoint:      "Mockov city, st. Big Star, h.10О",
 			ToPoint:        "Mockov city, st. Dig Star, h.10",
 			DepartureTime:  time.Now(),

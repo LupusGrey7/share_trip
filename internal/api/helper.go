@@ -1,3 +1,4 @@
+// package api — helper functions for the API layer
 package api
 
 import (
@@ -10,52 +11,58 @@ import (
 	"job4j.ru/share_trip/internal/middleware"
 )
 
-// helper function to check specific value in the chain of errors
+// HandleError maps domain/api sentinel errors to HTTP responses.
 func HandleError(c *fiber.Ctx, err error) error {
 	switch {
-	case errors.Is(err, errors.New(apierr.ErrorClaimsNotFound)): //401
-		return apierr.ErrResponse(c, fiber.StatusUnauthorized, apierr.ErrorClaimsNotFound) //401
-	case errors.Is(err, apierr.ErrForbiddenRole): //403
-		return apierr.ErrResponse(c, fiber.StatusForbidden, apierr.ErrorForbiddenRole) //403
-	case errors.Is(err, usecase.ErrForbidden): //403
-		return apierr.ErrResponse(c, fiber.StatusForbidden, errors.Unwrap(err).Error()) //  unwrap the error chain (extract the main description)
-	case errors.Is(err, usecase.ErrTripNotFound): //404
-		return apierr.ErrResponse(c, fiber.StatusNotFound, apierr.StatusNotFound) //404
-	case errors.Is(err, usecase.ErrConflict):
-		return apierr.ErrResponse(c, fiber.StatusConflict, errors.Unwrap(err).Error()) //409
-	case errors.Is(err, apierr.ErrBadGateway):
-		return apierr.ErrResponse(c, fiber.StatusBadGateway, apierr.ErrorBadGateway) //502
+	case errors.Is(err, apierr.ErrClaimsNotFound): // 401
+		return apierr.ErrResponse(c, fiber.StatusUnauthorized, apierr.ErrorClaimsNotFound)
+	case errors.Is(err, apierr.ErrForbiddenRole): // 403
+		return apierr.ErrResponse(c, fiber.StatusForbidden, apierr.ErrorForbiddenRole)
+	case errors.Is(err, apierr.ErrForbiddenIDMismatch): // 403 — body driverId ≠ JWT sub
+		return apierr.ErrResponse(c, fiber.StatusForbidden, apierr.ErrorForbiddenIDMismatch)
+	case errors.Is(err, usecase.ErrForbidden): // 403
+		if unwrapped := errors.Unwrap(err); unwrapped != nil {
+			return apierr.ErrResponse(c, fiber.StatusForbidden, unwrapped.Error())
+		}
+		return apierr.ErrResponse(c, fiber.StatusForbidden, apierr.ErrorForbidden)
+	case errors.Is(err, usecase.ErrTripNotFound): // 404
+		return apierr.ErrResponse(c, fiber.StatusNotFound, apierr.StatusNotFound)
+	case errors.Is(err, usecase.ErrConflict): // 409
+		if unwrapped := errors.Unwrap(err); unwrapped != nil {
+			return apierr.ErrResponse(c, fiber.StatusConflict, unwrapped.Error())
+		}
+		return apierr.ErrResponse(c, fiber.StatusConflict, "conflict")
+	case errors.Is(err, apierr.ErrBadGateway): // 502 — e.g. sub is not a UUID
+		return apierr.ErrResponse(c, fiber.StatusBadGateway, apierr.ErrorBadGateway)
 	default:
-		return apierr.ErrResponse(c, fiber.StatusInternalServerError, apierr.InternalServerError) //500
+		return apierr.ErrResponse(c, fiber.StatusInternalServerError, apierr.InternalServerError)
 	}
 }
 
-// get claims from context
-// if token is missing, the application will return: 401 Unauthorized
-// if token is valid, but the role is missing, the application will return: 403 Forbidden
+// GetClaimsFromContext returns JWT claims from Fiber locals (set by Keycloak middleware).
+// 401 if claims missing; 403 if client role "client" is absent.
+// Note: RequireClientRole on the route already checks the role — this is defense in depth.
 func GetClaimsFromContext(c *fiber.Ctx) (*middleware.KeycloakClaims, error) {
-	// 1. get interface{} from Map by key
 	raw := c.Locals(middleware.KeycloakClaimsKey)
 
-	// 2. make type assertion to *KeycloakClaims
 	claims, ok := raw.(*middleware.KeycloakClaims)
 	if !ok || claims == nil {
-		// protection: if the middleware didn't work or the type didn't match
-		return nil, errors.New(apierr.ErrorClaimsNotFound)
+		return nil, apierr.ErrClaimsNotFound
 	}
-	//check if the role is client
-	if !claims.HasClientRole(middleware.KeycloakClientRole, "client") {
+
+	// HasClientRole(clientID, role) — first arg is OAuth client name, second is role
+	if !claims.HasClientRole(middleware.KeycloakClientID, middleware.KeycloakClientRole) {
 		return nil, apierr.ErrForbiddenRole
 	}
 
 	return claims, nil
 }
 
-// convert string to uuid.UUID
-func convertStringToUUID(clientID string) (uuid.UUID, error) {
-	clientIDUUID, err := uuid.Parse(clientID)
+// ClientIDFromClaims parses JWT subject (Keycloak user id) as UUID.
+func ClientIDFromClaims(claims *middleware.KeycloakClaims) (uuid.UUID, error) {
+	clientID, err := uuid.Parse(claims.Subject)
 	if err != nil {
 		return uuid.Nil, apierr.ErrBadGateway
 	}
-	return clientIDUUID, nil // UUID of the user in the Keycloak database
+	return clientID, nil
 }
