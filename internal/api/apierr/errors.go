@@ -10,11 +10,15 @@ import (
 )
 
 const (
-	InvalidValidateError    = "Validation errors: %v\n"
-	StatusNotFound          = "trip not found"
-	ErrorForbidden          = "forbidden"
-	InternalServerError     = "internal server error"
-	InternalServerErrorWith = "internal server error, %v"
+	InvalidValidateError     = "Validation errors: %v\n"
+	StatusNotFound           = "trip not found"
+	ErrorForbidden           = "forbidden"
+	InternalServerError      = "internal server error"
+	InternalServerErrorWith  = "internal server error, %v"
+	ErrorClaimsNotFound      = "claims not found in context"
+	ErrorForbiddenRole       = "forbidden role %s"
+	ErrorForbiddenIDMismatch = "forbidden ID mismatch"
+	ErrorBadGateway          = "bad gateway error"
 )
 
 var (
@@ -24,6 +28,10 @@ var (
 	ErrNotFound            = errors.New("not found")
 	ErrNotSupported        = errors.New("not supported")
 	ErrIllegalArgument     = errors.New("illegal argument provided")
+	ErrClaimsNotFound      = errors.New("claims not found in context")
+	ErrForbiddenIDMismatch = errors.New("forbidden ID mismatch")
+	ErrForbiddenRole       = errors.New("forbidden role for the client")
+	ErrBadGateway          = errors.New("bad gateway error")
 )
 
 func ErrResponse(

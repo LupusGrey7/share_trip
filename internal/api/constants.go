@@ -6,4 +6,5 @@ const (
 	internalServerError  = "Internal server error"
 	invalidIdParamFormat = "id param is required"
 	invalidParseJson     = "Cannot parse JSON, reason:"
+	forbiddenIDMismatch  = "forbidden ID mismatch"
 )

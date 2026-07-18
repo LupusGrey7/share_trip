@@ -33,6 +33,12 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 	if tripID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
 	}
+	//check if the token is valid and the role is client
+	_, err := GetClaimsFromContext(c)
+	if err != nil {
+		logger.Error("failed to get claims from context", slog.Any("error", err))
+		return HandleError(c, err)
+	}
 
 	request := GetByIDRequestModel{ID: tripID}
 
