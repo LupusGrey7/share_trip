@@ -24,6 +24,10 @@ import (
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/repository"
 
+	//"github.com/gofiber/fiber/v2/log"
+	//testConfigs "job4j.ru/share_trip/internal/configs"
+
+	"job4j.ru/share_trip/internal/api/apitest/fixtures"
 	"job4j.ru/share_trip/internal/service"
 )
 
@@ -104,7 +108,8 @@ func TestMain(m *testing.M) {
 	})
 
 	// build test Server with Routes including middleware
-	server.SetupRoutes(testApp, testKeycloakAuth()) // ← add middleware Keycloak
+	//server.SetupRoutes(testApp, testKeycloakAuth()) // ← add middleware Keycloak
+	server.SetupRoutes(testApp, fixtures.KeycloakRefreshTokenMiddleware()) // ← add middleware Keycloak Refresh Token
 
 	// Output all registered routes to console (explicitly)
 	printRegisteredRoutes(testApp)

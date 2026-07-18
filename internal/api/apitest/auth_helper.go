@@ -6,7 +6,7 @@ import (
 	"job4j.ru/share_trip/internal/middleware"
 )
 
-// testClientID — фиксированный sub для apitest (Keycloak stub).
+// testClientID — fixed sub for apitest (Keycloak stub).
 var testClientID = uuid.MustParse("11111111-1111-1111-1111-111111111111")
 
 // testKeycloakAuth injects JWT claims without Keycloak (apitest only).
