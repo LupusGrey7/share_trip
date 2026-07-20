@@ -5,13 +5,9 @@ package api
 import (
 	"log/slog"
 
-	"fmt"
-
 	"github.com/gofiber/fiber/v2"
 	"go.opentelemetry.io/otel"
 	"job4j.ru/share_trip/internal/api/apierr"
-	"job4j.ru/share_trip/internal/domain/errs"
-	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
@@ -47,7 +43,7 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 			"create trip draft failed: invalid request",
 			slog.Any("error", err),
 		)
-		return errs.RequestValidationError{Message: err.Error()}
+		return HandleError(c, apierr.ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
 	}
 
 	logger = logger.With(slog.String("client_id", request.DriverID.String()))
@@ -67,11 +63,6 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 		return HandleError(c, err)
 	}
 
-	logger.Info("clientID", slog.String("client_id", clientID.String())) //FIXME for debug
-	logger.Info("tripID", slog.String("trip_id", claims.Subject))        //FIXME for debug
-	fmt.Println("clientID", clientID.String())                           //FIXME for debug
-	fmt.Println("tripID", claims.Subject)                                //FIXME for debug
-
 	if request.DriverID != clientID {
 		logger.Error("client ID mismatch",
 			slog.String("request_driver_id", request.DriverID.String()),
@@ -80,16 +71,11 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 		return HandleError(c, apierr.ErrForbiddenIDMismatch)
 	}
 
-	resp, err := s.TripService.CreateTripDraft(
-		ctx,
-		model.CreateTripRequestModel{
-			DriverID:       clientID, // source of truth = Keycloak sub (same as body after check)
-			FromPoint:      request.FromPoint,
-			ToPoint:        request.ToPoint,
-			DepartureTime:  request.DepartureTime,
-			AvailableSeats: request.AvailableSeats,
-		},
-	)
+	// source of truth for DriverID = Keycloak sub (body already matched above)
+	domainReq := request.ToCreateTripRequestModel()
+	domainReq.DriverID = clientID
+
+	resp, err := s.TripService.CreateTripDraft(ctx, domainReq)
 	if err != nil {
 		logger.Error("create trip draft failed", slog.Any("error", err))
 		return HandleError(c, err)

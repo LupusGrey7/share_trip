@@ -24,9 +24,6 @@ import (
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/repository"
 
-	//"github.com/gofiber/fiber/v2/log"
-	//testConfigs "job4j.ru/share_trip/internal/configs"
-
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
 	"job4j.ru/share_trip/internal/service"
 )
@@ -45,6 +42,15 @@ var (
 	testContainer *postgres.PostgresContainer
 )
 
+/*
+=== Registered Routes ===
+GET /ready
+GET /trip/:tripId
+HEAD /ready
+HEAD /trip/:tripId
+POST /trip/createTripDraft
+PATCH /trip/moveTripDraft-ToPublish/:tripId
+*/
 func TestMain(m *testing.M) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -108,7 +114,6 @@ func TestMain(m *testing.M) {
 	})
 
 	// build test Server with Routes including middleware
-	//server.SetupRoutes(testApp, testKeycloakAuth()) // ← add middleware Keycloak
 	server.SetupRoutes(testApp, fixtures.KeycloakRefreshTokenMiddleware()) // ← add middleware Keycloak Refresh Token
 
 	// Output all registered routes to console (explicitly)

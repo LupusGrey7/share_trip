@@ -11,7 +11,7 @@ type GetTripByIDRequestModel struct {
 	ID string `validate:"required,uuid"`
 }
 
-func (req GetTripByIDRequestModel) ToModel() model.GetByIDModelRequest {
+func (req GetTripByIDRequestModel) ToGetByIDRequestModel() model.GetByIDModelRequest {
 	return model.GetByIDModelRequest{ID: req.ID}
 }
 
@@ -28,7 +28,17 @@ type CreateTripRequestModel struct {
 	AvailableSeats int       `json:"seats" validate:"required,min=1,max=4"`
 }
 
-func (req *MoveTripDraftToPublishRequestModel) ToRequest() model.MoveTripDraftToPublishModel {
+func (req *CreateTripRequestModel) ToCreateTripRequestModel() model.CreateTripRequestModel {
+	return model.CreateTripRequestModel{
+		DriverID:       req.DriverID, // source of truth = Keycloak sub (same as body after check)
+		FromPoint:      req.FromPoint,
+		ToPoint:        req.ToPoint,
+		DepartureTime:  req.DepartureTime,
+		AvailableSeats: req.AvailableSeats,
+	}
+}
+
+func (req *MoveTripDraftToPublishRequestModel) ToMoveTripDraftToPublishModel() model.MoveTripDraftToPublishModel {
 	return model.MoveTripDraftToPublishModel{
 		ID:       req.ID,
 		ClientID: req.ClientID,

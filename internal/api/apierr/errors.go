@@ -1,4 +1,4 @@
-// В данном классе мы будем хранить api-ошибки
+// In this class we will store api errors
 
 package apierr
 
@@ -32,7 +32,7 @@ var (
 	ErrForbiddenIDMismatch = errors.New("forbidden ID mismatch")
 	ErrForbiddenRole       = errors.New("forbidden role for the client")
 	ErrBadGateway          = errors.New("bad gateway error")
-	ErrInvalidValidate     = errors.New("validation errors")
+	ErrInvalidValidate     = errors.New("request validation error")
 )
 
 func ErrResponse(

@@ -63,7 +63,7 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 	// logging at the component boundary
 	logger.Debug("get trip by id", slog.String("tripId", tripID))
 
-	resp, err := s.TripService.GetTripByID(ctx, request.ToModel())
+	resp, err := s.TripService.GetTripByID(ctx, request.ToGetByIDRequestModel())
 	if err != nil {
 		logger.Error("get trip by id failed", slog.Any("error", err))
 		return HandleError(c, err)

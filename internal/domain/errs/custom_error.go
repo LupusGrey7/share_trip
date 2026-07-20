@@ -1,7 +1,6 @@
+// Custom errors - Domain errors
+// Domain errors are separate from transport errors
 package errs
-
-//Структуры кастомных ошибок - Доменные ошибки
-//Доменные ошибки отдельно от транспортных
 
 type RequestValidationError struct {
 	Message string
