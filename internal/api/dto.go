@@ -11,6 +11,10 @@ type GetTripByIDRequestModel struct {
 	ID string `validate:"required,uuid"`
 }
 
+func (req GetTripByIDRequestModel) ToModel() model.GetByIDModelRequest {
+	return model.GetByIDModelRequest{ID: req.ID}
+}
+
 type MoveTripDraftToPublishRequestModel struct {
 	ID       string    `validate:"required,uuid"`
 	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"`
@@ -29,10 +33,6 @@ func (req *MoveTripDraftToPublishRequestModel) ToRequest() model.MoveTripDraftTo
 		ID:       req.ID,
 		ClientID: req.ClientID,
 	}
-}
-
-type GetByIDRequestModel struct {
-	ID string `validate:"required,uuid"`
 }
 
 type CreateTripRequest struct {

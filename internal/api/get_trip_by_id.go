@@ -9,8 +9,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 
 	"job4j.ru/share_trip/internal/api/apierr"
-	"job4j.ru/share_trip/internal/domain/errs"
-	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
 
 	"github.com/gofiber/fiber/v2"
@@ -32,8 +30,17 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 
 	tripID := c.Params("tripId")
 	if tripID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
+		logger.Warn("get trip by id failed: invalid request", slog.String("error", invalidIdParamFormat))
+		return apierr.ErrResponse(c, fiber.StatusBadRequest, invalidIdParamFormat)
 	}
+
+	request := GetTripByIDRequestModel{ID: tripID}
+
+	if err := s.validator.Struct(request); err != nil {
+		logger.Warn("get trip by id failed: invalid request", slog.Any("error", err))
+		return HandleError(c, apierr.ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
+	}
+
 	// identity from Keycloak (role already checked on route; helper = defense in depth)
 	claims, err := GetClaimsFromContext(c)
 	if err != nil {
@@ -45,14 +52,10 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 		logger.Error("failed to parse client ID from token subject", slog.Any("error", err))
 		return HandleError(c, err)
 	}
+
 	logger = logger.With(slog.String("client_id", clientID.String()))
 	ctx = logctx.WithLogger(ctx, logger)
 
-	request := GetByIDRequestModel{ID: tripID}
-
-	if err := s.validator.Struct(request); err != nil {
-		return errs.RequestValidationError{Message: err.Error()}
-	}
 	//tracing
 	span.SetAttributes(
 		attribute.String("trip_id", tripID),
@@ -60,7 +63,7 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 	// logging at the component boundary
 	logger.Debug("get trip by id", slog.String("tripId", tripID))
 
-	resp, err := s.TripService.GetTripByID(ctx, model.GetByIDModelRequest{ID: request.ID})
+	resp, err := s.TripService.GetTripByID(ctx, request.ToModel())
 	if err != nil {
 		logger.Error("get trip by id failed", slog.Any("error", err))
 		return HandleError(c, err)

@@ -25,6 +25,8 @@ func HandleError(c *fiber.Ctx, err error) error {
 			return apierr.ErrResponse(c, fiber.StatusForbidden, unwrapped.Error())
 		}
 		return apierr.ErrResponse(c, fiber.StatusForbidden, apierr.ErrorForbidden)
+	case errors.Is(err, apierr.ErrInvalidValidate): // 400
+		return apierr.ErrResponse(c, fiber.StatusBadRequest, apierr.RequestValidationError)
 	case errors.Is(err, usecase.ErrTripNotFound): // 404
 		return apierr.ErrResponse(c, fiber.StatusNotFound, apierr.StatusNotFound)
 	case errors.Is(err, usecase.ErrConflict): // 409

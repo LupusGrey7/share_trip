@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	InvalidValidateError     = "Validation errors: %v\n"
+	RequestValidationError   = "request validation error"
 	StatusNotFound           = "trip not found"
 	ErrorForbidden           = "forbidden"
 	InternalServerError      = "internal server error"
@@ -32,6 +32,7 @@ var (
 	ErrForbiddenIDMismatch = errors.New("forbidden ID mismatch")
 	ErrForbiddenRole       = errors.New("forbidden role for the client")
 	ErrBadGateway          = errors.New("bad gateway error")
+	ErrInvalidValidate     = errors.New("validation errors")
 )
 
 func ErrResponse(

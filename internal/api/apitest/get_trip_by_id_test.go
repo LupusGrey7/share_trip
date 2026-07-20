@@ -13,15 +13,17 @@ import (
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 
-	domainhttp "job4j.ru/share_trip/internal/domain/http"
 	"job4j.ru/share_trip/internal/api/apierr"
+	domainhttp "job4j.ru/share_trip/internal/domain/http"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestServer_GetTripById(t *testing.T) {
 
-	t.Run("success_get_trip_by_id", func(t *testing.T) {
+	// Given: trip created by NormalClientID and then GET trip by ID
+	// Then: 200 OK
+	t.Run("success_get_trip_by_id_when_caller_is_trip_owner", func(t *testing.T) {
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		payload := createTripDraft()
@@ -33,6 +35,7 @@ func TestServer_GetTripById(t *testing.T) {
 		req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set(fixtures.RefreshTokenHeader, fixtures.RefreshTokenValue)
 
 		resp, err := testApp.Test(req, -1)
 		require.NoError(t, err)
@@ -67,6 +70,7 @@ func TestServer_GetTripById(t *testing.T) {
 		req, err1 := http.NewRequest(http.MethodGet, urlCheck, nil)
 		require.NoError(t, err1)
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set(fixtures.RefreshTokenHeader, fixtures.RefreshTokenValue)
 
 		resp, err1 = testApp.Test(req, -1)
 		require.NoError(t, err1)
@@ -112,6 +116,7 @@ func TestServer_GetTripById(t *testing.T) {
 		req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set(fixtures.RefreshTokenHeader, fixtures.RefreshTokenValue)
 
 		resp, err := testApp.Test(req, -1)
 		require.NoError(t, err)
@@ -156,6 +161,75 @@ func TestServer_GetTripById(t *testing.T) {
 		require.False(t, apiResp.Success)
 		require.Equal(t, apierr.ErrorForbiddenIDMismatch, apiResp.Message)
 	})
+
+	// Given: valid UUID format, but trip does not exist in DB
+	// When: GET trip by ID
+	// Then: 404 Not Found
+	t.Run("not_found_when_trip_does_not_exist", func(t *testing.T) {
+		fixtures.UseStubClientID(t, fixtures.NormalClientID)
+		// Must be valid UUID (validate:"uuid") — otherwise validator fails before DB → 500 in Fiber
+		nonExistentTripID := "00000000-0000-0000-0000-000000000001"
+
+		url := GroupPrefixV2 + fmt.Sprintf("/trip/%s", nonExistentTripID)
+
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set(fixtures.RefreshTokenHeader, fixtures.RefreshTokenValue)
+
+		resp, err := testApp.Test(req, -1)
+		require.NoError(t, err)
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				t.Errorf("close response body: %v", err)
+			}
+		}()
+
+		require.Equal(t, http.StatusNotFound, resp.StatusCode)
+
+		respBody, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+
+		var apiResp domainhttp.Response
+		require.NoError(t, json.Unmarshal(respBody, &apiResp))
+		require.False(t, apiResp.Success)
+		require.Equal(t, apierr.StatusNotFound, apiResp.Message)
+	})
+
+	// Given: invalid UUID format
+	// When: GET trip by ID
+	// Then: 400 Bad Request
+	t.Run("bad_request_when_trip_id_is_not_valid_uuid", func(t *testing.T) {
+		fixtures.UseStubClientID(t, fixtures.NormalClientID)
+		// Must NOT be a valid UUID — we assert 400 (format), not 404 (missing row)
+		invalidTripID := "x-invalid-uuid"
+
+		url := GroupPrefixV2 + fmt.Sprintf("/trip/%s", invalidTripID)
+
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set(fixtures.RefreshTokenHeader, fixtures.RefreshTokenValue)
+
+		resp, err := testApp.Test(req, -1)
+		require.NoError(t, err)
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				t.Errorf("close response body: %v", err)
+			}
+		}()
+
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+		respBody, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+
+		var apiResp domainhttp.Response
+		require.NoError(t, json.Unmarshal(respBody, &apiResp))
+		require.False(t, apiResp.Success)
+		require.Equal(t, apierr.RequestValidationError, apiResp.Message)
+	})
+
 }
 
 func createTripDraft() api.CreateTripRequestModel {

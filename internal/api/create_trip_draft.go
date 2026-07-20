@@ -5,6 +5,8 @@ package api
 import (
 	"log/slog"
 
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 	"go.opentelemetry.io/otel"
 	"job4j.ru/share_trip/internal/api/apierr"
@@ -64,6 +66,12 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 		logger.Error("failed to parse client ID from token subject", slog.Any("error", err))
 		return HandleError(c, err)
 	}
+
+	logger.Info("clientID", slog.String("client_id", clientID.String())) //FIXME for debug
+	logger.Info("tripID", slog.String("trip_id", claims.Subject))        //FIXME for debug
+	fmt.Println("clientID", clientID.String())                           //FIXME for debug
+	fmt.Println("tripID", claims.Subject)                                //FIXME for debug
+
 	if request.DriverID != clientID {
 		logger.Error("client ID mismatch",
 			slog.String("request_driver_id", request.DriverID.String()),
