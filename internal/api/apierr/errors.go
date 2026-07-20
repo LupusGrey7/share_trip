@@ -12,7 +12,7 @@ import (
 const (
 	RequestValidationError   = "request validation error"
 	StatusNotFound           = "trip not found"
-	ErrorForbidden           = "forbidden"
+	ErrorForbidden           = "forbidden: %v is not driver of trip"
 	InternalServerError      = "internal server error"
 	InternalServerErrorWith  = "internal server error, %v"
 	ErrorClaimsNotFound      = "claims not found in context"

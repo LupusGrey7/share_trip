@@ -9,452 +9,250 @@ import (
 	"testing"
 	"time"
 
+	"job4j.ru/share_trip/internal/api"
+	"job4j.ru/share_trip/internal/api/apierr"
+	"job4j.ru/share_trip/internal/api/apitest/fixtures"
+	domainhttp "job4j.ru/share_trip/internal/domain/http"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"job4j.ru/share_trip/internal/api"
+)
+
+const (
+	createTripDraftURLForPublish = GroupPrefixV2 + "/trip/createTripDraft"
+	moveTripDraftToPublishURL    = GroupPrefixV2 + "/trip/moveTripDraft-ToPublish/%s"
 )
 
 func TestServer_MoveTripDraftToPublish(t *testing.T) {
+	// Given: trip draft owned by NormalClientID
+	// When: owner publishes
+	// Then: 200 + status published
+	t.Run("success_when_caller_is_trip_owner", func(t *testing.T) {
+		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
-	t.Run("success - обновление поездки", func(t *testing.T) {
-		payload := api.CreateTripRequestModel{
-			DriverID:       testClientID, // must match Keycloak stub sub
-			FromPoint:      "Mockov city, st. Big Star, h.10О",
-			ToPoint:        "Mockov city, st. Dig Star, h.10",
-			DepartureTime:  time.Now(),
-			AvailableSeats: 1,
+		created := mustCreateTripDraft(t, createTripDraftRequestModel())
+
+		publishBody := api.MoveTripDraftToPublishRequestModel{
+			ClientID: fixtures.NormalClientID,
 		}
-
-		body, err := json.Marshal(payload)
-		require.NoError(t, err)
-
-		url := GroupPrefixV2 + "/trip/createTripDraft"
-		req, err := http.NewRequest(
-			http.MethodPost,
-			url,
-			bytes.NewReader(body),
-		)
-
-		require.NoError(t, err)
-		req.Header.Set("Content-Type", "application/json")
-
-		//Отправляем запрос в приложение
-		resp, err := testApp.Test(req, -1)
-		require.NoError(t, err)
+		resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
 				t.Errorf("close response body: %v", err)
 			}
 		}()
 
-		require.Equal(t, http.StatusCreated, resp.StatusCode)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripDraftResponse
-		err = json.Unmarshal(respBody, &got)
-		require.NoError(t, err)
-		response := model.CreateTripDraftResponse{
+		var got model.MoveTripDraftToPublishModelResponse
+		require.NoError(t, json.Unmarshal(respBody, &got))
+
+		want := model.MoveTripDraftToPublishModelResponse{
 			ID:            got.ID,
-			DriverID:      payload.DriverID,
+			DriverID:      fixtures.NormalClientID,
 			FromPoint:     got.FromPoint,
 			ToPoint:       got.ToPoint,
 			CreatedAt:     got.CreatedAt,
 			DepartureTime: got.DepartureTime,
 			Seats:         got.Seats,
-			Status:        got.Status,
-		}
-
-		require.Equal(t, response, got)
-
-		//---update
-		publishModelRequest := api.MoveTripDraftToPublishRequestModel{
-			ClientID: payload.DriverID,
-		}
-
-		marshalBody, err1 := json.Marshal(publishModelRequest)
-		require.NoError(t, err1)
-
-		urlUpdate := GroupPrefixV2 + fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", got.ID)
-		req, err1 = http.NewRequest(
-			http.MethodPatch,
-			urlUpdate,
-			bytes.NewReader(marshalBody),
-		)
-		require.NoError(t, err1)
-		req.Header.Set("Content-Type", "application/json")
-
-		//Отправляем запрос в приложение
-		resp2, err2 := testApp.Test(req, -1)
-		require.NoError(t, err2)
-		defer func() {
-			if err := resp2.Body.Close(); err != nil {
-				t.Errorf("close response body: %v", err)
-			}
-		}()
-
-		t.Logf("Response body: %v", resp2)
-		require.Equal(t, http.StatusOK, resp2.StatusCode)
-
-		respBody, err2 = io.ReadAll(resp2.Body)
-		require.NoError(t, err2)
-
-		var got1 model.MoveTripDraftToPublishModelResponse
-		err1 = json.Unmarshal(respBody, &got1)
-		require.NoError(t, err1)
-
-		t.Logf("Response body2: %s", string(respBody)) // Выведем тело ответа для диагностики
-
-		response1 := model.MoveTripDraftToPublishModelResponse{
-			ID:            got1.ID,
-			DriverID:      payload.DriverID,
-			FromPoint:     got1.FromPoint,
-			ToPoint:       got1.ToPoint,
-			CreatedAt:     got1.CreatedAt,
-			DepartureTime: got1.DepartureTime,
-			Seats:         got1.Seats,
 			Status:        model.StatusPublished,
 		}
-
-		require.Equal(t, response1, got1)
+		require.Equal(t, want, got)
 	})
-	t.Run("forbidden - обновление поездки", func(t *testing.T) { //403
-		payload := api.CreateTripRequestModel{
-			DriverID:       testClientID, // must match Keycloak stub sub
-			FromPoint:      "Mockov city, st. Big Star, h.10О",
-			ToPoint:        "Mockov city, st. Dig Star, h.10",
-			DepartureTime:  time.Now(),
-			AvailableSeats: 1,
+
+	// Given: trip draft owned by NormalClientID
+	// When: body.clientId is another user
+	// Then: 403 (use case ownership check)
+	t.Run("forbidden_when_client_id_is_not_trip_owner", func(t *testing.T) {
+		fixtures.UseStubClientID(t, fixtures.NormalClientID)
+
+		created := mustCreateTripDraft(t, createTripDraftRequestModel())
+
+		publishBody := api.MoveTripDraftToPublishRequestModel{
+			ClientID: fixtures.InvalidClientID,
 		}
-
-		body, err := json.Marshal(payload)
-		require.NoError(t, err)
-
-		url := GroupPrefixV2 + "/trip/createTripDraft"
-		req, err := http.NewRequest(
-			http.MethodPost,
-			url,
-			bytes.NewReader(body),
-		)
-		require.NoError(t, err)
-		req.Header.Set("Content-Type", "application/json")
-
-		//Отправляем запрос в приложение
-		resp, err := testApp.Test(req, -1)
-		require.NoError(t, err)
+		resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
 				t.Errorf("close response body: %v", err)
 			}
 		}()
 
-		require.Equal(t, http.StatusCreated, resp.StatusCode)
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripDraftResponse
-		err = json.Unmarshal(respBody, &got)
-		require.NoError(t, err)
-		response := model.CreateTripDraftResponse{
-			ID:            got.ID,
-			DriverID:      payload.DriverID,
-			FromPoint:     got.FromPoint,
-			ToPoint:       got.ToPoint,
-			CreatedAt:     got.CreatedAt,
-			DepartureTime: got.DepartureTime,
-			Seats:         got.Seats,
-			Status:        got.Status,
-		}
-
-		require.Equal(t, response, got)
-		t.Logf("Response ID: %v", got.ID)
-
-		//---update
-		uuID, err := uuid.Parse("d4733715-0fc7-42fa-b13a-f068e33c6d80")
-		if err != nil {
-			t.Errorf("err parse uuid: %v", err)
-		}
-		publishModelRequest := api.MoveTripDraftToPublishRequestModel{
-			ClientID: uuID,
-		}
-
-		marshalBody, err1 := json.Marshal(publishModelRequest)
-		require.NoError(t, err1)
-
-		t.Logf("/trip/moveTripDraft-ToPublish/%s\n", got.ID)
-
-		urlUpdate := GroupPrefixV2 + fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", got.ID)
-		req, err1 = http.NewRequest(
-			http.MethodPatch,
-			urlUpdate,
-			bytes.NewReader(marshalBody),
+		var apiResp domainhttp.Response
+		require.NoError(t, json.Unmarshal(respBody, &apiResp))
+		require.False(t, apiResp.Success)
+		// HandleError Unwrap'ит tx-обёртку → текст use case:
+		// fmt.Errorf("%w: client %s is not driver of trip %s", ErrForbidden, ...)
+		wantMsg := fmt.Sprintf(
+			"forbidden: client %s is not driver of trip %s",
+			fixtures.InvalidClientID,
+			created.ID,
 		)
-		require.NoError(t, err1)
-		req.Header.Set("Content-Type", "application/json")
-
-		//Отправляем запрос в приложение
-		resp2, err2 := testApp.Test(req, -1)
-		require.NoError(t, err2)
-		defer func() {
-			if err := resp2.Body.Close(); err != nil {
-				t.Errorf("close response body: %v", err)
-			}
-		}()
-
-		t.Logf("Response body: %v", resp2)
-		require.Equal(t, http.StatusForbidden, resp2.StatusCode)
-
+		require.Equal(t, wantMsg, apiResp.Message)
 	})
-	t.Run("statusNotFound - обновление поездки", func(t *testing.T) { //404
-		payload := api.CreateTripRequestModel{
-			DriverID:       testClientID, // must match Keycloak stub sub
-			FromPoint:      "Mockov city, st. Big Star, h.10О",
-			ToPoint:        "Mockov city, st. Dig Star, h.10",
-			DepartureTime:  time.Now(),
-			AvailableSeats: 1,
+
+	// Given: valid clientId, trip id does not exist
+	// When: publish
+	// Then: 404
+	t.Run("not_found_when_trip_does_not_exist", func(t *testing.T) {
+		fixtures.UseStubClientID(t, fixtures.NormalClientID)
+
+		nonExistentTripID := "00000000-0000-0000-0000-000000000001"
+		publishBody := api.MoveTripDraftToPublishRequestModel{
+			ClientID: fixtures.NormalClientID,
 		}
-
-		body, err := json.Marshal(payload)
-		require.NoError(t, err)
-
-		url := GroupPrefixV2 + "/trip/createTripDraft"
-		req, err := http.NewRequest(
-			http.MethodPost,
-			url,
-			bytes.NewReader(body),
-		)
-		require.NoError(t, err)
-		req.Header.Set("Content-Type", "application/json")
-
-		//Отправляем запрос в приложение
-		resp, err := testApp.Test(req, -1)
-		require.NoError(t, err)
+		resp := mustPublishTripDraft(t, nonExistentTripID, publishBody)
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
 				t.Errorf("close response body: %v", err)
 			}
 		}()
 
-		require.Equal(t, http.StatusCreated, resp.StatusCode)
+		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripDraftResponse
-		err = json.Unmarshal(respBody, &got)
-		require.NoError(t, err)
-		response := model.CreateTripDraftResponse{
-			ID:            got.ID,
-			DriverID:      payload.DriverID,
-			FromPoint:     got.FromPoint,
-			ToPoint:       got.ToPoint,
-			CreatedAt:     got.CreatedAt,
-			DepartureTime: got.DepartureTime,
-			Seats:         got.Seats,
-			Status:        got.Status,
-		}
-
-		require.Equal(t, response, got)
-		t.Logf("Response ID: %v", got.ID)
-
-		//---update
-		uuID := "d4733715-0fc7-42fa-b13a-f068e33c6d80"
-		publishModelRequest := api.MoveTripDraftToPublishRequestModel{
-			ClientID: payload.DriverID,
-		}
-		marshalBody, err1 := json.Marshal(publishModelRequest)
-
-		require.NoError(t, err1)
-
-		urlUpdate := GroupPrefixV2 + fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", uuID)
-		req, err1 = http.NewRequest(
-			http.MethodPatch,
-			urlUpdate,
-			bytes.NewReader(marshalBody),
-		)
-		require.NoError(t, err1)
-		req.Header.Set("Content-Type", "application/json")
-
-		//Отправляем запрос в приложение
-		resp2, err2 := testApp.Test(req, -1)
-		require.NoError(t, err2)
-		defer func() {
-			if err := resp2.Body.Close(); err != nil {
-				t.Errorf("close response body: %v", err)
-			}
-		}()
-
-		t.Logf("Response body: %v", resp2)
-		require.Equal(t, http.StatusNotFound, resp2.StatusCode)
+		var apiResp domainhttp.Response
+		require.NoError(t, json.Unmarshal(respBody, &apiResp))
+		require.False(t, apiResp.Success)
+		// ErrTripNotFound → константа StatusNotFound (без id в message)
+		require.Equal(t, apierr.StatusNotFound, apiResp.Message)
 	})
-	t.Run("StatusConflict - обновление поездки", func(t *testing.T) { //409
-		payload := api.CreateTripRequestModel{
-			DriverID:       testClientID, // must match Keycloak stub sub
-			FromPoint:      "Mockov city, st. Big Star, h.10О",
-			ToPoint:        "Mockov city, st. Dig Star, h.10",
-			DepartureTime:  time.Now(),
-			AvailableSeats: 1,
+
+	// Given: trip status forced to cancelled
+	// When: owner publishes
+	// Then: 409
+	t.Run("conflict_when_trip_is_cancelled", func(t *testing.T) {
+		fixtures.UseStubClientID(t, fixtures.NormalClientID)
+
+		created := mustCreateTripDraft(t, createTripDraftRequestModel())
+
+		_, err := testDB.ExecContext(testCtx, "UPDATE trips SET status = $1 WHERE id = $2", "cancelled", created.ID)
+		require.NoError(t, err)
+
+		publishBody := api.MoveTripDraftToPublishRequestModel{
+			ClientID: fixtures.NormalClientID,
 		}
-
-		body, err := json.Marshal(payload)
-		require.NoError(t, err)
-
-		url := GroupPrefixV2 + "/trip/createTripDraft"
-		req, err := http.NewRequest(
-			http.MethodPost,
-			url,
-			bytes.NewReader(body),
-		)
-		require.NoError(t, err)
-		req.Header.Set("Content-Type", "application/json")
-
-		//Отправляем запрос в приложение
-		resp, err := testApp.Test(req, -1)
-		require.NoError(t, err)
+		resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
 				t.Errorf("close response body: %v", err)
 			}
 		}()
 
-		require.Equal(t, http.StatusCreated, resp.StatusCode)
+		require.Equal(t, http.StatusConflict, resp.StatusCode)
 
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripDraftResponse
-		err = json.Unmarshal(respBody, &got)
-		require.NoError(t, err)
-		response := model.CreateTripDraftResponse{
-			ID:            got.ID,
-			DriverID:      payload.DriverID,
-			FromPoint:     got.FromPoint,
-			ToPoint:       got.ToPoint,
-			CreatedAt:     got.CreatedAt,
-			DepartureTime: got.DepartureTime,
-			Seats:         got.Seats,
-			Status:        got.Status,
-		}
-
-		require.Equal(t, response, got)
-		t.Logf("Response ID: %v", got.ID)
-
-		//---update
-		// Принудительно меняем статус созданной поездки на "cancelled"
-		_, err = testDB.ExecContext(testCtx, "UPDATE trips SET status = $1 WHERE id = $2", "cancelled", got.ID)
-		require.NoError(t, err)
-		publishModelRequest := api.MoveTripDraftToPublishRequestModel{
-			ClientID: payload.DriverID,
-		}
-
-		marshalBody, err1 := json.Marshal(publishModelRequest)
-		require.NoError(t, err1)
-
-		urlUpdate := GroupPrefixV2 + fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", got.ID)
-		req, err1 = http.NewRequest(
-			http.MethodPatch,
-			urlUpdate,
-			bytes.NewReader(marshalBody),
-		)
-		require.NoError(t, err1)
-		req.Header.Set("Content-Type", "application/json")
-
-		//Отправляем запрос в приложение
-		resp2, err2 := testApp.Test(req, -1)
-		require.NoError(t, err2)
-		defer func() {
-			if err := resp2.Body.Close(); err != nil {
-				t.Errorf("close response body: %v", err)
-			}
-		}()
-
-		t.Logf("Response body: %v", resp2)
-		require.Equal(t, http.StatusConflict, resp2.StatusCode)
+		var apiResp domainhttp.Response
+		require.NoError(t, json.Unmarshal(respBody, &apiResp))
+		require.False(t, apiResp.Success)
+		// Unwrap tx → use case: "%w: invalid entity status: expected %s"
+		wantMsg := fmt.Sprintf("conflict: invalid entity status: expected %s", model.StatusDraft)
+		require.Equal(t, wantMsg, apiResp.Message)
 	})
-	t.Run("internalServerError - обновление поездки", func(t *testing.T) { // 500
-		payload := api.CreateTripRequestModel{
-			DriverID:       testClientID, // must match Keycloak stub sub
-			FromPoint:      "Mockov city, st. Big Star, h.10О",
-			ToPoint:        "Mockov city, st. Dig Star, h.10",
-			DepartureTime:  time.Now(),
-			AvailableSeats: 1,
-		}
 
-		body, err := json.Marshal(payload)
-		require.NoError(t, err)
+	// Given: clientId = uuid.Nil (fails validate required,uuid)
+	// When: publish
+	// Then: 400 (HandleError ErrInvalidValidate), not 500
+	t.Run("bad_request_when_client_id_is_nil_uuid", func(t *testing.T) {
+		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
-		url := GroupPrefixV2 + "/trip/createTripDraft"
-		req, err := http.NewRequest(
-			http.MethodPost,
-			url,
-			bytes.NewReader(body),
-		)
-		require.NoError(t, err)
-		req.Header.Set("Content-Type", "application/json")
+		created := mustCreateTripDraft(t, createTripDraftRequestModel())
 
-		//Отправляем запрос в приложение
-		resp, err := testApp.Test(req, -1)
-		require.NoError(t, err)
-		defer func() {
-			if err := resp.Body.Close(); err != nil {
-				t.Errorf("close response body: %v", err)
-			}
-		}()
-
-		require.Equal(t, http.StatusCreated, resp.StatusCode)
-
-		respBody, err := io.ReadAll(resp.Body)
-		require.NoError(t, err)
-
-		var got model.CreateTripDraftResponse
-		err = json.Unmarshal(respBody, &got)
-		require.NoError(t, err)
-		response := model.CreateTripDraftResponse{
-			ID:            got.ID,
-			DriverID:      payload.DriverID,
-			FromPoint:     got.FromPoint,
-			ToPoint:       got.ToPoint,
-			CreatedAt:     got.CreatedAt,
-			DepartureTime: got.DepartureTime,
-			Seats:         got.Seats,
-			Status:        got.Status,
-		}
-
-		require.Equal(t, response, got)
-		t.Logf("Response ID: %v", got.ID)
-
-		//---update
-		publishModelRequest := api.MoveTripDraftToPublishRequestModel{
+		publishBody := api.MoveTripDraftToPublishRequestModel{
 			ClientID: uuid.Nil,
 		}
-
-		marshalBody, err1 := json.Marshal(publishModelRequest)
-		require.NoError(t, err1)
-
-		urlUpdate := GroupPrefixV2 + fmt.Sprintf("/trip/moveTripDraft-ToPublish/%s", got.ID)
-		req, err1 = http.NewRequest(
-			http.MethodPatch,
-			urlUpdate,
-			bytes.NewReader(marshalBody),
-		)
-		require.NoError(t, err1)
-		req.Header.Set("Content-Type", "application/json")
-
-		//Отправляем запрос в приложение
-		resp2, err2 := testApp.Test(req, -1)
-		require.NoError(t, err2)
+		resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
 		defer func() {
-			if err := resp2.Body.Close(); err != nil {
+			if err := resp.Body.Close(); err != nil {
 				t.Errorf("close response body: %v", err)
 			}
 		}()
 
-		t.Logf("Response body: %v", resp2)
-		require.Equal(t, http.StatusInternalServerError, resp2.StatusCode)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
+		respBody, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+
+		var apiResp domainhttp.Response
+		require.NoError(t, json.Unmarshal(respBody, &apiResp))
+		require.False(t, apiResp.Success)
+		require.Equal(t, apierr.RequestValidationError, apiResp.Message)
 	})
+}
+
+func createTripDraftRequestModel() api.CreateTripRequestModel {
+	return api.CreateTripRequestModel{
+		DriverID:       fixtures.NormalClientID, // must match Keycloak stub sub
+		FromPoint:      "Mockov city, st. Big Street, h.101",
+		ToPoint:        "Mockov city, st. Big Street, h.10O",
+		DepartureTime:  time.Now(),
+		AvailableSeats: 1,
+	}
+}
+
+func mustCreateTripDraft(t *testing.T, payload api.CreateTripRequestModel) model.CreateTripDraftResponse {
+	t.Helper()
+
+	body, err := json.Marshal(payload)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPost, createTripDraftURLForPublish, bytes.NewReader(body))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(fixtures.RefreshTokenHeader, fixtures.RefreshTokenValue)
+
+	resp, err := testApp.Test(req, -1)
+	require.NoError(t, err)
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close response body: %v", err)
+		}
+	}()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	var created model.CreateTripDraftResponse
+	require.NoError(t, json.Unmarshal(respBody, &created))
+	require.Equal(t, payload.DriverID, created.DriverID)
+	return created
+}
+
+func mustPublishTripDraft(
+	t *testing.T,
+	tripID string,
+	body api.MoveTripDraftToPublishRequestModel,
+) *http.Response {
+	t.Helper()
+
+	marshalBody, err := json.Marshal(body)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(
+		http.MethodPatch,
+		fmt.Sprintf(moveTripDraftToPublishURL, tripID),
+		bytes.NewReader(marshalBody),
+	)
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(fixtures.RefreshTokenHeader, fixtures.RefreshTokenValue)
+
+	resp, err := testApp.Test(req, -1)
+	require.NoError(t, err)
+	return resp
 }
