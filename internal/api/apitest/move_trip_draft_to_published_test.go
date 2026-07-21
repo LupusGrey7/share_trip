@@ -195,7 +195,6 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 
 func createTripDraftRequestModel() api.CreateTripRequestModel {
 	return api.CreateTripRequestModel{
-		DriverID:       fixtures.NormalClientID, // must match Keycloak stub sub
 		FromPoint:      "Mockov city, st. Big Street, h.101",
 		ToPoint:        "Mockov city, st. Big Street, h.10O",
 		DepartureTime:  time.Now(),
@@ -229,7 +228,7 @@ func mustCreateTripDraft(t *testing.T, payload api.CreateTripRequestModel) model
 
 	var created model.CreateTripDraftResponse
 	require.NoError(t, json.Unmarshal(respBody, &created))
-	require.Equal(t, payload.DriverID, created.DriverID)
+	require.Equal(t, fixtures.CurrentStubClientID(), created.DriverID)
 	return created
 }
 

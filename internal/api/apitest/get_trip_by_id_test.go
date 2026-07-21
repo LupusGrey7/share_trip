@@ -56,7 +56,7 @@ func TestServer_GetTripById(t *testing.T) {
 
 		response := model.CreateTripDraftResponse{
 			ID:            got.ID,
-			DriverID:      payload.DriverID,
+			DriverID:      fixtures.NormalClientID,
 			FromPoint:     got.FromPoint,
 			ToPoint:       got.ToPoint,
 			CreatedAt:     got.CreatedAt,
@@ -234,8 +234,7 @@ func TestServer_GetTripById(t *testing.T) {
 
 func createTripDraft() api.CreateTripRequestModel {
 	return api.CreateTripRequestModel{
-		DriverID:       fixtures.NormalClientID, // must match stub sub on create
-		FromPoint:      "Mockov city, st. Big Star, h.101О",
+		FromPoint:      "Mockov city, st. Big Star, h.101O",
 		ToPoint:        "Mockov city, st. Dig Star, h.101",
 		DepartureTime:  time.Now(),
 		AvailableSeats: 1,

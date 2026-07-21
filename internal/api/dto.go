@@ -21,16 +21,16 @@ type MoveTripDraftToPublishRequestModel struct {
 }
 
 type CreateTripRequestModel struct {
-	DriverID       uuid.UUID `json:"driverId" validate:"required,uuid"`
 	FromPoint      string    `json:"fromPoint" validate:"required,min=20,max=155"`
 	ToPoint        string    `json:"toPoint" validate:"required,min=20,max=155"`
 	DepartureTime  time.Time `json:"departureTime" validate:"required"`
 	AvailableSeats int       `json:"seats" validate:"required,min=1,max=4"`
 }
 
+// ToCreateTripRequestModel maps HTTP body → domain.
+// DriverID is NOT taken from body — handler sets it from Keycloak sub.
 func (req *CreateTripRequestModel) ToCreateTripRequestModel() model.CreateTripRequestModel {
 	return model.CreateTripRequestModel{
-		DriverID:       req.DriverID, // source of truth = Keycloak sub (same as body after check)
 		FromPoint:      req.FromPoint,
 		ToPoint:        req.ToPoint,
 		DepartureTime:  req.DepartureTime,

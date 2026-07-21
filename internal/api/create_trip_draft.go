@@ -43,18 +43,26 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 		return HandleError(c, apierr.ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
 	}
 
-	logger = logger.With(slog.String("client_id", request.DriverID.String()))
-	ctx = logctx.WithLogger(ctx, logger)
-	logger.Debug("create trip draft request accepted")
-
-	// client identity from Keycloak JWT (sub) — must match body driverId (IDOR guard) 401\403
-	_, err := GetClaimsFromContext(c)
+	// Identity: client IS the driver. No body.driverId — source of truth = Keycloak sub.
+	claims, err := GetClaimsFromContext(c)
 	if err != nil {
 		logger.Error("failed to get claims from context", slog.Any("error", err))
 		return HandleError(c, err)
 	}
+	clientID, err := ClientIDFromClaims(claims)
+	if err != nil {
+		logger.Error("failed to parse client ID from token subject", slog.Any("error", err))
+		return HandleError(c, err)
+	}
 
-	resp, err := s.TripService.CreateTripDraft(ctx, request.ToCreateTripRequestModel())
+	logger = logger.With(slog.String("client_id", clientID.String()))
+	ctx = logctx.WithLogger(ctx, logger)
+	logger.Debug("create trip draft request accepted")
+
+	domainReq := request.ToCreateTripRequestModel()
+	domainReq.DriverID = clientID
+
+	resp, err := s.TripService.CreateTripDraft(ctx, domainReq)
 	if err != nil {
 		logger.Error("create trip draft failed", slog.Any("error", err))
 		return HandleError(c, err)

@@ -14,7 +14,6 @@ import (
 	domainhttp "job4j.ru/share_trip/internal/domain/http"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,9 +21,9 @@ const createTripDraftURL = GroupPrefixV2 + "/trip/createTripDraft"
 
 func TestServer_CreateTrip(t *testing.T) {
 
-	// Given: valid request
-	// When: sending request
-	// Then: return 201 and created trip
+	// Given: valid request + JWT stub
+	// When: POST createTripDraft
+	// Then: 201, DriverID = Keycloak sub (not from body)
 	t.Run("success_create_trip_draft", func(t *testing.T) {
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		payload := createTripRequestModel()
@@ -32,12 +31,7 @@ func TestServer_CreateTrip(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
-		url := createTripDraftURL
-		req, err := http.NewRequest(
-			http.MethodPost,
-			url,
-			bytes.NewReader(body),
-		)
+		req, err := http.NewRequest(http.MethodPost, createTripDraftURL, bytes.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set(fixtures.RefreshTokenHeader, fixtures.RefreshTokenValue)
@@ -56,39 +50,26 @@ func TestServer_CreateTrip(t *testing.T) {
 		require.NoError(t, err)
 
 		var got model.CreateTripDraftResponse
-		err = json.Unmarshal(respBody, &got)
-		require.NoError(t, err)
-		response := model.CreateTripDraftResponse{
-			ID:            got.ID,
-			DriverID:      payload.DriverID,
-			FromPoint:     got.FromPoint,
-			ToPoint:       got.ToPoint,
-			CreatedAt:     got.CreatedAt,
-			DepartureTime: got.DepartureTime,
-			Seats:         got.Seats,
-			Status:        got.Status,
-		}
-		require.Equal(t, response, got)
+		require.NoError(t, json.Unmarshal(respBody, &got))
+		require.Equal(t, fixtures.NormalClientID, got.DriverID)
+		require.Equal(t, payload.FromPoint, got.FromPoint)
+		require.Equal(t, payload.ToPoint, got.ToPoint)
+		require.Equal(t, payload.AvailableSeats, got.Seats)
 	})
 
-	// Given: invalid request
-	// When: sending request
-	// Then: return 400 and validation error
-	t.Run("bad_request_when_driver_id_is_not_valid_uuid", func(t *testing.T) {
+	// Given: invalid body (fromPoint too short)
+	// When: POST
+	// Then: 400
+	t.Run("bad_request_when_from_point_too_short", func(t *testing.T) {
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		payload := createTripRequestModel()
-		payload.DriverID = uuid.Nil
+		payload.FromPoint = "too-short"
 
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
-		url := createTripDraftURL
-		req, err := http.NewRequest(
-			http.MethodPost,
-			url,
-			bytes.NewReader(body),
-		)
+		req, err := http.NewRequest(http.MethodPost, createTripDraftURL, bytes.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set(fixtures.RefreshTokenHeader, fixtures.RefreshTokenValue)
@@ -112,23 +93,19 @@ func TestServer_CreateTrip(t *testing.T) {
 		require.Equal(t, apierr.RequestValidationError, apiResp.Message)
 	})
 
-	// Given: JWT sub = InvalidClientID, body.driverId = another user
+	// Given: stub does not inject claims into Locals
 	// When: POST createTripDraft
-	// Then: 403 IDOR (driverId must match authenticated user)
-	t.Run("forbidden_when_keycloak_client_id_does_not_match_authenticated_user", func(t *testing.T) {
-		fixtures.UseStubClientID(t, fixtures.InvalidClientID)
+	// Then: 401 from RequireClientRole (before handler) — plain Fiber error, not ErrResponse JSON
+	// Note: UseStubClientID(uuid.Nil) still injects claims → would be 201, not 401
+	t.Run("unauthorized_when_claims_not_found_in_context", func(t *testing.T) {
+		fixtures.UseStubNoClaims(t)
 
-		payload := createTripRequestModel()         // DriverID starts as NormalClientID
-
+		payload := createTripRequestModel()
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
-		req, err := http.NewRequest(
-			http.MethodPost,
-			createTripDraftURL,
-			bytes.NewReader(body),
-		)
-		require.NoError(t, err)
 
+		req, err := http.NewRequest(http.MethodPost, createTripDraftURL, bytes.NewReader(body))
+		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set(fixtures.RefreshTokenHeader, fixtures.RefreshTokenValue)
 
@@ -140,23 +117,18 @@ func TestServer_CreateTrip(t *testing.T) {
 			}
 		}()
 
-		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-
-		var apiResp domainhttp.Response
-		require.NoError(t, json.Unmarshal(respBody, &apiResp))
-		require.False(t, apiResp.Success)
-		require.Equal(t, apierr.ErrorForbiddenIDMismatch, apiResp.Message)
+		// fiber.NewError → text/JSON Fiber shape, not apierr.ErrResponse
+		require.Contains(t, string(respBody), "missing token claims")
 	})
-
 }
 
 func createTripRequestModel() api.CreateTripRequestModel {
 	return api.CreateTripRequestModel{
-		DriverID:       fixtures.NormalClientID, // must match Keycloak stub sub
-		FromPoint:      "Mockov city, st. Big Road, h.10О",
+		FromPoint:      "Mockov city, st. Big Road, h.10O",
 		ToPoint:        "Mockov city, st. Big Road, h.10",
 		DepartureTime:  time.Now(),
 		AvailableSeats: 1,

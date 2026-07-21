@@ -22,8 +22,9 @@ var NormalClientID = uuid.MustParse("11111111-1111-1111-1111-111111111111")
 // stubSubject — «кто сейчас залогинен» в тестовом middleware.
 // TestMain регистрирует middleware один раз; тесты меняют только этот UUID.
 var (
-	stubMu      sync.Mutex
-	stubSubject = NormalClientID
+	stubMu         sync.Mutex
+	stubSubject    = NormalClientID
+	stubInjectClaims = true // false → Locals без claims → handler 401
 )
 
 // CurrentStubClientID returns the subject the stub will inject on the next request.
@@ -57,6 +58,22 @@ func UseStubClientID(t *testing.T, clientID uuid.UUID) {
 	})
 }
 
+// UseStubNoClaims — middleware не кладёт claims в Locals → GetClaimsFromContext → 401.
+// uuid.Nil в UseStubClientID для этого НЕ подходит: stub всё равно создаёт claims с sub=Nil.
+func UseStubNoClaims(t *testing.T) {
+	t.Helper()
+	stubMu.Lock()
+	prev := stubInjectClaims
+	stubInjectClaims = false
+	stubMu.Unlock()
+
+	t.Cleanup(func() {
+		stubMu.Lock()
+		stubInjectClaims = prev
+		stubMu.Unlock()
+	})
+}
+
 // ClaimsForClient builds claims like real JWT: sub + resource_access[sharetrip-api]=[client].
 func ClaimsForClient(clientID uuid.UUID) *middleware.KeycloakClaims {
 	return &middleware.KeycloakClaims{
@@ -74,7 +91,14 @@ func ClaimsForClient(clientID uuid.UUID) *middleware.KeycloakClaims {
 // Each request reads current stubSubject (change via UseStubClientID / SetStubClientID).
 func KeycloakRefreshTokenMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		c.Locals(middleware.KeycloakClaimsKey, ClaimsForClient(CurrentStubClientID()))
+		stubMu.Lock()
+		inject := stubInjectClaims
+		subject := stubSubject
+		stubMu.Unlock()
+
+		if inject {
+			c.Locals(middleware.KeycloakClaimsKey, ClaimsForClient(subject))
+		}
 		return c.Next()
 	}
 }
