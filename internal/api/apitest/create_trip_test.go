@@ -112,14 +112,13 @@ func TestServer_CreateTrip(t *testing.T) {
 		require.Equal(t, apierr.RequestValidationError, apiResp.Message)
 	})
 
-	// Given: JWT sub = NormalClientID, body.driverId = another user
+	// Given: JWT sub = InvalidClientID, body.driverId = another user
 	// When: POST createTripDraft
 	// Then: 403 IDOR (driverId must match authenticated user)
-	t.Run("forbidden_when_driver_id_does_not_match_authenticated_user", func(t *testing.T) {
-		fixtures.UseStubClientID(t, fixtures.NormalClientID)
+	t.Run("forbidden_when_keycloak_client_id_does_not_match_authenticated_user", func(t *testing.T) {
+		fixtures.UseStubClientID(t, fixtures.InvalidClientID)
 
 		payload := createTripRequestModel()         // DriverID starts as NormalClientID
-		payload.DriverID = fixtures.InvalidClientID // mismatch vs stub sub
 
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
