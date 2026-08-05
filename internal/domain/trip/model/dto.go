@@ -26,10 +26,10 @@ type Entity struct {
 	Status        StatusEnum `db:"status"`
 }
 
-// CreateTripResponse model info
+// CreateTripDraftResponse model info
 // @Description Trip information
 // @Description with trip id, driverId, fromPoint, toPoint, createAt, departureTime, seats, status
-type CreateTripResponse struct {
+type CreateTripDraftResponse struct {
 	ID            uuid.UUID  `json:"id"`
 	DriverID      uuid.UUID  `json:"driverId"`
 	FromPoint     string     `json:"fromPoint"`
@@ -88,10 +88,10 @@ type MoveTripDraftToPublishModelResponse struct {
 // @Description Employee account information
 // @Description with employee result, page_size, page_number, total
 type PageResponse struct {
-	Result     []CreateTripResponse `json:"result"`
-	PageSize   int64                `json:"page_size" `
-	PageNumber int64                `json:"page_number"`
-	Total      int64                `json:"total"`
+	Result     []CreateTripDraftResponse `json:"result"`
+	PageSize   int64                     `json:"page_size" `
+	PageNumber int64                     `json:"page_number"`
+	Total      int64                     `json:"total"`
 }
 
 func (req *CreateTripRequestModel) ToEntity() *Entity {
@@ -104,8 +104,8 @@ func (req *CreateTripRequestModel) ToEntity() *Entity {
 	}
 }
 
-func (req *Entity) ToResponse() CreateTripResponse {
-	return CreateTripResponse{
+func (req *Entity) ToResponse() CreateTripDraftResponse {
+	return CreateTripDraftResponse{
 		ID:            req.ID,
 		DriverID:      req.DriverID,
 		FromPoint:     req.FromPoint,
@@ -117,8 +117,8 @@ func (req *Entity) ToResponse() CreateTripResponse {
 	}
 }
 
-func (req *Entity) ToCreateResponse() *CreateTripResponse {
-	return &CreateTripResponse{
+func (req *Entity) ToCreateResponse() *CreateTripDraftResponse {
+	return &CreateTripDraftResponse{
 		ID:            req.ID,
 		DriverID:      req.DriverID,
 		FromPoint:     req.FromPoint,
@@ -130,8 +130,8 @@ func (req *Entity) ToCreateResponse() *CreateTripResponse {
 	}
 }
 
-func (req *CreateTripResponse) ToResponse(entity Entity) *CreateTripResponse {
-	return &CreateTripResponse{
+func (req *CreateTripDraftResponse) ToResponse(entity Entity) *CreateTripDraftResponse {
+	return &CreateTripDraftResponse{
 		ID:            entity.ID,
 		DriverID:      entity.DriverID,
 		FromPoint:     entity.FromPoint,
@@ -156,7 +156,7 @@ func (req *MoveTripDraftToPublishModelResponse) ToPublishModelResponse(entity En
 	}
 }
 
-func (req *Entity) UpdateToPublishModelResponse() *MoveTripDraftToPublishModelResponse {
+func (req *Entity) ToUpdatedPublishModelResponse() *MoveTripDraftToPublishModelResponse {
 	return &MoveTripDraftToPublishModelResponse{
 		ID:            req.ID,
 		DriverID:      req.DriverID,

@@ -4,54 +4,76 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 
 	"github.com/jackc/pgx/v5"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
-func (s *TripService) GetTripByID(
-	ctx context.Context,
-	req model.GetByIDModelRequest,
-) (*model.GetTripByIDModelResponse, error) {
-	//getting custom logger context
+func (s *TripService) GetTripByID(ctx context.Context, req model.GetByIDModelRequest) (res *model.GetTripByIDModelResponse, err error) {
+	//1. Integration with Jaeger: create a child span for this layer
+	ctx, span := otel.Tracer("TripService").Start(ctx, "TripService.GetTripByID")
+
+	//2. metrics - time fo Prometheus + Grafana (Integration with Prometheus)
+	started := time.Now()
+	result := "success"
+
+	defer func() {
+		// Now 'err' is taken from the return of the function. If an error occurred below in the stack, err != nil
+		if err != nil {
+			result = "error"
+			span.RecordError(err)                    // Log error in Jaeger
+			span.SetStatus(codes.Error, err.Error()) // Color the span in Jaeger in red color
+		}
+
+		// metrics - time for Prometheus + Grafana (Integration with Prometheus)
+		s.metrics.TripGetByIDTotal.WithLabelValues(result).Inc()
+		s.metrics.TripGetByIDDuration.WithLabelValues(result).
+			Observe(time.Since(started).Seconds())
+
+		span.End() // span always ends in the end. Jaeger will measure the time between Start and End!
+	}()
+
+	// getting custom logger context for logging
 	logger := logctx.Logger(ctx).With(
 		slog.String("service", "TripService"),
 		slog.String("operation", "GetTripByID"),
 		slog.String("client_id", req.ID),
 	)
-	logger.Info("get trip started")
+	logger.Debug("get trip by ID started")
 
-	res, err := tx(ctx, s.pool, func(tx pgx.Tx) (*model.GetTripByIDModelResponse, error) {
+	txCtx, txSpan := otel.Tracer("database").Start(ctx, "DB.Transaction")
+	defer txSpan.End()
+
+	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*model.GetTripByIDModelResponse, error) {
 		txLogger := logger.With(
 			slog.String("layer", "transaction"),
 		)
-		txLogger.Info("transaction started")
+		txLogger.Debug("transaction execution started")
 
-		resp, err := s.useCase.GetTripByID(ctx, tx, s.repo, req)
+		resp, err := s.useCase.GetTripByIDTx(txCtx, tx, s.repo, req)
 		if err != nil {
-			return nil, fmt.Errorf("usecase.GetTripByID: %w", err)
+			txLogger.Error("get trip by ID useCase failed", slog.Any("error", err))
+			return nil, fmt.Errorf("useCase.GetTripByID: %w", err)
 		}
 
-		txLogger.Info(
-			"transaction completed",
-			slog.String("trip_id", resp.ID.String()),
-		)
+		txLogger.Debug("transaction get trip by ID completed", slog.String("trip_id", resp.ID.String()))
 		return resp, nil
 	})
 
+	// 5. Use txSpan to fix the transaction error (if COMMIT failed or logic inside failed)
 	if err != nil {
-		logger.Error(
-			"get trip failed",
-			slog.Any("error", err),
-		)
+		logger.Error("get trip by ID failed", slog.Any("error", err))
+		txSpan.RecordError(err)
+		txSpan.SetStatus(codes.Error, err.Error())
+		// Span will be closed automatically through defer txSpan.End() above
 		return nil, err
 	}
 
-	//success
-	logger.Info(
-		"get trip completed",
-		slog.String("trip_id", res.ID.String()),
-	)
+	logger.Debug("get trip by ID completed", slog.String("trip_id", res.ID.String()))
 	return res, nil
 }

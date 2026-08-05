@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	model2 "job4j.ru/share_trip/internal/domain/outbox/model"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
@@ -16,37 +18,54 @@ import (
 func (s *TripService) MoveTripDraftToPublish(
 	ctx context.Context,
 	req model.MoveTripDraftToPublishModel,
-) (*model.MoveTripDraftToPublishModelResponse, error) {
-	//metrics
+) (res *model.MoveTripDraftToPublishModelResponse, err error) {
+	// 1. Integration with Jaeger: create a child span for this layer (ctx now contains the ID of this span)
+	ctxSpc, span := otel.Tracer("TripService").Start(ctx, "TripService.MoveTripDraftToPublishTx")
+
+	//2. metrics - time fo Prometheus + Grafana (Integration with Prometheus)
 	started := time.Now()
 	result := "success"
 
 	defer func() {
-		s.metrics.TripPublishTotal.WithLabelValues(result).Inc()
-		s.metrics.TripPublishDuration.WithLabelValues(result).
+		// Now 'err' is taken from the return of the function. If an error occurred below in the stack, err != nil
+		if err != nil {
+			result = "error"
+			span.RecordError(err)                    // Log error in Jaeger
+			span.SetStatus(codes.Error, err.Error()) // Color the span in Jaeger in red color
+		}
+
+		// metrics - time for Prometheus + Grafana (Integration with Prometheus)
+		s.metrics.TripDraftToPublishTotal.WithLabelValues(result).Inc()
+		s.metrics.TripDraftToPublishDuration.WithLabelValues(result).
 			Observe(time.Since(started).Seconds())
+
+		span.End() // span always ends in the end. Jaeger will measure the time between Start and End!
 	}()
 
-	//getting custom logger context
-	logger := logctx.Logger(ctx).With(
+	// 3. getting custom logger context
+	logger := logctx.Logger(ctxSpc).With(
 		slog.String("service", "TripService"),
-		slog.String("operation", "CreateTrip"),
+		slog.String("operation", "MoveTripDraftToPublishTx"),
 		slog.String("client_id", req.ID),
 	)
-	logger.Info("move trip to publish started")
+	logger.Debug("move trip draft to publish transaction started")
 
-	res, err := tx(ctx, s.pool, func(tx pgx.Tx) (*model.MoveTripDraftToPublishModelResponse, error) {
-		txLogger := logger.With(
-			slog.String("layer", "transaction"), //added new key/value to logger
-		)
-		txLogger.Info("transaction started")
+	// 4. Open a database transaction
+	// Mandatory to create a sub-span for the transaction to measure its clean duration
+	txCtx, txSpan := otel.Tracer("database").Start(ctxSpc, "DB.Transaction")
+	defer txSpan.End()
 
-		resp, err := s.useCase.MoveTripDraftToPublishTx(ctx, tx, s.repo, req)
+	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*model.MoveTripDraftToPublishModelResponse, error) {
+		txLogger := logger.With(slog.String("layer", "transaction")) //added new key/value to logger
+		txLogger.Debug("move trip draft to publish transaction execution started")
+
+		resp, err := s.useCase.MoveTripDraftToPublishTx(txCtx, tx, s.repo, req)
 		if err != nil {
+			txLogger.Error("move trip draft to publish usecase failed", slog.Any("error", err))
 			return nil, err
 		}
 
-		//outbox
+		// outbox
 		payload := model2.PayloadEvent{TripID: resp.ID}
 		event := model2.Entity{
 			EventName:   string(model2.EventPublished),
@@ -54,30 +73,26 @@ func (s *TripService) MoveTripDraftToPublish(
 			Payload:     payload,
 		}
 
-		err = s.outboxRepo.CreateNotificationTripPublishTx(ctx, tx, &event)
+		err = s.outboxRepo.CreateNotificationTripPublishTx(ctxSpc, tx, &event)
 		if err != nil {
-			return nil, fmt.Errorf("err create Event Notification: %w", err)
+			txLogger.Error("move trip draft to publish outbox create notification failed", slog.Any("error", err))
+			return nil, fmt.Errorf("error while MoveTripDraftToPublish create Notification: %w", err)
 		}
 
-		txLogger.Info(
-			"transaction completed",
-			slog.String("trip_id", resp.ID.String()),
-		)
+		txLogger.Debug("transaction execution completed", slog.String("trip_id", resp.ID.String()))
 		return resp, nil
 	})
 
+	// 6. Fix the transaction error (if COMMIT failed or logic inside failed) using txSpan
 	if err != nil {
-		logger.Error(
-			"move trip to publish failed",
-			slog.Any("error", err),
-		)
+		logger.Error("move trip draft to publish failed", slog.Any("error", err))
+
+		txSpan.RecordError(err)
+		txSpan.SetStatus(codes.Error, err.Error())
+		// Span will be closed automatically through defer txSpan.End() above
 		return nil, err
 	}
 
-	//success
-	logger.Info(
-		"get trip completed",
-		slog.String("trip_id", res.ID.String()),
-	)
+	logger.Debug("move trip draft to publish completed", slog.String("trip_id", res.ID.String()))
 	return res, nil
 }

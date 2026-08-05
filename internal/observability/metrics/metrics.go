@@ -27,9 +27,13 @@ type Metrics struct {
 	TripCreateTotal    *prometheus.CounterVec
 	TripCreateDuration *prometheus.HistogramVec
 
+	// Trip get by id metrics
+	TripGetByIDTotal    *prometheus.CounterVec
+	TripGetByIDDuration *prometheus.HistogramVec
+
 	// Trip publish metrics
-	TripPublishTotal    *prometheus.CounterVec
-	TripPublishDuration *prometheus.HistogramVec
+	TripDraftToPublishTotal    *prometheus.CounterVec
+	TripDraftToPublishDuration *prometheus.HistogramVec
 
 	// Repository metrics
 	RepositoryQueryTotal    *prometheus.CounterVec
@@ -96,8 +100,30 @@ func New(reg prometheus.Registerer) *Metrics {
 			[]string{labelResult},
 		),
 
+		// Trip get by id metrics
+		TripGetByIDTotal: factory.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "sharetrip",
+				Subsystem: "trip",
+				Name:      "get_by_id_total",
+				Help:      "Total number of get trip by ID attempts",
+			},
+			[]string{labelResult},
+		),
+
+		TripGetByIDDuration: factory.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace: "sharetrip",
+				Subsystem: "trip",
+				Name:      "get_by_id_duration_seconds",
+				Help:      "Get trip by ID operation latency in seconds",
+				Buckets:   prometheus.DefBuckets,
+			},
+			[]string{labelResult},
+		),
+
 		// Trip publish metrics
-		TripPublishTotal: factory.NewCounterVec(
+		TripDraftToPublishTotal: factory.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: "sharetrip",
 				Subsystem: "trip",
@@ -107,7 +133,7 @@ func New(reg prometheus.Registerer) *Metrics {
 			[]string{labelResult},
 		),
 
-		TripPublishDuration: factory.NewHistogramVec(
+		TripDraftToPublishDuration: factory.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: "sharetrip",
 				Subsystem: "trip",

@@ -6,21 +6,25 @@ import (
 	"log/slog"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/google/uuid"
-	"job4j.ru/share_trip/internal/domain/errs"
+	"go.opentelemetry.io/otel"
+	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
 func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
-	ctx := c.UserContext()
-	// We get the ID that was generated requestid.New()
-	traceID := c.GetRespHeader(requestid.ConfigDefault.Header)
-	//getting custom logger
+	// OpenTelemetry: child span inside root HTTP span from otelfiber middleware
+	tracer := otel.Tracer("trip-api")
+	ctx, span := tracer.Start(c.UserContext(), "MoveTripDraftToPublishTxHandler")
+	traceID := span.SpanContext().TraceID().String()
+	c.Set("X-Request-ID", traceID)
+	defer span.End()
+
+	// getting custom logger for logging
 	logger := logctx.Logger(ctx).With(
 		slog.String("server", "TripServer"),
-		slog.String("handler", "CreateTrip"),
-		slog.String("traceID", traceID),
+		slog.String("handler", "MoveTripDraftToPublish"),
+		slog.String("trace_id", traceID), // Key field for Grafana
 	)
 
 	var request MoveTripDraftToPublishRequestModel
@@ -44,38 +48,33 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 	}
 	request.ID = tripID
 
-	//--validation
+	// validation
 	if err := s.validator.Struct(&request); err != nil {
-		logger.Warn("move trip to publish invalid request",
+		logger.Warn("move trip draft to publish invalid request",
 			slog.String("tripId", tripID),
 			slog.Any("error", err),
 		)
-		return errs.RequestValidationError{Message: err.Error()}
+		return HandleError(c, apierr.ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
 	}
 
 	logger = logger.With(
 		slog.String("tripId", request.ID),
 		slog.String("client_id", request.ClientID.String()),
 	)
-	ctx = logctx.WithLogger(ctx, logger) //update logger in Context app after add new fields
-	logger.Info("move trip to publish")  // logging at the component boundary
+	ctx = logctx.WithLogger(ctx, logger)
+	logger.Debug("move trip to publish")
 
-	resp, err := s.TripService.MoveTripDraftToPublish(ctx, request.ToRequest())
+	resp, err := s.TripService.MoveTripDraftToPublish(ctx, request.ToMoveTripDraftToPublishModel())
 	if err != nil {
-		logger.Error(
-			"move trip to publish failed",
-			slog.Any("error", err),
-		)
+		logger.Error("move trip to publish failed", slog.Any("error", err))
 		return HandleError(c, err)
 	}
 
 	if resp.DriverID == uuid.Nil {
-		logger.Info(
-			"move trip to publish skipped: no changes detected",
-		)
+		logger.Debug("move trip to publish skipped: no changes detected")
 		return c.SendStatus(fiber.StatusNoContent) //http code -204, MUST NOT return a body (JSON)
 	}
 
-	logger.Info("move trip to publish completed")
+	logger.Debug("move trip to publish completed")
 	return c.Status(fiber.StatusOK).JSON(resp) //200
 }
