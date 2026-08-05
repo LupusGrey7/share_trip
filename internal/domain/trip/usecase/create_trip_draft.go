@@ -28,7 +28,6 @@ func (t *TripUseCase) CreateTripDraftTx(
 		slog.String("usecase", "TripUseCase.CreateTripDraftTx"),
 		slog.String("client_id", req.DriverID.String()),
 	)
-
 	logger.Debug("create trip draft usecase started")
 
 	entity := req.ToEntity()

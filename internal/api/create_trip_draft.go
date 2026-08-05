@@ -7,8 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"go.opentelemetry.io/otel"
-	"job4j.ru/share_trip/internal/domain/errs"
-	"job4j.ru/share_trip/internal/domain/trip/model"
+	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
@@ -40,32 +39,35 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 	}
 
 	if err := s.validator.Struct(&request); err != nil {
-		logger.Warn(
-			"create trip draft failed: invalid request",
-			slog.Any("error", err),
-		)
-		return errs.RequestValidationError{Message: err.Error()}
+		logger.Warn("create trip draft failed: invalid request", slog.Any("error", err))
+		return HandleError(c, apierr.ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
 	}
 
-	logger = logger.With(slog.String("client_id", request.DriverID.String()))
-	ctx = logctx.WithLogger(ctx, logger)               //update logger in Context app after add new fields
-	logger.Debug("create trip draft request accepted") // logging at the component boundary
+	// Identity: client IS the driver. No body.driverId — source of truth = Keycloak sub.
+	claims, err := GetClaimsFromContext(c)
+	if err != nil {
+		logger.Error("failed to get claims from context", slog.Any("error", err))
+		return HandleError(c, err)
+	}
+	clientID, err := ClientIDFromClaims(claims)
+	if err != nil {
+		logger.Error("failed to parse client ID from token subject", slog.Any("error", err))
+		return HandleError(c, err)
+	}
 
-	resp, err := s.TripService.CreateTripDraft(
-		ctx,
-		model.CreateTripRequestModel{
-			DriverID:       request.DriverID,
-			FromPoint:      request.FromPoint,
-			ToPoint:        request.ToPoint,
-			DepartureTime:  request.DepartureTime,
-			AvailableSeats: request.AvailableSeats,
-		},
-	)
+	logger = logger.With(slog.String("client_id", clientID.String()))
+	ctx = logctx.WithLogger(ctx, logger)
+	logger.Debug("create trip draft request accepted")
+
+	domainReq := request.ToCreateTripRequestModel()
+	domainReq.DriverID = clientID
+
+	resp, err := s.TripService.CreateTripDraft(ctx, domainReq)
 	if err != nil {
 		logger.Error("create trip draft failed", slog.Any("error", err))
 		return HandleError(c, err)
 	}
 
-	logger.Debug("create trip draft completed") // logging at the component boundary
+	logger.Debug("create trip draft completed")
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }

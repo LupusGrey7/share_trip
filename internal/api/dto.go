@@ -11,28 +11,38 @@ type GetTripByIDRequestModel struct {
 	ID string `validate:"required,uuid"`
 }
 
+func (req GetTripByIDRequestModel) ToGetByIDRequestModel() model.GetByIDModelRequest {
+	return model.GetByIDModelRequest{ID: req.ID}
+}
+
 type MoveTripDraftToPublishRequestModel struct {
 	ID       string    `validate:"required,uuid"`
-	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"` //"omitempty,uuid"
+	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"`
 }
 
 type CreateTripRequestModel struct {
-	DriverID       uuid.UUID `json:"driverId" validate:"required,uuid"`
 	FromPoint      string    `json:"fromPoint" validate:"required,min=20,max=155"`
 	ToPoint        string    `json:"toPoint" validate:"required,min=20,max=155"`
 	DepartureTime  time.Time `json:"departureTime" validate:"required"`
 	AvailableSeats int       `json:"seats" validate:"required,min=1,max=4"`
 }
 
-func (req *MoveTripDraftToPublishRequestModel) ToRequest() model.MoveTripDraftToPublishModel {
+// ToCreateTripRequestModel maps HTTP body → domain.
+// DriverID is NOT taken from body — handler sets it from Keycloak sub.
+func (req *CreateTripRequestModel) ToCreateTripRequestModel() model.CreateTripRequestModel {
+	return model.CreateTripRequestModel{
+		FromPoint:      req.FromPoint,
+		ToPoint:        req.ToPoint,
+		DepartureTime:  req.DepartureTime,
+		AvailableSeats: req.AvailableSeats,
+	}
+}
+
+func (req *MoveTripDraftToPublishRequestModel) ToMoveTripDraftToPublishModel() model.MoveTripDraftToPublishModel {
 	return model.MoveTripDraftToPublishModel{
 		ID:       req.ID,
 		ClientID: req.ClientID,
 	}
-}
-
-type GetByIDRequestModel struct {
-	ID string `validate:"required,uuid"`
 }
 
 type CreateTripRequest struct {

@@ -1,4 +1,4 @@
-// В данном классе мы будем хранить api-ошибки
+// In this class we will store api errors
 
 package apierr
 
@@ -10,11 +10,15 @@ import (
 )
 
 const (
-	InvalidValidateError    = "Validation errors: %v\n"
-	StatusNotFound          = "trip not found"
-	ErrorForbidden          = "forbidden"
-	InternalServerError     = "internal server error"
-	InternalServerErrorWith = "internal server error, %v"
+	RequestValidationError   = "request validation error"
+	StatusNotFound           = "trip not found"
+	ErrorForbidden           = "forbidden: %v is not driver of trip"
+	InternalServerError      = "internal server error"
+	InternalServerErrorWith  = "internal server error, %v"
+	ErrorClaimsNotFound      = "claims not found in context"
+	ErrorForbiddenRole       = "forbidden: missing required client role"
+	ErrorForbiddenIDMismatch = "forbidden: driverId does not match authenticated user"
+	ErrorBadGateway          = "bad gateway: invalid subject in token"
 )
 
 var (
@@ -24,6 +28,11 @@ var (
 	ErrNotFound            = errors.New("not found")
 	ErrNotSupported        = errors.New("not supported")
 	ErrIllegalArgument     = errors.New("illegal argument provided")
+	ErrClaimsNotFound      = errors.New("claims not found in context")
+	ErrForbiddenIDMismatch = errors.New("forbidden ID mismatch")
+	ErrForbiddenRole       = errors.New("forbidden role for the client")
+	ErrBadGateway          = errors.New("bad gateway error")
+	ErrInvalidValidate     = errors.New("request validation error")
 )
 
 func ErrResponse(

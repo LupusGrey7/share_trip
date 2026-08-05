@@ -8,7 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
-	"job4j.ru/share_trip/internal/domain/errs"
+	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
@@ -54,17 +54,17 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 			slog.String("tripId", tripID),
 			slog.Any("error", err),
 		)
-		return errs.RequestValidationError{Message: err.Error()}
+		return HandleError(c, apierr.ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
 	}
 
 	logger = logger.With(
 		slog.String("tripId", request.ID),
 		slog.String("client_id", request.ClientID.String()),
 	)
-	ctx = logctx.WithLogger(ctx, logger) //update logger in Context app after add new fields
-	logger.Debug("move trip to publish") // logging at the component boundary
+	ctx = logctx.WithLogger(ctx, logger)
+	logger.Debug("move trip to publish")
 
-	resp, err := s.TripService.MoveTripDraftToPublish(ctx, request.ToRequest())
+	resp, err := s.TripService.MoveTripDraftToPublish(ctx, request.ToMoveTripDraftToPublishModel())
 	if err != nil {
 		logger.Error("move trip to publish failed", slog.Any("error", err))
 		return HandleError(c, err)
