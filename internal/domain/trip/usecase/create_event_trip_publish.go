@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+
 	"job4j.ru/share_trip/internal/domain/outbox/model"
 
 	"github.com/google/uuid"

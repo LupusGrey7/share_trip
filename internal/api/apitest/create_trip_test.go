@@ -128,8 +128,8 @@ func TestServer_CreateTrip(t *testing.T) {
 
 func createTripRequestModel() api.CreateTripRequestModel {
 	return api.CreateTripRequestModel{
-		FromPoint:      "Mockov city, st. Big Road, h.10O",
-		ToPoint:        "Mockov city, st. Big Road, h.10",
+		FromPoint:      "Moscow city, st. Big Road, h.10O",
+		ToPoint:        "Moscow city, st. Big Road, h.10",
 		DepartureTime:  time.Now(),
 		AvailableSeats: 1,
 	}

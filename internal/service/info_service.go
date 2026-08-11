@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"job4j.ru/share_trip/internal/repository"
 )

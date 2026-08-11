@@ -3,8 +3,9 @@ package repository
 import (
 	"context"
 	"fmt"
-	"job4j.ru/share_trip/internal/observability/metrics"
 	"time"
+
+	"job4j.ru/share_trip/internal/observability/metrics"
 
 	"job4j.ru/share_trip/internal/domain/trip/model"
 

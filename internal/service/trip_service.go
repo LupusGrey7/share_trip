@@ -5,12 +5,10 @@ package service
 import (
 	"context"
 
-	"job4j.ru/share_trip/internal/observability/metrics"
-
+	"github.com/jackc/pgx/v5/pgxpool"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/domain/trip/usecase"
-
-	"github.com/jackc/pgx/v5/pgxpool"
+	"job4j.ru/share_trip/internal/observability/metrics"
 	"job4j.ru/share_trip/internal/repository"
 )
 
