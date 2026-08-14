@@ -11,26 +11,21 @@ import (
 	"job4j.ru/share_trip/internal/observability/metrics"
 	"job4j.ru/share_trip/internal/observability/tracing"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	applog "job4j.ru/share_trip/internal/app"
-	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"job4j.ru/share_trip/internal/middleware"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/joho/godotenv"
-	"job4j.ru/share_trip/configs"
 	"job4j.ru/share_trip/internal/api"
-	"job4j.ru/share_trip/internal/repository"
-	"job4j.ru/share_trip/internal/service"
+	appConfigs "job4j.ru/share_trip/internal/app"
 	"job4j.ru/share_trip/internal/storage"
 )
 
 // init is invoked before main()
+// Explicit path to .env. Makefile does `include .env` + `export` and may
+// Pass outdated KEYCLOAK_CLIENT_SECRET from OS env; Overload overrides the file.
 func init() {
-	// Explicit path to .env. Makefile does `include .env` + `export` and may
-	// Pass outdated KEYCLOAK_CLIENT_SECRET from OS env; Overload overrides the file.
 	cwd, err := os.Getwd()
 	envFile := ".env"
 	if err == nil {
@@ -43,8 +38,7 @@ func init() {
 
 func main() {
 	ctx := context.Background()
-
-	cfg := readCfg()
+	cfg := appConfigs.ReadDBConfig()
 
 	pool, err := storage.NewPool(ctx, cfg.DSN())
 	if err != nil {
@@ -76,7 +70,7 @@ func main() {
 	m := metrics.New(registry)
 
 	// init Tracing (OpenTelemetry → otel-collector → Jaeger)
-	tp, err := initTracing(ctx)
+	tp, err := appConfigs.InitTracing(ctx)
 	if err != nil {
 		log.Error("init tracing failed", "error", err)
 		os.Exit(1)
@@ -89,7 +83,7 @@ func main() {
 		}
 	}()
 
-	//app
+	//app fiber
 	app := fiber.New(fiber.Config{
 		EnablePrintRoutes: true,
 	})
@@ -107,82 +101,15 @@ func main() {
 	//add metrics middleware
 	app.Use(api.NewHTTPMetricsMiddleware(m))
 
-	keycloakCfg := getKeycloakConfig()
-	logKeycloakConfig(keycloakCfg)
+	keycloakCfg := appConfigs.GetKeycloakConfig()
+	appConfigs.LogKeycloakConfig(keycloakCfg)
 
 	//build the Server
-	build(app, pool, registry, m, keycloakCfg)
+	appConfigs.BuildServer(app, pool, registry, m, keycloakCfg)
 
 	//listen the app
 	err = app.Listen(":8080")
 	if err != nil {
 		log.Fatal("failed to listen: %v", err)
-	}
-}
-
-// build - build server
-func build(
-	app *fiber.App,
-	pool *pgxpool.Pool,
-	registry *prometheus.Registry,
-	m *metrics.Metrics,
-	keycloakCfg middleware.KeycloakConfig,
-) {
-	// Initialize the validator instance
-	validate := validator.New(validator.WithRequiredStructEnabled())
-
-	repo := repository.NewRepoPg(pool)
-	repoTrip := repository.NewTripRepository(m, pool)
-	outboxRepo := repository.NewOutboxEventRepository()
-
-	infoUseCase := usecase.NewInfoUseCase()
-	tripUseCase := usecase.NewTripUseCase()
-
-	infoService := service.NewInfoService(infoUseCase, repo)
-	tripService := service.NewTripService(m, pool, repoTrip, outboxRepo, tripUseCase)
-
-	server := api.NewServer(registry, validate, infoService, tripService)
-
-	keycloakAuth := middleware.KeycloakRefreshTokenMiddleware(keycloakCfg)
-	server.SetupRoutes(app, keycloakAuth)
-}
-
-func readCfg() storage.Config {
-	return storage.Config{
-		Host:     configs.Env("DB_HOST", "localhost"),
-		Port:     configs.EnvInt("DB_PORT", 6543),
-		User:     configs.Env("DB_USER", "postgres"),
-		Password: configs.Env("DB_PASSWORD", "password"),
-		DBName:   configs.Env("DB_NAME", "share_trip"),
-		SSLMode:  configs.Env("DB_SSLMODE", "disable"),
-	}
-}
-
-func initTracing(ctx context.Context) (*tracing.TracerProvider, error) {
-	return tracing.NewProvider(ctx, tracing.Config{
-		ServiceName:    configs.Env("OTEL_SERVICE_NAME", "share-trip"),
-		ServiceVersion: configs.Env("OTEL_SERVICE_VERSION", "1.0.0"),
-		Environment:    configs.Env("OTEL_ENVIRONMENT", "local"),
-		Endpoint:       configs.Env("OTEL_EXPORTER_ENDPOINT", "localhost:4319"),
-	})
-}
-
-// getKeycloakConfig - get the keycloak config
-func getKeycloakConfig() middleware.KeycloakConfig {
-	return middleware.KeycloakConfig{
-		Issuer:       configs.Env("KEYCLOAK_ISSUER", "http://localhost:8087/realms/sharetrip"),
-		ClientID:     configs.Env("KEYCLOAK_CLIENT_ID", "sharetrip-api"),
-		ClientSecret: configs.Env("KEYCLOAK_CLIENT_SECRET", ""),
-	}
-}
-
-// logKeycloakConfig - log the keycloak config
-func logKeycloakConfig(keycloakCfg middleware.KeycloakConfig) {
-	cwd, _ := os.Getwd()
-	log.Infof("keycloak: issuer=%s client_id=%s secret_len=%d cwd=%s",
-		keycloakCfg.Issuer, keycloakCfg.ClientID, len(keycloakCfg.ClientSecret), cwd)
-	if keycloakCfg.ClientSecret == "" || keycloakCfg.ClientSecret == "secret" {
-		log.Error("KEYCLOAK_CLIENT_SECRET empty or placeholder 'secret' — save real secret in .env, then: " +
-			"Remove-Item Env:KEYCLOAK_CLIENT_SECRET; make run")
 	}
 }

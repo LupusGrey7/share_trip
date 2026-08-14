@@ -14,3 +14,7 @@ type CheckServiceResponse struct {
 	Allowed bool   `json:"allowed"`
 	Reason  string `json:"reason"`
 }
+
+func (c *CheckResult) IsAllowed() bool {
+	return c.Allowed
+}

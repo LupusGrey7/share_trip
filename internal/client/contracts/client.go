@@ -14,14 +14,14 @@ type BaseContractClient interface {
 }
 
 type ContractClient struct {
-	httpClient *resty.Client
+	httpClient *resty.Client // httpClient — http resty client for the contract client
 }
 
 func NewContractClient(baseURL string) *ContractClient {
-	return &ContractClient{
-		httpClient: resty.New().
+	return &ContractClient{ //set up the http resty client
+		httpClient: resty.New(). //create a new http resty client
 			SetBaseURL(baseURL).
-			SetTimeout(2 * time.Second).
+			SetTimeout(2 * time.Second). //set the timeout for the http request
 			SetRetryCount(2). //it means 1+2 retry
 			SetRetryWaitTime(200 * time.Millisecond).
 			SetRetryMaxWaitTime(1 * time.Second).

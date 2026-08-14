@@ -1,5 +1,5 @@
 // Orchestration + tx[] wrapper
-
+// service - this layer is responsible for preparing the data, orchestrating the data and passing it further to the usecase
 package service
 
 import (
@@ -23,7 +23,7 @@ type TripService struct {
 	pool       *pgxpool.Pool
 	repo       repository.BaseTxTripRepository
 	outboxRepo repository.OutboxRepository
-	useCase    usecase.BaseUseCase
+	useCase    usecase.BaseTripUseCase
 }
 
 func NewTripService(
@@ -31,7 +31,7 @@ func NewTripService(
 	pool *pgxpool.Pool,
 	r repository.BaseTxTripRepository,
 	outbox repository.OutboxRepository,
-	uc usecase.BaseUseCase,
+	uc usecase.BaseTripUseCase,
 ) *TripService {
 	return &TripService{
 		metrics:    m,

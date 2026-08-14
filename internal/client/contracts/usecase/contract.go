@@ -8,7 +8,7 @@ import (
 )
 
 type BaseContractUsecase interface {
-	CheckService(ctx context.Context, companyID string, serviceCode string) (model.CheckResult, error)
+	CheckAvailableService(ctx context.Context, companyID string, serviceCode string) (model.CheckResult, error)
 }
 
 type ContractUsecase struct {
@@ -19,12 +19,4 @@ func NewContractUsecase(contractClient contracts.BaseContractClient) *ContractUs
 	return &ContractUsecase{
 		contractClient: contractClient,
 	}
-}
-
-func (c *ContractUsecase) CheckService(
-	ctx context.Context,
-	companyID string,
-	serviceCode string,
-) (model.CheckResult, error) {
-	return c.contractClient.CheckService(ctx, companyID, serviceCode)
 }

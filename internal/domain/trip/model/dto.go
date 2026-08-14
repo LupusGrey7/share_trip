@@ -7,6 +7,11 @@ import (
 )
 
 type StatusEnum string
+type ServiceCodeEnum string
+
+const (
+	ServiceCodeTripPublication ServiceCodeEnum = "trip_publication"
+)
 
 const (
 	StatusDraft     StatusEnum = "draft"
@@ -82,6 +87,32 @@ type MoveTripDraftToPublishModelResponse struct {
 	CreatedAt     time.Time  `json:"createdAt" validate:"required"`
 	DepartureTime time.Time  `json:"departureTime" validate:"required"`
 	Status        StatusEnum `json:"status"`
+}
+
+type MoveTripPublishedToStartModel struct {
+	ID          string
+	CompanyID   string
+	ServiceCode ServiceCodeEnum
+}
+
+type MoveTripPublishedToStartRequestModel struct {
+	ID          string
+	ClientID    uuid.UUID       `json:"clientId" validate:"required,uuid"`
+	CompanyID   string          `json:"companyId" validate:"required"`
+	ServiceCode ServiceCodeEnum `json:"serviceCode" validate:"required" enum:"trip_publication"`
+}
+
+type MoveTripPublishedToStartModelResponse struct {
+	ID            uuid.UUID  `json:"id"`
+	DriverID      uuid.UUID  `json:"driverId"`
+	FromPoint     string     `json:"fromPoint"`
+	ToPoint       string     `json:"toPoint"`
+	Seats         int        `json:"seats"`
+	CreatedAt     time.Time  `json:"createdAt" validate:"required"`
+	DepartureTime time.Time  `json:"departureTime" validate:"required"`
+	Status        StatusEnum `json:"status"`
+	Allowed       bool       `json:"allowed"`
+	Reason        string     `json:"reason"`
 }
 
 // PageResponse model info
@@ -166,6 +197,21 @@ func (req *Entity) ToUpdatedPublishModelResponse() *MoveTripDraftToPublishModelR
 		DepartureTime: req.DepartureTime,
 		Seats:         req.Seats,
 		Status:        req.Status,
+	}
+}
+
+func (e *Entity) ToPublishedStartModelResponse(allowed bool, reason string) *MoveTripPublishedToStartModelResponse {
+	return &MoveTripPublishedToStartModelResponse{
+		ID:            e.ID,
+		DriverID:      e.DriverID,
+		FromPoint:     e.FromPoint,
+		ToPoint:       e.ToPoint,
+		CreatedAt:     e.CreatedAt,
+		DepartureTime: e.DepartureTime,
+		Seats:         e.Seats,
+		Status:        e.Status,
+		Allowed:       allowed,
+		Reason:        reason,
 	}
 }
 

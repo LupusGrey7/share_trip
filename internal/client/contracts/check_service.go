@@ -28,14 +28,17 @@ func (c *ContractClient) CheckService(
 
 	var response model.CheckServiceResponse
 
-	resp, err := c.httpClient.R().
+	resp, err := c.httpClient.R(). //R() create a new request
 		SetContext(ctx).
-		SetBody(model.CheckServiceRequest{
-			CompanyID:   companyID,
-			ServiceCode: serviceCode,
-		}).
+		SetHeader("Content-Type", "application/json"). //SetHeader() set the header for the request
+		SetPathParam("companyId", companyID).
+		SetPathParam("serviceCode", serviceCode).
+		// SetBody(model.CheckServiceRequest{
+		// 	CompanyID:   companyID,
+		// 	ServiceCode: serviceCode,
+		// }). //fix me - Body is not used in the request? 13/08/2026
 		SetResult(&response).
-		Post(CheckServiceAvailabilityEndpoint)
+		Post(CheckServiceAvailabilityEndpoint) //Post() send a POST request	
 
 	if err != nil {
 		return model.CheckResult{}, err
