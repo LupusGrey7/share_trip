@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
-	"job4j.ru/share_trip/internal/client/contracts/usecase"
+	"job4j.ru/share_trip/internal/client/contracts"
 	"job4j.ru/share_trip/internal/domain/trip/model"
 	"job4j.ru/share_trip/internal/repository"
 )
@@ -17,10 +17,10 @@ type BaseTripUseCase interface {
 	MoveTripPublishedToStartTx(ctx context.Context, tx pgx.Tx, repo repository.BaseTxTripRepository, req model.MoveTripPublishedToStartModel) (*model.MoveTripPublishedToStartModelResponse, error)
 }
 type TripUseCase struct {
-	contractUsecase usecase.BaseContractUsecase
+	contractUsecase contracts.BaseContractUsecase
 }
 
-func NewTripUseCase(contractUsecase usecase.BaseContractUsecase) *TripUseCase {
+func NewTripUseCase(contractUsecase contracts.BaseContractUsecase) *TripUseCase {
 	return &TripUseCase{
 		contractUsecase: contractUsecase,
 	}

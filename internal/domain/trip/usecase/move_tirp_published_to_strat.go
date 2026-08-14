@@ -39,7 +39,7 @@ func (t *TripUseCase) MoveTripPublishedToStartTx(
 	//If the Contract Service prohibits the action, the trip status remains unchanged.
 
 	//Check if the company has access to the trip_publication service.
-	contractResult, err := contractUsecase.CheckAvailableService(ctxSpc, req.CompanyID, string(req.ServiceCode))
+	contractResult, err := t.contractUsecase.CheckAvailableService(ctxSpc, req.CompanyID, string(req.ServiceCode))
 	if err != nil {
 		logger.Error("check service useCase failed", slog.Any("error", err))
 		return nil, err
@@ -53,27 +53,27 @@ func (t *TripUseCase) MoveTripPublishedToStartTx(
 	resp, err := repo.GetForUpdateByIDTx(ctxSpc, tx, req.ID)
 	if err != nil {
 		if errors.Is(err, repository.ErrTripNotFound) {
-			logger.Error("move trip draft to publish transaction get trip repository failed", slog.Any("error", err))
+			logger.Error("move trip published to start transaction get trip repository failed", slog.Any("error", err))
 			return nil, ErrTripNotFound
 		}
 		// If this is not a ErrEntityNotFound, This means it's a system failure (500 error)
-		logger.Error("move trip draft to publish transaction get trip repository failed", slog.String("error", err.Error()))
+		logger.Error("move trip published to start transaction get trip repository failed", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	if resp.DriverID != req.ClientID {
-		logger.Error("move trip draft to publish useCase failed", slog.Any("error", err))
+		logger.Error("move trip published to start useCase failed", slog.Any("error", err))
 		return nil, fmt.Errorf("%w: client %s is not driver of trip %s", ErrForbidden, req.ClientID, req.ID)
 	}
 
 	if resp.Status == model.StatusPublished {
-		logger.Debug("move trip draft to publish transaction useCase completed", slog.String("trip_id", resp.ID.String()))
+		logger.Debug("move trip published to start transaction useCase completed", slog.String("trip_id", resp.ID.String()))
 		return &model.MoveTripPublishedToStartModelResponse{ID: resp.ID}, nil
 	}
 
 	if resp.Status != model.StatusDraft {
 		logger.Error(
-			"move draft to publish useCase failed",
+			"move published to start useCase failed",
 			slog.Any("error", err),
 		)
 		return nil, fmt.Errorf("%w: invalid entity status: expected %s", ErrConflict, model.StatusDraft)
@@ -87,6 +87,6 @@ func (t *TripUseCase) MoveTripPublishedToStartTx(
 		return nil, err
 	}
 
-	logger.Debug("move draft to publish completed", slog.String("trip_id", resp.ID.String()))
+	logger.Debug("move published to start completed", slog.String("trip_id", resp.ID.String()))
 	return updatedTrip.ToPublishedStartModelResponse(contractResult.Allowed, contractResult.Reason), nil
 }

@@ -10,7 +10,11 @@ type StatusEnum string
 type ServiceCodeEnum string
 
 const (
-	ServiceCodeTripPublication ServiceCodeEnum = "trip_publication"
+	ServiceCodeTripPublication  ServiceCodeEnum = "trip_publication"
+	ServiceCodeTripCancellation ServiceCodeEnum = "trip_cancellation"
+	ServiceCodeTripCompletion   ServiceCodeEnum = "trip_completion"
+	ServiceCodeTripStart        ServiceCodeEnum = "trip_start"
+	ServiceCodeTripEnd          ServiceCodeEnum = "trip_end"
 )
 
 const (
@@ -91,6 +95,7 @@ type MoveTripDraftToPublishModelResponse struct {
 
 type MoveTripPublishedToStartModel struct {
 	ID          string
+	ClientID    uuid.UUID
 	CompanyID   string
 	ServiceCode ServiceCodeEnum
 }

@@ -4,19 +4,18 @@ import (
 	"context"
 	"log/slog"
 
-	"job4j.ru/share_trip/internal/client/contracts/model"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
 const (
-	CheckServiceAvailabilityEndpoint = "/api/v2/companies/{companyId}/services/{serviceCode}/availability " // TODO: change to the actual endpoint `check-service` availability endpoint
+	CheckAvailableServiceEndpoint = "/api/v2/companies/{companyId}/services/{serviceCode}/availability " // TODO: change to the actual endpoint `check-service` availability endpoint
 )
 
 func (c *ContractClient) CheckService(
 	ctx context.Context,
 	companyID string,
 	serviceCode string,
-) (model.CheckResult, error) {
+) (CheckResult, error) {
 	//log the request
 	logger := logctx.Logger(ctx).With(
 		slog.String("service", "ContractClient"),
@@ -26,32 +25,32 @@ func (c *ContractClient) CheckService(
 	)
 	logger.Info("checking service availability")
 
-	var response model.CheckServiceResponse
+	var response CheckServiceResponse
 
 	resp, err := c.httpClient.R(). //R() create a new request
-		SetContext(ctx).
-		SetHeader("Content-Type", "application/json"). //SetHeader() set the header for the request
-		SetPathParam("companyId", companyID).
-		SetPathParam("serviceCode", serviceCode).
-		// SetBody(model.CheckServiceRequest{
+					SetContext(ctx).
+					SetHeader("Content-Type", "application/json"). //SetHeader() set the header for the request
+					SetPathParam("companyId", companyID).
+					SetPathParam("serviceCode", serviceCode).
+		// SetBody(CheckServiceRequest{
 		// 	CompanyID:   companyID,
 		// 	ServiceCode: serviceCode,
 		// }). //fix me - Body is not used in the request? 13/08/2026
 		SetResult(&response).
-		Post(CheckServiceAvailabilityEndpoint) //Post() send a POST request	
+		Post(CheckServiceAvailabilityEndpoint) //Post() send a POST request
 
 	if err != nil {
-		return model.CheckResult{}, err
+		return CheckResult{}, err
 	}
 
 	//handle http client error
 	if resp.IsError() {
-		logger.Error("error checking service availability", "error", MapHTTPClientError(resp))
-		return model.CheckResult{}, MapHTTPClientError(resp)
+		logger.Error("error checking service availability", "error", resp.Error())
+		return CheckResult{}, MapHTTPClientError(resp)
 	}
 
 	logger.Info("service availability checked successfully")
-	return model.CheckResult{
+	return CheckResult{
 		Allowed: response.Allowed,
 		Reason:  response.Reason,
 	}, nil

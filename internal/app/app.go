@@ -11,7 +11,6 @@ import (
 	"job4j.ru/share_trip/configs"
 	"job4j.ru/share_trip/internal/api"
 	clientContract "job4j.ru/share_trip/internal/client/contracts"
-	clientContractUsecase "job4j.ru/share_trip/internal/client/contracts/usecase"
 	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"job4j.ru/share_trip/internal/middleware"
 	"job4j.ru/share_trip/internal/observability/logctx"
@@ -34,14 +33,14 @@ func BuildServer(
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	// rest client for contract service
-	clientContract := clientContract.NewContractClient(configs.Env("CONTRACT_SERVICE_URL", "http://localhost:8081"))
+	contractClient := clientContract.NewContractClient(configs.Env("CONTRACT_SERVICE_URL", "http://localhost:8081"))
 
 	repo := repository.NewRepoPg(pool)
 	repoTrip := repository.NewTripRepository(m, pool)
 	outboxRepo := repository.NewOutboxEventRepository()
 
 	infoUseCase := usecase.NewInfoUseCase()
-	contractUsecase := clientContractUsecase.NewContractUsecase(clientContract)
+	contractUsecase := clientContract.NewContractUsecase(contractClient)
 	tripUseCase := usecase.NewTripUseCase(contractUsecase)
 
 	infoService := service.NewInfoService(infoUseCase, repo)

@@ -6,11 +6,10 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"job4j.ru/share_trip/internal/client/contracts/model"
 )
 
 type BaseContractClient interface {
-	CheckService(ctx context.Context, companyID string, serviceCode string) (model.CheckResult, error)
+	CheckService(ctx context.Context, companyID string, serviceCode string) (CheckResult, error)
 }
 
 type ContractClient struct {
@@ -20,12 +19,12 @@ type ContractClient struct {
 func NewContractClient(baseURL string) *ContractClient {
 	return &ContractClient{ //set up the http resty client
 		httpClient: resty.New(). //create a new http resty client
-			SetBaseURL(baseURL).
-			SetTimeout(2 * time.Second). //set the timeout for the http request
-			SetRetryCount(2). //it means 1+2 retry
-			SetRetryWaitTime(200 * time.Millisecond).
-			SetRetryMaxWaitTime(1 * time.Second).
-			AddRetryCondition(func(r *resty.Response, err error) bool {
+						SetBaseURL(baseURL).
+						SetTimeout(2 * time.Second). //set the timeout for the http request
+						SetRetryCount(2).            //it means 1+2 retry
+						SetRetryWaitTime(200 * time.Millisecond).
+						SetRetryMaxWaitTime(1 * time.Second).
+						AddRetryCondition(func(r *resty.Response, err error) bool {
 				if err != nil {
 					return true
 				}

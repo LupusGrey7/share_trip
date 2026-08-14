@@ -1,4 +1,4 @@
-package model
+package contracts
 
 type CheckResult struct {
 	Allowed bool

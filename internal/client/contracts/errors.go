@@ -1,11 +1,19 @@
-// Helper functions for the contracts client
 package contracts
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/go-resty/resty/v2"
+)
+
+const (
+	ErrServiceUnavailable = "service is not available"
+)
+
+var (
+	ErrCheckServiceUnavailable = errors.New("service is not available in the contract")
 )
 
 func MapHTTPClientError(resp *resty.Response) error {

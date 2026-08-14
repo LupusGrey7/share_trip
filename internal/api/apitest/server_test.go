@@ -27,7 +27,6 @@ import (
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
 	"job4j.ru/share_trip/internal/service"
 	client "job4j.ru/share_trip/internal/client/contracts"
-	clientUsecase "job4j.ru/share_trip/internal/client/contracts/usecase"
 )
 
 const (
@@ -96,8 +95,8 @@ func TestMain(m *testing.M) {
 	repoTrip := repository.NewTripRepository(mu, testPool)
 	outboxRepo := repository.NewOutboxEventRepository()
 
-	client := client.NewContractClient()
-	contractUsecase := clientUsecase.NewContractUsecase(client)
+	contractClient := client.NewContractClient("http://localhost:8081")
+	contractUsecase := client.NewContractUsecase(contractClient)
 
 	infoUseCase := usecase.NewInfoUseCase()
 	tripUseCase := usecase.NewTripUseCase(contractUsecase)
