@@ -4,12 +4,13 @@ package contracts
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
 const (
-	// TODO: confirm exact path with Contract Service OpenAPI
+	// TODO: confirm exact path/method with Contract Service OpenAPI / lead
 	CheckAvailableServiceEndpoint = "/api/v2/companies/{companyId}/services/{serviceCode}/availability"
 )
 
@@ -18,11 +19,12 @@ func (c *ContractClient) CheckAvailableService(
 	companyID string,
 	serviceCode string,
 ) (CheckResult, error) {
+	started := time.Now()
 	logger := logctx.Logger(ctx).With(
 		slog.String("service", "ContractClient"),
 		slog.String("operation", "CheckAvailableService"),
-		slog.String("companyID", companyID),
-		slog.String("serviceCode", serviceCode),
+		slog.String("company_id", companyID),
+		slog.String("service_code", serviceCode),
 	)
 	logger.Info("checking service availability")
 
@@ -31,24 +33,45 @@ func (c *ContractClient) CheckAvailableService(
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
+		SetHeader("Accept", "application/json").
+		ForceContentType("application/json").
 		SetPathParam("companyId", companyID).
 		SetPathParam("serviceCode", serviceCode).
 		SetResult(&response).
 		Get(CheckAvailableServiceEndpoint)
 
+	durationMs := time.Since(started).Milliseconds()
+
 	if err != nil {
-		logger.Error("error checking service availability", "error", err)
-		return CheckResult{}, err
+		mapped := MapTransportError(err)
+		logger.Error("contract check transport failed",
+			slog.Int64("duration_ms", durationMs),
+			slog.String("result", "error"),
+			slog.Any("error", mapped),
+		)
+		return CheckResult{}, mapped
 	}
 
 	if resp.IsError() {
-		logger.Error("error checking service availability", "error", resp.Error())
-		return CheckResult{}, MapHTTPClientError(resp)
+		mapped := MapHTTPClientError(resp)
+		logger.Error("contract check http error",
+			slog.Int64("duration_ms", durationMs),
+			slog.Int("http_status", resp.StatusCode()),
+			slog.String("result", "error"),
+			slog.Any("error", mapped),
+		)
+		return CheckResult{}, mapped
 	}
 
-	logger.Info("service availability checked successfully")
-	return CheckResult{
+	result := CheckResult{
 		Allowed: response.Allowed,
 		Reason:  response.Reason,
-	}, nil
+	}
+	logger.Info("service availability checked",
+		slog.Int64("duration_ms", durationMs),
+		slog.String("result", "ok"),
+		slog.Bool("allowed", result.Allowed),
+		slog.String("reason", result.Reason),
+	)
+	return result, nil
 }

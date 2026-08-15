@@ -1,34 +1,61 @@
 package contracts
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
+	"os"
 
 	"github.com/go-resty/resty/v2"
 )
 
-// MapHTTPClientError — mapping HTTP response to error.
-// This is not an error class, but an adapter: status/body → error (later → sentinel from errors.go).
-// Separate file, same package contracts — not client_helper and not clienterr package.
+// MapHTTPClientError maps Contract HTTP error response → sentinel (%w for errors.Is).
 func MapHTTPClientError(resp *resty.Response) error {
-	switch resp.StatusCode() {
-	case http.StatusBadRequest:
-		return fmt.Errorf("HTTP error: %d %s", resp.StatusCode(), resp.Status())
-	case http.StatusUnauthorized:
-		return fmt.Errorf("HTTP error: %d %s", resp.StatusCode(), resp.Status())
-	case http.StatusForbidden:
-		return fmt.Errorf("HTTP error: %d %s", resp.StatusCode(), resp.Status())
-	case http.StatusNotFound:
-		return fmt.Errorf("HTTP error: %d %s", resp.StatusCode(), resp.Status())
-	case http.StatusTooManyRequests:
-		return fmt.Errorf("HTTP error: %d %s", resp.StatusCode(), resp.Status())
-	case http.StatusInternalServerError:
-		return fmt.Errorf("HTTP error: %d %s", resp.StatusCode(), resp.Status())
-	case http.StatusBadGateway:
-		return fmt.Errorf("HTTP error: %d %s", resp.StatusCode(), resp.Status())
-	case http.StatusServiceUnavailable:
-		return fmt.Errorf("HTTP error: %d %s", resp.StatusCode(), resp.Status())
-	default:
-		return fmt.Errorf("HTTP error: %d %s", resp.StatusCode(), resp.Status())
+	if resp == nil {
+		return ErrUnavailable
 	}
+
+	code := resp.StatusCode()
+	switch code {
+	case http.StatusBadRequest, http.StatusNotFound:
+		return fmt.Errorf("%w: status %d", ErrBadRequest, code)
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return fmt.Errorf("%w: status %d", ErrForbidden, code)
+	case http.StatusRequestTimeout, http.StatusGatewayTimeout:
+		return fmt.Errorf("%w: status %d", ErrTimeout, code)
+	case http.StatusTooManyRequests,
+		http.StatusBadGateway,
+		http.StatusServiceUnavailable,
+		http.StatusInternalServerError:
+		return fmt.Errorf("%w: status %d", ErrUnavailable, code)
+	default:
+		return fmt.Errorf("%w: status %d", ErrUnavailable, code)
+	}
+}
+
+// MapTransportError maps network / deadline errors from resty → sentinel.
+func MapTransportError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if isTimeoutErr(err) {
+		return fmt.Errorf("%w: %v", ErrTimeout, err)
+	}
+	return fmt.Errorf("%w: %v", ErrUnavailable, err)
+}
+
+func isTimeoutErr(err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+	return false
 }

@@ -3,9 +3,13 @@ package apitest
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -42,7 +46,32 @@ var (
 	testPool      *pgxpool.Pool
 	testApp       *fiber.App
 	testContainer *postgres.PostgresContainer
+
+	contractStubMu      sync.Mutex
+	contractStubHandler http.HandlerFunc
+	contractStubServer  *httptest.Server
 )
+
+// UseContractStub sets Contract httptest behavior for this test and restores default (allowed:true).
+func UseContractStub(t *testing.T, handler http.HandlerFunc) {
+	t.Helper()
+	contractStubMu.Lock()
+	prev := contractStubHandler
+	contractStubHandler = handler
+	contractStubMu.Unlock()
+
+	t.Cleanup(func() {
+		contractStubMu.Lock()
+		contractStubHandler = prev
+		contractStubMu.Unlock()
+	})
+}
+
+func defaultContractStub(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"allowed": true, "reason": "ok"})
+}
+
 
 /*
 === Registered Routes ===
@@ -96,7 +125,19 @@ func TestMain(m *testing.M) {
 	repoTrip := repository.NewTripRepository(mu, testPool)
 	outboxRepo := repository.NewOutboxEventRepository()
 
-	contractClient := client.NewContractClient("http://localhost:8081")
+	contractStubHandler = defaultContractStub
+	contractStubServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contractStubMu.Lock()
+		h := contractStubHandler
+		contractStubMu.Unlock()
+		if h == nil {
+			defaultContractStub(w, r)
+			return
+		}
+		h(w, r)
+	}))
+
+	contractClient := client.NewContractClient(contractStubServer.URL)
 	contractUsecase := clientUsecase.NewContractUsecase(contractClient)
 
 	infoUseCase := usecase.NewInfoUseCase()
@@ -130,6 +171,10 @@ func TestMain(m *testing.M) {
 
 	// === 3. Correct shutdown of resources ===
 	log.Println("=== Starting forced shutdown sequence ===")
+
+	if contractStubServer != nil {
+		contractStubServer.Close()
+	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 	defer cancel()

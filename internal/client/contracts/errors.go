@@ -2,12 +2,12 @@ package contracts
 
 import "errors"
 
-const (
-	ErrServiceUnavailable = "service is not available"
-)
-
-// Sentinel-ошибки клиента — «какие отказы бывают» (аналог разных error-классов в Java).
-// Позже: ErrTimeout, ErrUnavailable, ErrBadRequest — для errors.Is в handler.
+// Sentinel-ошибки исходящего клиента Contract Service.
+// HandleError мапит их через errors.Is → 502/503/504 (fail closed).
+// Не путать с CheckResult{Allowed:false} — это бизнес-deny без error.
 var (
-	ErrCheckServiceUnavailable = errors.New("service is not available in the contract")
+	ErrTimeout     = errors.New("contract service timeout")
+	ErrUnavailable = errors.New("contract service unavailable")
+	ErrBadRequest  = errors.New("contract service bad request")
+	ErrForbidden   = errors.New("contract service forbidden")
 )

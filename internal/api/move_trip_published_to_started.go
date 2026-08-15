@@ -1,4 +1,4 @@
-// scenario: move trip published to started
+// scenario: move trip published to started (published → started)
 package api
 
 import (

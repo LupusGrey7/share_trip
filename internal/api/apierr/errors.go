@@ -18,7 +18,9 @@ const (
 	ErrorClaimsNotFound      = "claims not found in context"
 	ErrorForbiddenRole       = "forbidden: missing required client role"
 	ErrorForbiddenIDMismatch = "forbidden: driverId does not match authenticated user"
-	ErrorBadGateway          = "bad gateway: invalid subject in token"
+	ErrorBadGateway             = "bad gateway: invalid subject in token"
+	ErrorContractUnavailable    = "contract_service_unavailable"
+	ErrorContractTimeout        = "contract_service_timeout"
 )
 
 var (
