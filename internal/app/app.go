@@ -34,7 +34,7 @@ func BuildServer(
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	// rest client for contract service
-	contractClient := clientContract.NewContractClient(configs.Env("CONTRACT_SERVICE_URL", "http://localhost:8081"))
+	contractClient := clientContract.NewContractClient(configs.Env(configs.ContractServiceEnv, configs.BaseURL))
 
 	repo := repository.NewRepoPg(pool)
 	repoTrip := repository.NewTripRepository(m, pool)

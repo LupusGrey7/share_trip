@@ -17,14 +17,30 @@ import (
 
 const (
 	createNewTrip = `
-insert into trips(id, driver_id, from_point, to_point, departure_time, seats, status, created_at) 
-values($1, $2, $3, $4, $5, $6, $7, $8) 
-RETURNING 
-id, driver_id, from_point, to_point, departure_time, seats, status, created_at`
+insert into trips(id, driver_id, from_point, to_point, departure_time, seats, trip_status_id, created_at)
+values(
+	$1, $2, $3, $4, $5, $6,
+	(SELECT id FROM trip_status WHERE name = $7),
+	$8
+)
+RETURNING
+	id,
+	driver_id,
+	from_point,
+	to_point,
+	departure_time,
+	seats,
+	(SELECT name FROM trip_status WHERE id = trips.trip_status_id) AS status,
+	created_at`
 
 	createTripHistory = `
-insert into trip_history(id, trip_id, from_status, to_status, created_at) 
-values($1, $2, $3, $4, $5)`
+insert into trip_history(id, trip_id, from_status_id, to_status_id, created_at)
+values(
+	$1, $2,
+	(SELECT id FROM trip_status WHERE name = $3),
+	(SELECT id FROM trip_status WHERE name = $4),
+	$5
+)`
 )
 
 type BaseTripRepository interface {

@@ -23,35 +23,54 @@ const (
 	MetricsResultSuccess  = "success"
 
 	getTripByID = `
-select *
-from trips 
-where id = $1
+select
+	t.id,
+	t.driver_id,
+	t.from_point,
+	t.to_point,
+	t.departure_time,
+	t.seats,
+	ts.name AS status,
+	t.created_at
+from trips t
+join trip_status ts on ts.id = t.trip_status_id
+where t.id = $1
 `
 
 	forUpdateTrip = `
 select
+	t.id,
+	t.driver_id,
+	t.from_point,
+	t.to_point,
+	t.departure_time,
+	t.seats,
+	ts.name AS status,
+	t.created_at
+from trips t
+join trip_status ts on ts.id = t.trip_status_id
+where t.id = $1
+FOR UPDATE OF t
+`
+
+	updateTrip = `
+update trips
+set trip_status_id = (SELECT id FROM trip_status WHERE name = $1)
+where id = $2
+RETURNING
 	id,
 	driver_id,
 	from_point,
 	to_point,
 	departure_time,
 	seats,
-	status,
+	(SELECT name FROM trip_status WHERE id = trips.trip_status_id) AS status,
 	created_at
-from trips
-where id = $1 
-FOR UPDATE
 `
-	updateTrip = `
-update trips
-set status = $1
-where id = $2
-RETURNING 
-id, driver_id, from_point, to_point, departure_time, seats, status, created_at
-`
+
 	updateTripHistory = `
 update trip_history
-set to_status = $1
+set to_status_id = (SELECT id FROM trip_status WHERE name = $1)
 where trip_id = $2
 `
 )

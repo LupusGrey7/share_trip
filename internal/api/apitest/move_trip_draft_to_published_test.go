@@ -137,7 +137,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 
 		created := mustCreateTripDraft(t, createTripDraftRequestModel())
 
-		_, err := testDB.ExecContext(testCtx, "UPDATE trips SET status = $1 WHERE id = $2", "cancelled", created.ID)
+		_, err := testDB.ExecContext(testCtx,
+			`UPDATE trips SET trip_status_id = (SELECT id FROM trip_status WHERE name = $1) WHERE id = $2`,
+			"cancelled", created.ID,
+		)
 		require.NoError(t, err)
 
 		publishBody := api.MoveTripDraftToPublishRequestModel{

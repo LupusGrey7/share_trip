@@ -29,7 +29,7 @@ func (s *Server) SetupRoutes(app *fiber.App, keycloakAuth fiber.Handler) {
 		tripMiddlewares = append(tripMiddlewares, keycloakAuth)
 	}
 
-	tripGroupV2 := v2.Group(TripPath, tripMiddlewares...) //sub group TripPath = "/ship"
+	tripGroupV2 := v2.Group(TripPath, tripMiddlewares...) //sub group TripPath = "/trip"
 	tripGroupV2.Get(
 		"/:tripId",
 		middleware.RequireClientRole(middleware.KeycloakClientID, middleware.KeycloakClientRole),
@@ -44,5 +44,10 @@ func (s *Server) SetupRoutes(app *fiber.App, keycloakAuth fiber.Handler) {
 		"/moveTripDraft-ToPublish/:tripId",
 		middleware.RequireClientRole(middleware.KeycloakClientID, middleware.KeycloakClientRole),
 		s.MoveTripDraftToPublishTx,
+	)
+	tripGroupV2.Patch(
+		"/moveTripPublished-ToStarted/:tripId/company/:companyId/service/:serviceCode",
+		middleware.RequireClientRole(middleware.KeycloakClientID, middleware.KeycloakClientRole),
+		s.MoveTripPublishedToStarted,
 	)
 }

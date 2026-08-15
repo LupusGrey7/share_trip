@@ -7,6 +7,13 @@ import (
 	"job4j.ru/share_trip/internal/domain/trip/model"
 )
 
+type ServiceCodeEnum string
+
+const (
+	ServiceCodeTripPublication ServiceCodeEnum = "trip_publication" // ServiceCode for trip publication
+	ServiceCodeTripStart       ServiceCodeEnum = "trip_start"       // ServiceCode for trip start
+)
+
 type GetTripByIDRequestModel struct {
 	ID string `validate:"required,uuid"`
 }
@@ -18,6 +25,20 @@ func (req GetTripByIDRequestModel) ToGetByIDRequestModel() model.GetByIDModelReq
 type MoveTripDraftToPublishRequestModel struct {
 	ID       string    `validate:"required,uuid"`
 	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"`
+}
+
+type MoveTripPublishedToStartedRequestModel struct {
+	ID          string          `validate:"required,uuid"`                          // trip id (path)
+	CompanyID   string          `validate:"required,min=2,max=10"`                  // company id (path)
+	ServiceCode ServiceCodeEnum `validate:"required,oneof=trip_start"`              // service code (path)
+}
+
+func (req MoveTripPublishedToStartedRequestModel) ToMoveTripPublishedToStartedModel() model.MoveTripPublishedToStartedModel {
+	return model.MoveTripPublishedToStartedModel{
+		ID:          req.ID,
+		CompanyID:   req.CompanyID,
+		ServiceCode: model.ServiceCodeEnum(req.ServiceCode),
+	}
 }
 
 type CreateTripRequestModel struct {

@@ -50,6 +50,7 @@ func (t *TripUseCase) MoveTripPublishedToStartTx(
 		return nil, fmt.Errorf("%w: service is not allowed", ErrConflict)
 	}
 
+	// If the permission is present, we move the trip to the published status and update the publication date
 	resp, err := repo.GetForUpdateByIDTx(ctxSpc, tx, req.ID)
 	if err != nil {
 		if errors.Is(err, repository.ErrTripNotFound) {

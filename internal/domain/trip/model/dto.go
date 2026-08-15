@@ -17,9 +17,11 @@ const (
 	ServiceCodeTripEnd          ServiceCodeEnum = "trip_end"
 )
 
+// Status codes match trip_status.name in DB dictionary (not a PostgreSQL ENUM).
 const (
 	StatusDraft     StatusEnum = "draft"
 	StatusPublished StatusEnum = "published"
+	StatusStarted   StatusEnum = "started"
 	StatusCancelled StatusEnum = "cancelled"
 	StatusCompleted StatusEnum = "completed"
 )
@@ -32,7 +34,7 @@ type Entity struct {
 	CreatedAt     time.Time  `db:"created_at"`
 	DepartureTime time.Time  `db:"departure_time"`
 	Seats         int        `db:"seats"`
-	Status        StatusEnum `db:"status"`
+	Status        StatusEnum `db:"status"` // trip_status.name via JOIN / RETURNING subquery
 }
 
 // CreateTripDraftResponse model info
@@ -72,6 +74,13 @@ type CreateTripRequestModel struct {
 	AvailableSeats int
 }
 
+type MoveTripPublishedToStartedModel struct {
+	ID          string
+	ClientID    uuid.UUID
+	CompanyID   string
+	ServiceCode ServiceCodeEnum
+}
+
 type MoveTripDraftToPublishRequestModel struct {
 	ID       string
 	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"` //"omitempty,uuid"
@@ -80,6 +89,19 @@ type MoveTripDraftToPublishRequestModel struct {
 type MoveTripDraftToPublishModel struct {
 	ID       string
 	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"` //"omitempty,uuid"
+}
+
+type MoveTripPublishedToStartedModelResponse struct {
+	ID            uuid.UUID  `json:"id"`
+	DriverID      uuid.UUID  `json:"driverId"`
+	FromPoint     string     `json:"fromPoint"`
+	ToPoint       string     `json:"toPoint"`
+	Seats         int        `json:"seats"`
+	CreatedAt     time.Time  `json:"createdAt" validate:"required"`
+	DepartureTime time.Time  `json:"departureTime" validate:"required"`
+	Status        StatusEnum `json:"status"`
+	Allowed       bool       `json:"allowed"`
+	Reason        string     `json:"reason"`
 }
 
 type MoveTripDraftToPublishModelResponse struct {
@@ -91,33 +113,6 @@ type MoveTripDraftToPublishModelResponse struct {
 	CreatedAt     time.Time  `json:"createdAt" validate:"required"`
 	DepartureTime time.Time  `json:"departureTime" validate:"required"`
 	Status        StatusEnum `json:"status"`
-}
-
-type MoveTripPublishedToStartModel struct {
-	ID          string
-	ClientID    uuid.UUID
-	CompanyID   string
-	ServiceCode ServiceCodeEnum
-}
-
-type MoveTripPublishedToStartRequestModel struct {
-	ID          string
-	ClientID    uuid.UUID       `json:"clientId" validate:"required,uuid"`
-	CompanyID   string          `json:"companyId" validate:"required"`
-	ServiceCode ServiceCodeEnum `json:"serviceCode" validate:"required" enum:"trip_publication"`
-}
-
-type MoveTripPublishedToStartModelResponse struct {
-	ID            uuid.UUID  `json:"id"`
-	DriverID      uuid.UUID  `json:"driverId"`
-	FromPoint     string     `json:"fromPoint"`
-	ToPoint       string     `json:"toPoint"`
-	Seats         int        `json:"seats"`
-	CreatedAt     time.Time  `json:"createdAt" validate:"required"`
-	DepartureTime time.Time  `json:"departureTime" validate:"required"`
-	Status        StatusEnum `json:"status"`
-	Allowed       bool       `json:"allowed"`
-	Reason        string     `json:"reason"`
 }
 
 // PageResponse model info
@@ -205,8 +200,8 @@ func (req *Entity) ToUpdatedPublishModelResponse() *MoveTripDraftToPublishModelR
 	}
 }
 
-func (e *Entity) ToPublishedStartModelResponse(allowed bool, reason string) *MoveTripPublishedToStartModelResponse {
-	return &MoveTripPublishedToStartModelResponse{
+func (e *Entity) ToPublishedStartModelResponse(allowed bool, reason string) *MoveTripPublishedToStartedModelResponse {
+	return &MoveTripPublishedToStartedModelResponse{
 		ID:            e.ID,
 		DriverID:      e.DriverID,
 		FromPoint:     e.FromPoint,

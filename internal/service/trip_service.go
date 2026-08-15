@@ -16,6 +16,7 @@ type Service interface {
 	CreateTripWithTx(context.Context, model.CreateTripRequestModel) (*model.CreateTripDraftResponse, error)
 	MoveTripDraftToPublish(ctx context.Context, req model.MoveTripDraftToPublishModel) (*model.MoveTripDraftToPublishModelResponse, error)
 	GetTripByID(ctx context.Context, req model.GetByIDModelRequest) (*model.GetTripByIDModelResponse, error)
+	MoveTripPublishedToStarted(ctx context.Context, req model.MoveTripPublishedToStartedModel) (*model.MoveTripPublishedToStartedModelResponse, error)
 }
 
 type TripService struct {
