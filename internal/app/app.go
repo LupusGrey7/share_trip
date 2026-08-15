@@ -11,6 +11,7 @@ import (
 	"job4j.ru/share_trip/configs"
 	"job4j.ru/share_trip/internal/api"
 	clientContract "job4j.ru/share_trip/internal/client/contracts"
+	clientContractUsecase "job4j.ru/share_trip/internal/client/contracts/usecase"
 	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"job4j.ru/share_trip/internal/middleware"
 	"job4j.ru/share_trip/internal/observability/logctx"
@@ -40,7 +41,7 @@ func BuildServer(
 	outboxRepo := repository.NewOutboxEventRepository()
 
 	infoUseCase := usecase.NewInfoUseCase()
-	contractUsecase := clientContract.NewContractUsecase(contractClient)
+	contractUsecase := clientContractUsecase.NewContractUsecase(contractClient)
 	tripUseCase := usecase.NewTripUseCase(contractUsecase)
 
 	infoService := service.NewInfoService(infoUseCase, repo)

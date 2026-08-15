@@ -9,7 +9,7 @@ import (
 )
 
 type BaseContractClient interface {
-	CheckService(ctx context.Context, companyID string, serviceCode string) (CheckResult, error)
+	CheckAvailableService(ctx context.Context, companyID string, serviceCode string) (CheckResult, error)
 }
 
 type ContractClient struct {

@@ -37,7 +37,7 @@ func (c *ContractClient) CheckService(
 		// 	ServiceCode: serviceCode,
 		// }). //fix me - Body is not used in the request? 13/08/2026
 		SetResult(&response).
-		Post(CheckServiceAvailabilityEndpoint) //Post() send a POST request
+		Post(CheckAvailableServiceEndpoint) //Post() send a POST request
 
 	if err != nil {
 		return CheckResult{}, err
