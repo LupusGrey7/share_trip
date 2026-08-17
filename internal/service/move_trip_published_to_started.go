@@ -1,3 +1,4 @@
+// scenario: MoveTripPublishedToStarted: Contract Service Client — outside tx, then short DB transaction.
 package service
 
 import (
@@ -14,7 +15,6 @@ import (
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
-// MoveTripPublishedToStarted: Contract outside tx (lead), then short DB transaction.
 func (s *TripService) MoveTripPublishedToStarted(
 	ctx context.Context,
 	req model.MoveTripPublishedToStartedModel,
@@ -30,6 +30,7 @@ func (s *TripService) MoveTripPublishedToStarted(
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
 		}
+		// metrics - time for Prometheus + Grafana (Integration with Prometheus)
 		s.metrics.TripPublishedToStartTotal.WithLabelValues(result).Inc()
 		s.metrics.TripPublishedToStartDuration.WithLabelValues(result).
 			Observe(time.Since(started).Seconds())
@@ -46,19 +47,21 @@ func (s *TripService) MoveTripPublishedToStarted(
 	)
 	logger.Debug("move trip published to started started")
 
-	// 1) Contract Service — outside transaction (lead sequence)
-	contractResult, err := s.useCase.CheckStartAllowed(ctxSpc, req.CompanyID, string(req.ServiceCode))
+	// 1) Contract Service Client — outside transaction, check if service is allowed
+	contractResult, err := s.useCase.CheckServiceAllowed(ctxSpc, req.CompanyID, string(req.ServiceCode))
 	if err != nil {
 		logger.Error("contract check failed", slog.Any("error", err))
 		return nil, err
 	}
+
 	if !contractResult.IsAllowed() {
-		reason := contractResult.Reason
-		if reason == "" {
-			reason = "service is not allowed"
+		businessDenyReason := contractResult.Reason
+		if businessDenyReason == "" {
+			businessDenyReason = "service is not allowed"
 		}
-		logger.Error("contract denied trip start", slog.String("reason", reason))
-		return nil, fmt.Errorf("%w: %s", usecase.ErrConflict, reason)
+
+		logger.Error("contract denied trip start", slog.String("reason", businessDenyReason))
+		return nil, fmt.Errorf("%w: %s", usecase.ErrConflict, businessDenyReason)
 	}
 
 	// 2) Short DB transaction: FOR UPDATE → status → commit

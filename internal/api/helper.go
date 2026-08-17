@@ -30,7 +30,7 @@ func HandleError(c *fiber.Ctx, err error) error {
 		return apierr.ErrResponse(c, fiber.StatusBadRequest, apierr.RequestValidationError)
 	case errors.Is(err, usecase.ErrTripNotFound): // 404
 		return apierr.ErrResponse(c, fiber.StatusNotFound, apierr.StatusNotFound)
-	case errors.Is(err, usecase.ErrConflict): // 409 — бизнес-отказ (deny / wrong status / company not found)
+	case errors.Is(err, usecase.ErrConflict): // 409 - business deny (deny / wrong status / company not found)
 		return apierr.ErrResponse(c, fiber.StatusConflict, err.Error())
 	case errors.Is(err, contracts.ErrTimeout): // 504 — Contract timeout, fail closed
 		return apierr.ErrResponse(c, fiber.StatusGatewayTimeout, apierr.ErrorContractTimeout)

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"log/slog"
 	"os"
 
 	"github.com/go-playground/validator/v10"
@@ -85,8 +86,12 @@ func GetKeycloakConfig() middleware.KeycloakConfig {
 // logKeycloakConfig - log the keycloak config
 func LogKeycloakConfig(keycloakCfg middleware.KeycloakConfig) {
 	cwd, _ := os.Getwd()
-	logctx.Logger(context.Background()).Info("keycloak: issuer=%s client_id=%s secret_len=%d cwd=%s",
-		keycloakCfg.Issuer, keycloakCfg.ClientID, len(keycloakCfg.ClientSecret), cwd)
+	logctx.Logger(context.Background()).Info("keycloak config",
+		slog.String("issuer", keycloakCfg.Issuer),
+		slog.String("client_id", keycloakCfg.ClientID),
+		slog.Int("secret_len", len(keycloakCfg.ClientSecret)),
+		slog.String("cwd", cwd),
+	)
 	if keycloakCfg.ClientSecret == "" || keycloakCfg.ClientSecret == "secret" {
 		logctx.Logger(context.Background()).Error("KEYCLOAK_CLIENT_SECRET empty or placeholder 'secret' — save real secret in .env, then: " +
 			"Remove-Item Env:KEYCLOAK_CLIENT_SECRET; make run")

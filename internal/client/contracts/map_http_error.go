@@ -64,7 +64,7 @@ func isTimeoutErr(err error) bool {
 }
 
 // IsBusinessNotFound reports Contract responses that mean "no such company/offering"
-// (бизнес-отказ), not "Contract is down".
+// (business deny), not "Contract is down".
 func IsBusinessNotFound(resp *resty.Response) bool {
 	if resp == nil {
 		return false
