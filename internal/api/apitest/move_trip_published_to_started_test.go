@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -61,6 +62,28 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 		defer resp.Body.Close()
 
 		require.Equal(t, http.StatusConflict, resp.StatusCode)
+		require.Equal(t, "published", tripStatusName(t, tripID))
+	})
+
+	t.Run("conflict_when_contract_company_not_found", func(t *testing.T) {
+		fixtures.UseStubClientID(t, fixtures.NormalClientID)
+		UseContractStub(t, func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			_ = json.NewEncoder(w).Encode(map[string]any{"error": "company not found"})
+		})
+
+		tripID := mustCreatePublishedTrip(t)
+
+		resp := mustStartTrip(t, tripID)
+		defer resp.Body.Close()
+
+		require.Equal(t, http.StatusConflict, resp.StatusCode)
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		var apiResp domainhttp.Response
+		require.NoError(t, json.Unmarshal(body, &apiResp))
+		require.Contains(t, strings.ToLower(apiResp.Message), "company not found")
 		require.Equal(t, "published", tripStatusName(t, tripID))
 	})
 

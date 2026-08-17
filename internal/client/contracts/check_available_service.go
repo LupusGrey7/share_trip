@@ -52,6 +52,18 @@ func (c *ContractClient) CheckAvailableService(
 		return CheckResult{}, mapped
 	}
 
+	// Business deny: company/offering missing — not fail closed.
+	if IsBusinessNotFound(resp) {
+		reason := ReasonFromResponse(resp, "company or service not found")
+		logger.Info("contract check denied (not found)",
+			slog.Int64("duration_ms", durationMs),
+			slog.Int("http_status", resp.StatusCode()),
+			slog.String("result", "denied"),
+			slog.String("reason", reason),
+		)
+		return CheckResult{Allowed: false, Reason: reason}, nil
+	}
+
 	if resp.IsError() {
 		mapped := MapHTTPClientError(resp)
 		logger.Error("contract check http error",

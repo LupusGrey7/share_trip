@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -51,23 +52,43 @@ func TestCheckAvailableService_DeniedNoRetry(t *testing.T) {
 	require.Equal(t, int32(1), calls.Load(), "allowed:false must not retry")
 }
 
-func TestCheckAvailableService_BadRequestNoRetry(t *testing.T) {
+func TestCheckAvailableService_NotFoundIsBusinessDeny(t *testing.T) {
 	t.Parallel()
 
 	var calls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"error":"bad"}`))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": "company not found"})
 	}))
 	t.Cleanup(srv.Close)
 
 	client := contracts.NewContractClient(srv.URL)
-	_, err := client.CheckAvailableService(context.Background(), "acme", "trip_start")
-	require.Error(t, err)
-	require.True(t, errors.Is(err, contracts.ErrBadRequest))
-	require.Equal(t, int32(1), calls.Load(), "400 must not retry")
+	got, err := client.CheckAvailableService(context.Background(), "acme", "trip_start")
+	require.NoError(t, err, "404 company not found must not be fail-closed error")
+	require.False(t, got.Allowed)
+	require.Contains(t, strings.ToLower(got.Reason), "company not found")
+	require.Equal(t, int32(1), calls.Load(), "404 must not retry")
 }
+
+func TestCheckAvailableService_BadRequestCompanyNotFoundIsDeny(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]any{"message": "GetAvailableOfferingByCompanyID: company not found"})
+	}))
+	t.Cleanup(srv.Close)
+
+	client := contracts.NewContractClient(srv.URL)
+	got, err := client.CheckAvailableService(context.Background(), "999", "trip_start")
+	require.NoError(t, err)
+	require.False(t, got.Allowed)
+	require.Contains(t, strings.ToLower(got.Reason), "company not found")
+}
+
 
 func TestCheckAvailableService_Forbidden(t *testing.T) {
 	t.Parallel()

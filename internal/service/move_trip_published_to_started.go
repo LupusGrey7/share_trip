@@ -53,8 +53,12 @@ func (s *TripService) MoveTripPublishedToStarted(
 		return nil, err
 	}
 	if !contractResult.IsAllowed() {
-		logger.Error("contract denied trip start", slog.String("reason", contractResult.Reason))
-		return nil, fmt.Errorf("%w: service is not allowed", usecase.ErrConflict)
+		reason := contractResult.Reason
+		if reason == "" {
+			reason = "service is not allowed"
+		}
+		logger.Error("contract denied trip start", slog.String("reason", reason))
+		return nil, fmt.Errorf("%w: %s", usecase.ErrConflict, reason)
 	}
 
 	// 2) Short DB transaction: FOR UPDATE → status → commit
