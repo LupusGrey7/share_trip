@@ -28,9 +28,9 @@ type MoveTripDraftToPublishRequestModel struct {
 }
 
 type MoveTripPublishedToStartedRequestModel struct {
-	ID          string          `validate:"required,uuid"`                          // trip id (path)
-	CompanyID   string          `validate:"required,min=2,max=10"`                  // company id (path)
-	ServiceCode ServiceCodeEnum `validate:"required,oneof=trip_start"`              // service code (path)
+	ID          string          `validate:"required,uuid"`             // trip id (path)
+	CompanyID   string          `validate:"required,min=2,max=10"`     // company id (path)
+	ServiceCode ServiceCodeEnum `validate:"required,oneof=trip_start"` // service code (path)
 }
 
 func (req MoveTripPublishedToStartedRequestModel) ToMoveTripPublishedToStartedModel() model.MoveTripPublishedToStartedModel {

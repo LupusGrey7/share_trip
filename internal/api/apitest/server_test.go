@@ -29,9 +29,9 @@ import (
 	"job4j.ru/share_trip/internal/repository"
 
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
-	"job4j.ru/share_trip/internal/service"
 	client "job4j.ru/share_trip/internal/client/contracts"
 	clientUsecase "job4j.ru/share_trip/internal/client/contracts/usecase"
+	"job4j.ru/share_trip/internal/service"
 )
 
 const (
@@ -71,7 +71,6 @@ func defaultContractStub(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"allowed": true, "reason": "ok"})
 }
-
 
 /*
 === Registered Routes ===

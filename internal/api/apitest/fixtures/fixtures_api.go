@@ -74,7 +74,7 @@ func UseStubNoClaims(t *testing.T) {
 	})
 }
 
-// ClaimsForClient builds claims like real JWT: sub + resource_access[share_trip-api]=[client].
+// ClaimsForClient builds claims like real JWT: sub + resource_access[sharetrip-api]=[client].
 func ClaimsForClient(clientID uuid.UUID) *middleware.KeycloakClaims {
 	return &middleware.KeycloakClaims{
 		Subject:           clientID.String(),
