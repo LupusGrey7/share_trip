@@ -15,6 +15,13 @@ type CheckServiceResponse struct {
 	Reason  string `json:"reason"`
 }
 
+func (c *CheckServiceResponse) ToCheckResult() CheckResult {
+	return CheckResult{
+		Allowed: c.Allowed,
+		Reason:  c.Reason,
+	}
+}
+
 func (c *CheckResult) IsAllowed() bool {
 	return c.Allowed
 }

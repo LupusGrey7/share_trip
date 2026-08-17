@@ -11,7 +11,6 @@ import (
 	"job4j.ru/share_trip/internal/observability/metrics"
 	"job4j.ru/share_trip/internal/observability/tracing"
 
-	applog "job4j.ru/share_trip/internal/app"
 	"job4j.ru/share_trip/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
@@ -54,7 +53,7 @@ func main() {
 	log.Info("Connected to database successfully")
 
 	//logger
-	logger, logFile, err := applog.NewLogger()
+	logger, logFile, err := appConfigs.NewLogger()
 	if err != nil {
 		panic(err)
 	}

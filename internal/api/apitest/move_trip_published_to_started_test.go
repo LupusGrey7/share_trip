@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	testCompanyID  = "acme01"
-	testServiceCode = "trip_start"
+	testCompanyID                 = "acme01"
+	testServiceCode               = "trip_start"
 	moveTripPublishedToStartedURL = GroupPrefixV2 +
 		"/trip/moveTripPublished-ToStarted/%s/company/%s/service/%s"
 )
@@ -34,7 +34,7 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 		tripID := mustCreatePublishedTrip(t)
 
 		resp := mustStartTrip(t, tripID)
-		defer resp.Body.Close()
+		defer closeResponseBody(t, resp)
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -59,7 +59,7 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 		tripID := mustCreatePublishedTrip(t)
 
 		resp := mustStartTrip(t, tripID)
-		defer resp.Body.Close()
+		defer closeResponseBody(t, resp)
 
 		require.Equal(t, http.StatusConflict, resp.StatusCode)
 		require.Equal(t, "published", tripStatusName(t, tripID))
@@ -76,7 +76,7 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 		tripID := mustCreatePublishedTrip(t)
 
 		resp := mustStartTrip(t, tripID)
-		defer resp.Body.Close()
+		defer closeResponseBody(t, resp)
 
 		require.Equal(t, http.StatusConflict, resp.StatusCode)
 		body, err := io.ReadAll(resp.Body)
@@ -96,7 +96,7 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 		tripID := mustCreatePublishedTrip(t)
 
 		resp := mustStartTrip(t, tripID)
-		defer resp.Body.Close()
+		defer closeResponseBody(t, resp)
 
 		require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 
@@ -116,7 +116,7 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 
 		fixtures.UseStubClientID(t, fixtures.InvalidClientID)
 		resp := mustStartTrip(t, tripID)
-		defer resp.Body.Close()
+		defer closeResponseBody(t, resp)
 
 		require.Equal(t, http.StatusForbidden, resp.StatusCode)
 		require.Equal(t, "published", tripStatusName(t, tripID))
@@ -128,7 +128,7 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 
 		fixtures.UseStubNoClaims(t)
 		resp := mustStartTrip(t, tripID)
-		defer resp.Body.Close()
+		defer closeResponseBody(t, resp)
 
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
@@ -141,9 +141,16 @@ func mustCreatePublishedTrip(t *testing.T) string {
 		ClientID: fixtures.CurrentStubClientID(),
 	}
 	resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
-	defer resp.Body.Close()
+	defer closeResponseBody(t, resp)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	return created.ID.String()
+}
+
+func closeResponseBody(t *testing.T, resp *http.Response) {
+	t.Helper()
+	if err := resp.Body.Close(); err != nil {
+		t.Logf("failed to close body: %v", err)
+	}
 }
 
 func mustStartTrip(t *testing.T, tripID string) *http.Response {

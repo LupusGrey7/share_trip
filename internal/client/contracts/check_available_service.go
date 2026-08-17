@@ -75,10 +75,7 @@ func (c *ContractClient) CheckAvailableService(
 		return CheckResult{}, mappedClientErr
 	}
 
-	result := CheckResult{
-		Allowed: response.Allowed,
-		Reason:  response.Reason,
-	}
+	result := response.ToCheckResult()
 	logger.Info("service availability checked",
 		slog.Int64("duration_ms", durationMs),
 		slog.String("result", "ok"),
