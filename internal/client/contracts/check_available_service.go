@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	// TODO: confirm exact path/method with Contract Service OpenAPI / lead
+	// TODO: confirm exact path/method with Contract Service OpenAPI (teclead + contract service team)
 	CheckAvailableServiceEndpoint = "/api/v2/companies/{companyId}/services/{serviceCode}/availability"
 )
 
@@ -52,7 +52,7 @@ func (c *ContractClient) CheckAvailableService(
 		return CheckResult{}, mappedTransportErr
 	}
 
-	// Business deny: company/offering missing — not fail closed.
+	//function to check if the response is a business deny: company/offering missing — not fail closed.
 	if IsBusinessNotFound(resp) {
 		businessDenyReason := ReasonFromResponse(resp, "company or service not found")
 		logger.Info("contract check denied (not found)",
@@ -64,6 +64,7 @@ func (c *ContractClient) CheckAvailableService(
 		return CheckResult{Allowed: false, Reason: businessDenyReason}, nil
 	}
 
+	//function to map the response to a sentinel error
 	if resp.IsError() {
 		mappedClientErr := MapHTTPClientError(resp)
 		logger.Error("contract check http error",
@@ -75,6 +76,7 @@ func (c *ContractClient) CheckAvailableService(
 		return CheckResult{}, mappedClientErr
 	}
 
+	//function to convert the response to a check result
 	result := response.ToCheckResult()
 	logger.Info("service availability checked",
 		slog.Int64("duration_ms", durationMs),

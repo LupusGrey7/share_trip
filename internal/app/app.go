@@ -34,7 +34,7 @@ func BuildServer(
 	// Initialize the validator instance
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	// rest client for contract service
+	// rest http client for contract service
 	contractClient := clientContract.NewContractClient(configs.Env(configs.ContractServiceEnv, configs.BaseURL))
 
 	repo := repository.NewRepoPg(pool)

@@ -12,7 +12,7 @@ type BaseContractClient interface {
 }
 
 type ContractClient struct {
-	httpClient *resty.Client
+	httpClient *resty.Client //library for making http requests
 }
 
 func NewContractClient(baseURL string) *ContractClient {
