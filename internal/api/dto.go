@@ -10,8 +10,10 @@ import (
 type ServiceCodeEnum string
 
 const (
-	ServiceCodeTripPublication ServiceCodeEnum = "trip_publication" // ServiceCode for trip publication
-	ServiceCodeTripStart       ServiceCodeEnum = "trip_start"       // ServiceCode for trip start
+	ServiceCodeTripPublication  ServiceCodeEnum = "trip_publication"  // ServiceCode for trip publication
+	ServiceCodeTripStart        ServiceCodeEnum = "trip_start"        // ServiceCode for trip start
+	ServiceCodeTripCancellation ServiceCodeEnum = "trip_cancellation" // ServiceCode for trip cancellation
+	ServiceCodeTripCompletion   ServiceCodeEnum = "trip_completion"   // ServiceCode for trip completion
 )
 
 type GetTripByIDRequestModel struct {
@@ -23,8 +25,10 @@ func (req GetTripByIDRequestModel) ToGetByIDRequestModel() model.GetByIDModelReq
 }
 
 type MoveTripDraftToPublishRequestModel struct {
-	ID       string    `validate:"required,uuid"`
-	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"`
+	ID          string          `validate:"required,uuid"`
+	ClientID    uuid.UUID       `json:"clientId" validate:"required,uuid"`
+	CompanyID   string          `json:"companyId" validate:"required,min=2,max=10"`
+	ServiceCode ServiceCodeEnum `json:"serviceCode" validate:"required,oneof=trip_publication trip_cancellation trip_completion trip_start trip_start"`
 }
 
 type MoveTripPublishedToStartedRequestModel struct {
@@ -61,8 +65,10 @@ func (req *CreateTripRequestModel) ToCreateTripRequestModel() model.CreateTripRe
 
 func (req *MoveTripDraftToPublishRequestModel) ToMoveTripDraftToPublishModel() model.MoveTripDraftToPublishModel {
 	return model.MoveTripDraftToPublishModel{
-		ID:       req.ID,
-		ClientID: req.ClientID,
+		ID:          req.ID,
+		ClientID:    req.ClientID,
+		CompanyID:   req.CompanyID,
+		ServiceCode: model.ServiceCodeEnum(req.ServiceCode),
 	}
 }
 

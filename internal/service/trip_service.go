@@ -10,6 +10,7 @@ import (
 	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"job4j.ru/share_trip/internal/observability/metrics"
 	"job4j.ru/share_trip/internal/repository"
+	"job4j.ru/share_trip/internal/clients/kafka"
 )
 
 type Service interface {
@@ -22,6 +23,7 @@ type Service interface {
 type TripService struct {
 	metrics    *metrics.Metrics
 	pool       *pgxpool.Pool
+	kafka      kafka.TripEventProducer
 	repo       repository.BaseTxTripRepository
 	outboxRepo repository.OutboxRepository
 	useCase    usecase.BaseTripUseCase
@@ -30,15 +32,16 @@ type TripService struct {
 func NewTripService(
 	m *metrics.Metrics,
 	pool *pgxpool.Pool,
+	kafka kafka.TripEventProducer,
 	r repository.BaseTxTripRepository,
 	outbox repository.OutboxRepository,
 	uc usecase.BaseTripUseCase,
-) *TripService {
+	) *TripService {
 	return &TripService{
-		metrics:    m,
-		pool:       pool,
-		repo:       r,
+		metrics: m,
+		pool:    pool,
+		kafka:   kafka,
+		repo:    r,
 		outboxRepo: outbox,
 		useCase:    uc,
 	}
-}

@@ -19,7 +19,7 @@ values($1, $2, $3, $4)`
 )
 
 type OutboxRepository interface {
-	CreateNotificationTripPublishTx(ctx context.Context, tx pgx.Tx, o *model.Entity) error
+	CreateOutboxEventTripPublishTx(ctx context.Context, tx pgx.Tx, o *model.Entity) error
 }
 
 type OutboxEventRepository struct {
@@ -29,7 +29,7 @@ func NewOutboxEventRepository() *OutboxEventRepository {
 	return &OutboxEventRepository{}
 }
 
-func (r *OutboxEventRepository) CreateNotificationTripPublishTx(ctx context.Context, tx pgx.Tx, o *model.Entity) error {
+func (r *OutboxEventRepository) CreateOutboxEventTripPublishTx(ctx context.Context, tx pgx.Tx, o *model.Entity) error {
 
 	query := createEvent
 	args := []interface{}{o.EventName, o.AggregateId, o.Payload, time.Now()}

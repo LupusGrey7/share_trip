@@ -1,8 +1,14 @@
 package kafka
 
 import (
+	"context"
+
 	"github.com/segmentio/kafka-go"
 )
+
+type TripEventProducer interface {
+	PublishTripPublished(ctx context.Context, event TripPublished) error
+}
 
 type Producer struct {
 	writer *kafka.Writer

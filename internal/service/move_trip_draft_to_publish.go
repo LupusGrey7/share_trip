@@ -13,7 +13,9 @@ import (
 	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"job4j.ru/share_trip/internal/observability/logctx"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"job4j.ru/share_trip/internal/clients/kafka"
 )
 
 func (s *TripService) MoveTripDraftToPublish(
@@ -51,7 +53,7 @@ func (s *TripService) MoveTripDraftToPublish(
 	)
 	logger.Debug("move trip draft to publish transaction started")
 
-// 1) Contract Service Client — outside transaction, check if service is allowed
+	// 4. Contract Service Client — outside transaction, check if service is allowed
 	contractResult, err := s.useCase.CheckServiceAllowed(ctxSpc, req.CompanyID, string(req.ServiceCode))
 	if err != nil {
 		logger.Error("contract check failed", slog.Any("error", err))
@@ -67,9 +69,10 @@ func (s *TripService) MoveTripDraftToPublish(
 		logger.Error("contract denied trip start", slog.String("reason", businessDenyReason))
 		return nil, fmt.Errorf("%w: %s", usecase.ErrConflict, businessDenyReason)
 	}
+	eventID := uuid.New().String()
+	createdAt := time.Now()
 
-
-	// 4. Open a database transaction
+	// 5. Open a database transaction
 	// Mandatory to create a sub-span for the transaction to measure its clean duration
 	txCtx, txSpan := otel.Tracer("database").Start(ctxSpc, "DB.Transaction")
 	defer txSpan.End()
@@ -84,27 +87,28 @@ func (s *TripService) MoveTripDraftToPublish(
 			return nil, err
 		}
 
-// Когда поездка переходит из draft в published, ShareTrip публикует событие: -> TripPublished
-//Важно: событие должно публиковаться после успешного изменения состояния агрегата.
+		// 6. Create outbox event
 		// outbox
 		payload := model2.PayloadEvent{TripID: resp.ID}
 		event := model2.Entity{
+			EventID:     eventID,
 			EventName:   string(model2.EventPublished),
 			AggregateId: resp.ID,
 			Payload:     payload,
+			CreatedAt:   time.Now(),
 		}
 
-		err = s.outboxRepo.CreateNotificationTripPublishTx(ctxSpc, tx, &event)
+		err = s.outboxRepo.CreateOutboxEventTripPublishTx(ctxSpc, tx, &event)
 		if err != nil {
-			txLogger.Error("move trip draft to publish outbox create notification failed", slog.Any("error", err))
-			return nil, fmt.Errorf("error while MoveTripDraftToPublish create Notification: %w", err)
+			txLogger.Error("move trip draft to publish outbox create event failed", slog.Any("error", err))
+			return nil, fmt.Errorf("error while MoveTripDraftToPublish create Outbox Event: %w", err)
 		}
 
 		txLogger.Debug("transaction execution completed", slog.String("trip_id", resp.ID.String()))
 		return resp, nil
 	})
 
-	// 6. Fix the transaction error (if COMMIT failed or logic inside failed) using txSpan
+	// 8. Fix the transaction error (if COMMIT failed or logic inside failed) using txSpan
 	if err != nil {
 		logger.Error("move trip draft to publish failed", slog.Any("error", err))
 
@@ -112,6 +116,29 @@ func (s *TripService) MoveTripDraftToPublish(
 		txSpan.SetStatus(codes.Error, err.Error())
 		// Span will be closed automatically through defer txSpan.End() above
 		return nil, err
+	}
+
+	// 7. Publish event
+	// 7.1. Publish event to Kafka (trip_id is key)
+	// When trip goes from draft to published, ShareTrip publishes the event: -> TripPublished
+	// IMPORTANT: event must be published after successful change of the aggregate state.
+	err = s.kafka.PublishTripPublished(
+		ctxSpc,
+		kafka.TripPublished{
+			TripID:     req.ID,
+			DriverID:   res.DriverID.String(),
+			CompanyID:  req.CompanyID,
+			EventType:  kafka.EventTypePublished,
+			EventID:    eventID,
+			OccurredAt: createdAt,
+		})
+	if err != nil {
+		// dual-write gap: trip is published in DB but event not sent
+		// TODO: outbox poller will resend; for now log + return 200
+		logger.Error("kafka publish failed after commit, event lost until poller",
+			slog.String("trip_id", res.ID.String()),
+			slog.Any("error", err),
+		)
 	}
 
 	logger.Debug("move trip draft to publish completed", slog.String("trip_id", res.ID.String()))
