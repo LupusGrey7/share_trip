@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	model2 "job4j.ru/share_trip/internal/domain/outbox/model"
 	"job4j.ru/share_trip/internal/domain/trip/model"
+	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"job4j.ru/share_trip/internal/observability/logctx"
 
 	"github.com/jackc/pgx/v5"
@@ -50,6 +51,24 @@ func (s *TripService) MoveTripDraftToPublish(
 	)
 	logger.Debug("move trip draft to publish transaction started")
 
+// 1) Contract Service Client — outside transaction, check if service is allowed
+	contractResult, err := s.useCase.CheckServiceAllowed(ctxSpc, req.CompanyID, string(req.ServiceCode))
+	if err != nil {
+		logger.Error("contract check failed", slog.Any("error", err))
+		return nil, err
+	}
+
+	if !contractResult.IsAllowed() {
+		businessDenyReason := contractResult.Reason
+		if businessDenyReason == "" {
+			businessDenyReason = "service is not allowed"
+		}
+
+		logger.Error("contract denied trip start", slog.String("reason", businessDenyReason))
+		return nil, fmt.Errorf("%w: %s", usecase.ErrConflict, businessDenyReason)
+	}
+
+
 	// 4. Open a database transaction
 	// Mandatory to create a sub-span for the transaction to measure its clean duration
 	txCtx, txSpan := otel.Tracer("database").Start(ctxSpc, "DB.Transaction")
@@ -65,6 +84,8 @@ func (s *TripService) MoveTripDraftToPublish(
 			return nil, err
 		}
 
+// Когда поездка переходит из draft в published, ShareTrip публикует событие: -> TripPublished
+//Важно: событие должно публиковаться после успешного изменения состояния агрегата.
 		// outbox
 		payload := model2.PayloadEvent{TripID: resp.ID}
 		event := model2.Entity{

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"job4j.ru/share_trip/internal/client/contracts"
+	contracts "job4j.ru/share_trip/internal/clients/http/contract"
 )
 
 func TestCheckAvailableService_Allowed(t *testing.T) {
@@ -88,7 +88,6 @@ func TestCheckAvailableService_BadRequestCompanyNotFoundIsDeny(t *testing.T) {
 	require.False(t, got.Allowed)
 	require.Contains(t, strings.ToLower(got.Reason), "company not found")
 }
-
 
 func TestCheckAvailableService_Forbidden(t *testing.T) {
 	t.Parallel()

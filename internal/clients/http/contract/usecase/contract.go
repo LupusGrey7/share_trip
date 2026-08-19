@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 
-	"job4j.ru/share_trip/internal/client/contracts"
+	contracts "job4j.ru/share_trip/internal/clients/http/contract"
 )
 
 type BaseContractUsecase interface {
