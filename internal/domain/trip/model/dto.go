@@ -77,18 +77,22 @@ type CreateTripRequestModel struct {
 type MoveTripPublishedToStartedModel struct {
 	ID          string
 	ClientID    uuid.UUID
-	CompanyID   string
-	ServiceCode ServiceCodeEnum
+	CompanyID   string          `json:"companyId"  validate:"required,notblank"` //validate for sting
+	ServiceCode ServiceCodeEnum `params:"serviceCode" validate:"required,oneof=trip_publication trip_cancellation trip_completion trip_start trip_start"`
 }
 
 type MoveTripDraftToPublishRequestModel struct {
-	ID       string
-	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"` //"omitempty,uuid"
+	ID          string
+	ClientID    uuid.UUID       `json:"clientId" validate:"required,uuid"`       //"omitempty,uuid"
+	CompanyID   string          `json:"companyId"  validate:"required,notblank"` //validate for sting
+	ServiceCode ServiceCodeEnum `params:"serviceCode" validate:"required,oneof=trip_publication trip_cancellation trip_completion trip_start trip_start"`
 }
 
 type MoveTripDraftToPublishModel struct {
-	ID       string
-	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"` //"omitempty,uuid"
+	ID          string
+	ClientID    uuid.UUID
+	CompanyID   string
+	ServiceCode ServiceCodeEnum
 }
 
 type MoveTripPublishedToStartedModelResponse struct {

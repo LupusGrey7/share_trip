@@ -31,12 +31,12 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
 	}
 	request.ID = tripID
-
+// FIXME
 	request.CompanyID = c.Params("companyId")
 	if request.CompanyID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
 	}
-
+//FIXME
 	request.ServiceCode = ServiceCodeEnum(c.Params("serviceCode"))
 	if request.ServiceCode == "" {
 		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)

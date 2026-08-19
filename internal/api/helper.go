@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"job4j.ru/share_trip/internal/api/apierr"
-	"job4j.ru/share_trip/internal/client/contracts"
+	contracts "job4j.ru/share_trip/internal/clients/http/contract"
 	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"job4j.ru/share_trip/internal/middleware"
 )

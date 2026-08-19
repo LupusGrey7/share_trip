@@ -29,8 +29,8 @@ import (
 	"job4j.ru/share_trip/internal/repository"
 
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
-	client "job4j.ru/share_trip/internal/client/contracts"
-	clientUsecase "job4j.ru/share_trip/internal/client/contracts/usecase"
+	client "job4j.ru/share_trip/internal/clients/http/contract"
+	clientUsecase "job4j.ru/share_trip/internal/clients/http/contract/usecase"
 	"job4j.ru/share_trip/internal/service"
 )
 

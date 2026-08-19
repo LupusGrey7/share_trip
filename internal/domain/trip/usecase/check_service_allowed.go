@@ -5,7 +5,7 @@ import (
 	"log/slog"
 
 	"go.opentelemetry.io/otel"
-	"job4j.ru/share_trip/internal/client/http/contracts"
+	contracts "job4j.ru/share_trip/internal/clients/http/contract"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
