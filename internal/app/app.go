@@ -13,14 +13,13 @@ import (
 	"job4j.ru/share_trip/internal/api"
 	clientContract "job4j.ru/share_trip/internal/client/contracts"
 	clientContractUsecase "job4j.ru/share_trip/internal/client/contracts/usecase"
-	"job4j.ru/share_trip/internal/domain/trip/usecase"
 	"job4j.ru/share_trip/internal/middleware"
 	"job4j.ru/share_trip/internal/observability/logctx"
 	"job4j.ru/share_trip/internal/observability/metrics"
 	"job4j.ru/share_trip/internal/observability/tracing"
-	"job4j.ru/share_trip/internal/repository"
-	"job4j.ru/share_trip/internal/service"
 	"job4j.ru/share_trip/internal/storage"
+	"job4j.ru/share_trip/internal/trip/service"
+	"job4j.ru/share_trip/internal/trip/usecase"
 )
 
 // build - build server
@@ -37,9 +36,9 @@ func BuildServer(
 	// rest client for contract service
 	contractClient := clientContract.NewContractClient(configs.Env(configs.ContractServiceEnv, configs.BaseURL))
 
-	repo := repository.NewRepoPg(pool)
-	repoTrip := repository.NewTripRepository(m, pool)
-	outboxRepo := repository.NewOutboxEventRepository()
+	repo := storage.NewRepoPg(pool)
+	repoTrip := storage.NewTripRepository(m, pool)
+	outboxRepo := storage.NewOutboxEventRepository()
 
 	infoUseCase := usecase.NewInfoUseCase()
 	contractUsecase := clientContractUsecase.NewContractUsecase(contractClient)

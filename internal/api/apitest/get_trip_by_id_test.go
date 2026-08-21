@@ -11,10 +11,7 @@ import (
 
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
-	"job4j.ru/share_trip/internal/domain/trip/model"
-
-	"job4j.ru/share_trip/internal/api/apierr"
-	domainhttp "job4j.ru/share_trip/internal/domain/http"
+	"job4j.ru/share_trip/internal/trip/domain"
 
 	"github.com/stretchr/testify/require"
 )
@@ -50,11 +47,11 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripDraftResponse
+		var got domain.CreateTripDraftResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
 
-		response := model.CreateTripDraftResponse{
+		response := domain.CreateTripDraftResponse{
 			ID:            got.ID,
 			DriverID:      fixtures.NormalClientID,
 			FromPoint:     got.FromPoint,
@@ -85,10 +82,10 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err1 = io.ReadAll(resp.Body)
 		require.NoError(t, err1)
 
-		var got1 model.CreateTripDraftResponse
+		var got1 domain.CreateTripDraftResponse
 		err1 = json.Unmarshal(respBody, &got1)
 		require.NoError(t, err1)
-		response1 := model.CreateTripDraftResponse{
+		response1 := domain.CreateTripDraftResponse{
 			ID:            got1.ID,
 			DriverID:      got.DriverID,
 			FromPoint:     got1.FromPoint,
@@ -96,7 +93,7 @@ func TestServer_GetTripById(t *testing.T) {
 			CreatedAt:     got1.CreatedAt,
 			DepartureTime: got1.DepartureTime,
 			Seats:         got1.Seats,
-			Status:        model.StatusDraft,
+			Status:        domain.StatusDraft,
 		}
 
 		require.Equal(t, response1, got1)
@@ -130,7 +127,7 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var created model.CreateTripDraftResponse
+		var created domain.CreateTripDraftResponse
 		require.NoError(t, json.Unmarshal(respBody, &created))
 		require.Equal(t, fixtures.NormalClientID, created.DriverID)
 
@@ -156,10 +153,10 @@ func TestServer_GetTripById(t *testing.T) {
 		getBody, err := io.ReadAll(getResp.Body)
 		require.NoError(t, err)
 
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(getBody, &apiResp))
 		require.False(t, apiResp.Success)
-		require.Equal(t, apierr.ErrorForbiddenIDMismatch, apiResp.Message)
+		require.Equal(t, api.ErrorForbiddenIDMismatch, apiResp.Message)
 	})
 
 	// Given: valid UUID format, but trip does not exist in DB
@@ -190,10 +187,10 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
-		require.Equal(t, apierr.StatusNotFound, apiResp.Message)
+		require.Equal(t, api.StatusNotFound, apiResp.Message)
 	})
 
 	// Given: invalid UUID format
@@ -224,10 +221,10 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
-		require.Equal(t, apierr.RequestValidationError, apiResp.Message)
+		require.Equal(t, api.RequestValidationError, apiResp.Message)
 	})
 
 }

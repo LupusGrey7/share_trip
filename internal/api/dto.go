@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"job4j.ru/share_trip/internal/domain/trip/model"
+	"job4j.ru/share_trip/internal/trip/domain"
 )
 
 type ServiceCodeEnum string
@@ -18,8 +18,8 @@ type GetTripByIDRequestModel struct {
 	ID string `validate:"required,uuid"`
 }
 
-func (req GetTripByIDRequestModel) ToGetByIDRequestModel() model.GetByIDModelRequest {
-	return model.GetByIDModelRequest{ID: req.ID}
+func (req GetTripByIDRequestModel) ToGetByIDRequestModel() domain.GetByIDModelRequest {
+	return domain.GetByIDModelRequest{ID: req.ID}
 }
 
 type MoveTripDraftToPublishRequestModel struct {
@@ -33,11 +33,11 @@ type MoveTripPublishedToStartedRequestModel struct {
 	ServiceCode ServiceCodeEnum `validate:"required,oneof=trip_start"` // service code (path)
 }
 
-func (req MoveTripPublishedToStartedRequestModel) ToMoveTripPublishedToStartedModel() model.MoveTripPublishedToStartedModel {
-	return model.MoveTripPublishedToStartedModel{
+func (req MoveTripPublishedToStartedRequestModel) ToMoveTripPublishedToStartedModel() domain.MoveTripPublishedToStartedModel {
+	return domain.MoveTripPublishedToStartedModel{
 		ID:          req.ID,
 		CompanyID:   req.CompanyID,
-		ServiceCode: model.ServiceCodeEnum(req.ServiceCode),
+		ServiceCode: domain.ServiceCodeEnum(req.ServiceCode),
 	}
 }
 
@@ -50,8 +50,8 @@ type CreateTripRequestModel struct {
 
 // ToCreateTripRequestModel maps HTTP body → domain.
 // DriverID is NOT taken from body — handler sets it from Keycloak sub.
-func (req *CreateTripRequestModel) ToCreateTripRequestModel() model.CreateTripRequestModel {
-	return model.CreateTripRequestModel{
+func (req *CreateTripRequestModel) ToCreateTripRequestModel() domain.CreateTripRequestModel {
+	return domain.CreateTripRequestModel{
 		FromPoint:      req.FromPoint,
 		ToPoint:        req.ToPoint,
 		DepartureTime:  req.DepartureTime,
@@ -59,8 +59,8 @@ func (req *CreateTripRequestModel) ToCreateTripRequestModel() model.CreateTripRe
 	}
 }
 
-func (req *MoveTripDraftToPublishRequestModel) ToMoveTripDraftToPublishModel() model.MoveTripDraftToPublishModel {
-	return model.MoveTripDraftToPublishModel{
+func (req *MoveTripDraftToPublishRequestModel) ToMoveTripDraftToPublishModel() domain.MoveTripDraftToPublishModel {
+	return domain.MoveTripDraftToPublishModel{
 		ID:       req.ID,
 		ClientID: req.ClientID,
 	}

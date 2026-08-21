@@ -3,7 +3,7 @@ package api
 import (
 	"github.com/go-playground/validator/v10"
 	"github.com/prometheus/client_golang/prometheus"
-	"job4j.ru/share_trip/internal/service"
+	"job4j.ru/share_trip/internal/trip/service"
 )
 
 type Server struct {

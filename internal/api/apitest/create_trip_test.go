@@ -9,10 +9,9 @@ import (
 	"time"
 
 	"job4j.ru/share_trip/internal/api"
-	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
-	domainhttp "job4j.ru/share_trip/internal/domain/http"
-	"job4j.ru/share_trip/internal/domain/trip/model"
+
+	"job4j.ru/share_trip/internal/trip/domain"
 
 	"github.com/stretchr/testify/require"
 )
@@ -49,7 +48,7 @@ func TestServer_CreateTrip(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripDraftResponse
+		var got domain.CreateTripDraftResponse
 		require.NoError(t, json.Unmarshal(respBody, &got))
 		require.Equal(t, fixtures.NormalClientID, got.DriverID)
 		require.Equal(t, payload.FromPoint, got.FromPoint)
@@ -87,10 +86,10 @@ func TestServer_CreateTrip(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
-		require.Equal(t, apierr.RequestValidationError, apiResp.Message)
+		require.Equal(t, api.RequestValidationError, apiResp.Message)
 	})
 
 	// Given: stub does not inject claims into Locals
@@ -121,7 +120,7 @@ func TestServer_CreateTrip(t *testing.T) {
 
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		// fiber.NewError → text/JSON Fiber shape, not apierr.ErrResponse
+		// fiber.NewError → text/JSON Fiber shape, not api.ErrResponse
 		require.Contains(t, string(respBody), "missing token claims")
 	})
 }

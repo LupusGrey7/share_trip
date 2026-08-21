@@ -7,7 +7,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
-	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
@@ -47,7 +46,7 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 			slog.String("tripId", tripID),
 			slog.Any("error", err),
 		)
-		return HandleError(c, apierr.ErrInvalidValidate)
+		return HandleError(c, ErrInvalidValidate)
 	}
 
 	claims, err := GetClaimsFromContext(c)

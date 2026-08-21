@@ -10,10 +10,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"job4j.ru/share_trip/internal/api"
-	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
-	domainhttp "job4j.ru/share_trip/internal/domain/http"
-	"job4j.ru/share_trip/internal/domain/trip/model"
+
+	"job4j.ru/share_trip/internal/trip/domain"
 )
 
 const (
@@ -41,9 +40,9 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.MoveTripPublishedToStartedModelResponse
+		var got domain.MoveTripPublishedToStartedModelResponse
 		require.NoError(t, json.Unmarshal(body, &got))
-		require.Equal(t, model.StatusStarted, got.Status)
+		require.Equal(t, domain.StatusStarted, got.Status)
 		require.True(t, got.Allowed)
 
 		require.Equal(t, "started", tripStatusName(t, tripID))
@@ -81,7 +80,7 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 		require.Equal(t, http.StatusConflict, resp.StatusCode)
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(body, &apiResp))
 		require.Contains(t, strings.ToLower(apiResp.Message), "company not found")
 		require.Equal(t, "published", tripStatusName(t, tripID))
@@ -102,9 +101,9 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(body, &apiResp))
-		require.Equal(t, apierr.ErrorContractUnavailable, apiResp.Message)
+		require.Equal(t, api.ErrorContractUnavailable, apiResp.Message)
 		require.Equal(t, "published", tripStatusName(t, tripID))
 	})
 

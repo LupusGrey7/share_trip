@@ -8,7 +8,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
-	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
@@ -54,7 +53,7 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 			slog.String("tripId", tripID),
 			slog.Any("error", err),
 		)
-		return HandleError(c, apierr.ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
+		return HandleError(c, ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
 	}
 
 	logger = logger.With(

@@ -7,7 +7,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"go.opentelemetry.io/otel"
-	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
@@ -40,7 +39,7 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 
 	if err := s.validator.Struct(&request); err != nil {
 		logger.Warn("create trip draft failed: invalid request", slog.Any("error", err))
-		return HandleError(c, apierr.ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
+		return HandleError(c, ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
 	}
 
 	// Identity: client IS the driver. No body.driverId — source of truth = Keycloak sub.

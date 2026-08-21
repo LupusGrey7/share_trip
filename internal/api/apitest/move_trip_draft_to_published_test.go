@@ -10,10 +10,9 @@ import (
 	"time"
 
 	"job4j.ru/share_trip/internal/api"
-	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
-	domainhttp "job4j.ru/share_trip/internal/domain/http"
-	"job4j.ru/share_trip/internal/domain/trip/model"
+
+	"job4j.ru/share_trip/internal/trip/domain"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -48,10 +47,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.MoveTripDraftToPublishModelResponse
+		var got domain.MoveTripDraftToPublishModelResponse
 		require.NoError(t, json.Unmarshal(respBody, &got))
 
-		want := model.MoveTripDraftToPublishModelResponse{
+		want := domain.MoveTripDraftToPublishModelResponse{
 			ID:            got.ID,
 			DriverID:      fixtures.NormalClientID,
 			FromPoint:     got.FromPoint,
@@ -59,7 +58,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 			CreatedAt:     got.CreatedAt,
 			DepartureTime: got.DepartureTime,
 			Seats:         got.Seats,
-			Status:        model.StatusPublished,
+			Status:        domain.StatusPublished,
 		}
 		require.Equal(t, want, got)
 	})
@@ -87,7 +86,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
 		// HandleError Unwrap'ит tx-обёртку → текст use case:
@@ -122,11 +121,11 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
 		// ErrTripNotFound → константа StatusNotFound (без id в message)
-		require.Equal(t, apierr.StatusNotFound, apiResp.Message)
+		require.Equal(t, api.StatusNotFound, apiResp.Message)
 	})
 
 	// Given: trip status forced to cancelled
@@ -158,11 +157,11 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
 		// Unwrap tx → use case: "%w: invalid entity status: expected %s"
-		wantMsg := fmt.Sprintf("err tx block() with: conflict: invalid entity status: expected %s", model.StatusDraft)
+		wantMsg := fmt.Sprintf("err tx block() with: conflict: invalid entity status: expected %s", domain.StatusDraft)
 		require.Equal(t, wantMsg, apiResp.Message)
 	})
 
@@ -189,10 +188,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
-		require.Equal(t, apierr.RequestValidationError, apiResp.Message)
+		require.Equal(t, api.RequestValidationError, apiResp.Message)
 	})
 }
 
@@ -205,7 +204,7 @@ func createTripDraftRequestModel() api.CreateTripRequestModel {
 	}
 }
 
-func mustCreateTripDraft(t *testing.T, payload api.CreateTripRequestModel) model.CreateTripDraftResponse {
+func mustCreateTripDraft(t *testing.T, payload api.CreateTripRequestModel) domain.CreateTripDraftResponse {
 	t.Helper()
 
 	body, err := json.Marshal(payload)
@@ -229,7 +228,7 @@ func mustCreateTripDraft(t *testing.T, payload api.CreateTripRequestModel) model
 	respBody, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	var created model.CreateTripDraftResponse
+	var created domain.CreateTripDraftResponse
 	require.NoError(t, json.Unmarshal(respBody, &created))
 	require.Equal(t, fixtures.CurrentStubClientID(), created.DriverID)
 	return created
