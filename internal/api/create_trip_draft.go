@@ -11,23 +11,19 @@ import (
 )
 
 func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
-	// OpenTelemetry: child span inside root HTTP span from otelfiber middleware
 	tracer := otel.Tracer("trip-api")
 	ctx, span := tracer.Start(c.UserContext(), "CreateTripDraftHandler")
 	traceID := span.SpanContext().TraceID().String()
 	c.Set("X-Request-ID", traceID)
 	defer span.End()
 
-	//getting custom logger context
 	logger := logctx.Logger(ctx).With(
 		slog.String("server", "TripServer"),
 		slog.String("handler", "CreateTripDraft"),
-		slog.String("trace_id", traceID), // Key field for Grafana
+		slog.String("trace_id", traceID),
 	)
 
-	var request CreateTripRequestModel
-
-	// Parsing the request body
+	var request CreateTripDraftRequest
 	if err := c.BodyParser(&request); err != nil {
 		logger.Warn("create trip draft failed: invalid json body", slog.Any("error", err))
 		return c.Status(fiber.StatusBadRequest).JSON(
@@ -39,10 +35,9 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 
 	if err := s.validator.Struct(&request); err != nil {
 		logger.Warn("create trip draft failed: invalid request", slog.Any("error", err))
-		return HandleError(c, ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
+		return HandleError(c, ErrInvalidValidate)
 	}
 
-	// Identity: client IS the driver. No body.driverId — source of truth = Keycloak sub.
 	claims, err := GetClaimsFromContext(c)
 	if err != nil {
 		logger.Error("failed to get claims from context", slog.Any("error", err))
@@ -58,15 +53,15 @@ func (s *Server) CreateTripDraft(c *fiber.Ctx) error {
 	ctx = logctx.WithLogger(ctx, logger)
 	logger.Debug("create trip draft request accepted")
 
-	domainReq := request.ToCreateTripRequestModel()
+	domainReq := toCreateTripInput(&request)
 	domainReq.DriverID = clientID
 
-	resp, err := s.TripService.CreateTripDraft(ctx, domainReq)
+	resp, err := s.TripService.CreateTripDraft(ctx, *domainReq)
 	if err != nil {
 		logger.Error("create trip draft failed", slog.Any("error", err))
 		return HandleError(c, err)
 	}
 
 	logger.Debug("create trip draft completed")
-	return c.Status(fiber.StatusCreated).JSON(resp)
+	return c.Status(fiber.StatusCreated).JSON(toCreateTripDraftResponse(resp))
 }

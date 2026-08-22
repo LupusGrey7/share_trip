@@ -26,7 +26,7 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 		slog.String("trace_id", traceID), // Key field for Grafana
 	)
 
-	var request MoveTripDraftToPublishRequestModel
+	var request MoveTripDraftToPublishRequest
 
 	// request param
 	tripID := c.Params("tripId")
@@ -63,7 +63,7 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 	ctx = logctx.WithLogger(ctx, logger)
 	logger.Debug("move trip to publish")
 
-	resp, err := s.TripService.MoveTripDraftToPublish(ctx, request.ToMoveTripDraftToPublishModel())
+	resp, err := s.TripService.MoveTripDraftToPublish(ctx, toMoveTripDraftToPublishInput(&request))
 	if err != nil {
 		logger.Error("move trip to publish failed", slog.Any("error", err))
 		return HandleError(c, err)
@@ -75,5 +75,5 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 	}
 
 	logger.Debug("move trip to publish completed")
-	return c.Status(fiber.StatusOK).JSON(resp) //200
+	return c.Status(fiber.StatusOK).JSON(toMoveTripDraftToPublishResponse(resp)) //200
 }

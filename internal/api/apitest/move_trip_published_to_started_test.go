@@ -11,8 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
-
-	"job4j.ru/share_trip/internal/trip/domain"
 )
 
 const (
@@ -40,9 +38,9 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got domain.MoveTripPublishedToStartedModelResponse
+		var got api.MoveTripPublishedToStartedResponse
 		require.NoError(t, json.Unmarshal(body, &got))
-		require.Equal(t, domain.StatusStarted, got.Status)
+		require.Equal(t, api.StatusEnum("started"), got.Status)
 		require.True(t, got.Allowed)
 
 		require.Equal(t, "started", tripStatusName(t, tripID))
@@ -136,7 +134,7 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 func mustCreatePublishedTrip(t *testing.T) string {
 	t.Helper()
 	created := mustCreateTripDraft(t, createTripDraftRequestModel())
-	publishBody := api.MoveTripDraftToPublishRequestModel{
+	publishBody := api.MoveTripDraftToPublishRequest{
 		ClientID: fixtures.CurrentStubClientID(),
 	}
 	resp := mustPublishTripDraft(t, created.ID.String(), publishBody)

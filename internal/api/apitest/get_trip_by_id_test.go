@@ -11,7 +11,6 @@ import (
 
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
-	"job4j.ru/share_trip/internal/trip/domain"
 
 	"github.com/stretchr/testify/require"
 )
@@ -47,11 +46,11 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got domain.CreateTripDraftResponse
+		var got api.CreateTripDraftResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
 
-		response := domain.CreateTripDraftResponse{
+		response := api.CreateTripDraftResponse{
 			ID:            got.ID,
 			DriverID:      fixtures.NormalClientID,
 			FromPoint:     got.FromPoint,
@@ -82,10 +81,10 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err1 = io.ReadAll(resp.Body)
 		require.NoError(t, err1)
 
-		var got1 domain.CreateTripDraftResponse
+		var got1 api.GetTripByIDResponse
 		err1 = json.Unmarshal(respBody, &got1)
 		require.NoError(t, err1)
-		response1 := domain.CreateTripDraftResponse{
+		response1 := api.GetTripByIDResponse{
 			ID:            got1.ID,
 			DriverID:      got.DriverID,
 			FromPoint:     got1.FromPoint,
@@ -93,7 +92,7 @@ func TestServer_GetTripById(t *testing.T) {
 			CreatedAt:     got1.CreatedAt,
 			DepartureTime: got1.DepartureTime,
 			Seats:         got1.Seats,
-			Status:        domain.StatusDraft,
+			Status:        api.StatusEnum(got.Status),
 		}
 
 		require.Equal(t, response1, got1)
@@ -127,7 +126,7 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var created domain.CreateTripDraftResponse
+		var created api.CreateTripDraftResponse
 		require.NoError(t, json.Unmarshal(respBody, &created))
 		require.Equal(t, fixtures.NormalClientID, created.DriverID)
 
@@ -229,8 +228,8 @@ func TestServer_GetTripById(t *testing.T) {
 
 }
 
-func createTripDraft() api.CreateTripRequestModel {
-	return api.CreateTripRequestModel{
+func createTripDraft() api.CreateTripDraftRequest {
+	return api.CreateTripDraftRequest{
 		FromPoint:      "Mockov city, st. Big Star, h.101O",
 		ToPoint:        "Mockov city, st. Dig Star, h.101",
 		DepartureTime:  time.Now(),

@@ -17,8 +17,8 @@ import (
 
 func (s *TripService) MoveTripDraftToPublish(
 	ctx context.Context,
-	req domain.MoveTripDraftToPublishModel,
-) (res *domain.MoveTripDraftToPublishModelResponse, err error) {
+	req domain.MoveTripDraftToPublishInput,
+) (res *domain.MoveTripDraftToPublishOutput, err error) {
 	// 1. Integration with Jaeger: create a child span for this layer (ctx now contains the ID of this span)
 	ctxSpc, span := otel.Tracer("TripService").Start(ctx, "TripService.MoveTripDraftToPublishTx")
 
@@ -55,7 +55,7 @@ func (s *TripService) MoveTripDraftToPublish(
 	txCtx, txSpan := otel.Tracer("database").Start(ctxSpc, "DB.Transaction")
 	defer txSpan.End()
 
-	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*domain.MoveTripDraftToPublishModelResponse, error) {
+	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*domain.MoveTripDraftToPublishOutput, error) {
 		txLogger := logger.With(slog.String("layer", "transaction")) //added new key/value to logger
 		txLogger.Debug("move trip draft to publish transaction execution started")
 

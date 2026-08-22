@@ -17,8 +17,8 @@ import (
 
 func (s *TripService) MoveTripPublishedToStarted(
 	ctx context.Context,
-	req domain.MoveTripPublishedToStartedModel,
-) (res *domain.MoveTripPublishedToStartedModelResponse, err error) {
+	req domain.MoveTripPublishedToStartedInput,
+) (res *domain.MoveTripPublishedToStartedOutput, err error) {
 	ctxSpc, span := otel.Tracer("TripService").Start(ctx, "TripService.MoveTripPublishedToStarted")
 
 	started := time.Now()
@@ -68,7 +68,7 @@ func (s *TripService) MoveTripPublishedToStarted(
 	txCtx, txSpan := otel.Tracer("database").Start(ctxSpc, "DB.Transaction")
 	defer txSpan.End()
 
-	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*domain.MoveTripPublishedToStartedModelResponse, error) {
+	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*domain.MoveTripPublishedToStartedOutput, error) {
 		txLogger := logger.With(slog.String("layer", "transaction"))
 		txLogger.Debug("move trip published to started transaction execution started")
 

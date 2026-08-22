@@ -37,36 +37,23 @@ type Entity struct {
 	Status        StatusEnum `db:"status"` // trip_status.name via JOIN / RETURNING subquery
 }
 
-// CreateTripDraftResponse model info
-// @Description Trip information
-// @Description with trip id, driverId, fromPoint, toPoint, createAt, departureTime, seats, status
-type CreateTripDraftResponse struct {
-	ID            uuid.UUID  `json:"id"`
-	DriverID      uuid.UUID  `json:"driverId"`
-	FromPoint     string     `json:"fromPoint"`
-	ToPoint       string     `json:"toPoint"`
-	CreatedAt     time.Time  `json:"createdAt"`
-	DepartureTime time.Time  `json:"departureTime"`
-	Seats         int        `json:"seats"`
-	Status        StatusEnum `json:"status"`
-}
-
-type GetByIDModelRequest struct {
+type GetByIDInput struct {
 	ID string
 }
 
-type GetTripByIDModelResponse struct {
-	ID            uuid.UUID  `json:"id"`
-	DriverID      uuid.UUID  `json:"driverId"`
-	FromPoint     string     `json:"fromPoint"`
-	ToPoint       string     `json:"toPoint"`
-	Seats         int        `json:"seats"`
-	CreatedAt     time.Time  `json:"createdAt" validate:"required"`
-	DepartureTime time.Time  `json:"departureTime" validate:"required"`
-	Status        StatusEnum `json:"status"`
+// GetTripByIDOutput — usecase/service boundary (no json tags).
+type GetTripByIDOutput struct {
+	ID            uuid.UUID
+	DriverID      uuid.UUID
+	FromPoint     string
+	ToPoint       string
+	Seats         int
+	CreatedAt     time.Time
+	DepartureTime time.Time
+	Status        StatusEnum
 }
 
-type CreateTripRequestModel struct {
+type CreateTripInput struct {
 	DriverID       uuid.UUID
 	FromPoint      string
 	ToPoint        string
@@ -74,58 +61,64 @@ type CreateTripRequestModel struct {
 	AvailableSeats int
 }
 
-type MoveTripPublishedToStartedModel struct {
+type CreateTripOutput struct {
+	ID            uuid.UUID
+	DriverID      uuid.UUID
+	FromPoint     string
+	ToPoint       string
+	CreatedAt     time.Time
+	DepartureTime time.Time
+	Seats         int
+	Status        StatusEnum
+}
+
+type MoveTripPublishedToStartedInput struct {
 	ID          string
 	ClientID    uuid.UUID
 	CompanyID   string
 	ServiceCode ServiceCodeEnum
 }
 
-type MoveTripDraftToPublishRequestModel struct {
+type MoveTripDraftToPublishInput struct {
 	ID       string
-	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"` //"omitempty,uuid"
+	ClientID uuid.UUID
 }
 
-type MoveTripDraftToPublishModel struct {
-	ID       string
-	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"` //"omitempty,uuid"
+type MoveTripDraftToPublishOutput struct {
+	ID            uuid.UUID
+	DriverID      uuid.UUID
+	FromPoint     string
+	ToPoint       string
+	Seats         int
+	CreatedAt     time.Time
+	DepartureTime time.Time
+	Status        StatusEnum
 }
 
-type MoveTripPublishedToStartedModelResponse struct {
-	ID            uuid.UUID  `json:"id"`
-	DriverID      uuid.UUID  `json:"driverId"`
-	FromPoint     string     `json:"fromPoint"`
-	ToPoint       string     `json:"toPoint"`
-	Seats         int        `json:"seats"`
-	CreatedAt     time.Time  `json:"createdAt" validate:"required"`
-	DepartureTime time.Time  `json:"departureTime" validate:"required"`
-	Status        StatusEnum `json:"status"`
-	Allowed       bool       `json:"allowed"`
-	Reason        string     `json:"reason"`
-}
-
-type MoveTripDraftToPublishModelResponse struct {
-	ID            uuid.UUID  `json:"id"`
-	DriverID      uuid.UUID  `json:"driverId"`
-	FromPoint     string     `json:"fromPoint"`
-	ToPoint       string     `json:"toPoint"`
-	Seats         int        `json:"seats"`
-	CreatedAt     time.Time  `json:"createdAt" validate:"required"`
-	DepartureTime time.Time  `json:"departureTime" validate:"required"`
-	Status        StatusEnum `json:"status"`
+type MoveTripPublishedToStartedOutput struct {
+	ID            uuid.UUID
+	DriverID      uuid.UUID
+	FromPoint     string
+	ToPoint       string
+	Seats         int
+	CreatedAt     time.Time
+	DepartureTime time.Time
+	Status        StatusEnum
+	Allowed       bool
+	Reason        string
 }
 
 // PageResponse model info
 // @Description Employee account information
 // @Description with employee result, page_size, page_number, total
 type PageResponse struct {
-	Result     []CreateTripDraftResponse `json:"result"`
-	PageSize   int64                     `json:"page_size" `
-	PageNumber int64                     `json:"page_number"`
-	Total      int64                     `json:"total"`
+	Result     []CreateTripOutput `json:"result"`
+	PageSize   int64              `json:"page_size" `
+	PageNumber int64              `json:"page_number"`
+	Total      int64              `json:"total"`
 }
 
-func (req *CreateTripRequestModel) ToEntity() *Entity {
+func (req *CreateTripInput) ToEntity() *Entity {
 	return &Entity{
 		DriverID:      req.DriverID,
 		FromPoint:     req.FromPoint,
@@ -135,95 +128,78 @@ func (req *CreateTripRequestModel) ToEntity() *Entity {
 	}
 }
 
-func (req *Entity) ToResponse() CreateTripDraftResponse {
-	return CreateTripDraftResponse{
-		ID:            req.ID,
-		DriverID:      req.DriverID,
-		FromPoint:     req.FromPoint,
-		ToPoint:       req.ToPoint,
-		CreatedAt:     req.CreatedAt,
-		DepartureTime: req.DepartureTime,
-		Seats:         req.Seats,
-		Status:        req.Status,
+func entityToCreateOutput(entity *Entity) *CreateTripOutput {
+	if entity == nil {
+		return nil
 	}
-}
-
-func (req *Entity) ToCreateResponse() *CreateTripDraftResponse {
-	return &CreateTripDraftResponse{
-		ID:            req.ID,
-		DriverID:      req.DriverID,
-		FromPoint:     req.FromPoint,
-		ToPoint:       req.ToPoint,
-		CreatedAt:     req.CreatedAt,
-		DepartureTime: req.DepartureTime,
-		Seats:         req.Seats,
-		Status:        req.Status,
-	}
-}
-
-func (req *CreateTripDraftResponse) ToResponse(entity Entity) *CreateTripDraftResponse {
-	return &CreateTripDraftResponse{
+	return &CreateTripOutput{
 		ID:            entity.ID,
 		DriverID:      entity.DriverID,
 		FromPoint:     entity.FromPoint,
 		ToPoint:       entity.ToPoint,
+		Seats:         entity.Seats,
 		CreatedAt:     entity.CreatedAt,
 		DepartureTime: entity.DepartureTime,
-		Seats:         entity.Seats,
 		Status:        entity.Status,
 	}
 }
 
-func (req *MoveTripDraftToPublishModelResponse) ToPublishModelResponse(entity Entity) *MoveTripDraftToPublishModelResponse {
-	return &MoveTripDraftToPublishModelResponse{
+func (e *Entity) ToCreateTripOutput() *CreateTripOutput {
+	return entityToCreateOutput(e)
+}
+
+func entityToPublishOutput(entity *Entity) *MoveTripDraftToPublishOutput {
+	if entity == nil {
+		return nil
+	}
+	return &MoveTripDraftToPublishOutput{
 		ID:            entity.ID,
 		DriverID:      entity.DriverID,
 		FromPoint:     entity.FromPoint,
 		ToPoint:       entity.ToPoint,
+		Seats:         entity.Seats,
 		CreatedAt:     entity.CreatedAt,
 		DepartureTime: entity.DepartureTime,
-		Seats:         entity.Seats,
 		Status:        entity.Status,
 	}
 }
 
-func (req *Entity) ToUpdatedPublishModelResponse() *MoveTripDraftToPublishModelResponse {
-	return &MoveTripDraftToPublishModelResponse{
-		ID:            req.ID,
-		DriverID:      req.DriverID,
-		FromPoint:     req.FromPoint,
-		ToPoint:       req.ToPoint,
-		CreatedAt:     req.CreatedAt,
-		DepartureTime: req.DepartureTime,
-		Seats:         req.Seats,
-		Status:        req.Status,
-	}
+func (e *Entity) ToMoveTripDraftToPublishOutput() *MoveTripDraftToPublishOutput {
+	return entityToPublishOutput(e)
 }
 
-func (e *Entity) ToPublishedStartModelResponse(allowed bool, reason string) *MoveTripPublishedToStartedModelResponse {
-	return &MoveTripPublishedToStartedModelResponse{
-		ID:            e.ID,
-		DriverID:      e.DriverID,
-		FromPoint:     e.FromPoint,
-		ToPoint:       e.ToPoint,
-		CreatedAt:     e.CreatedAt,
-		DepartureTime: e.DepartureTime,
-		Seats:         e.Seats,
-		Status:        e.Status,
+func (e *Entity) ToMoveTripPublishedToStartedOutput(allowed bool, reason string) *MoveTripPublishedToStartedOutput {
+	out := entityToPublishOutput(e)
+	if out == nil {
+		return nil
+	}
+	return &MoveTripPublishedToStartedOutput{
+		ID:            out.ID,
+		DriverID:      out.DriverID,
+		FromPoint:     out.FromPoint,
+		ToPoint:       out.ToPoint,
+		Seats:         out.Seats,
+		CreatedAt:     out.CreatedAt,
+		DepartureTime: out.DepartureTime,
+		Status:        out.Status,
 		Allowed:       allowed,
 		Reason:        reason,
 	}
 }
 
-func (req *Entity) ToGetByIdModelResponse() *GetTripByIDModelResponse {
-	return &GetTripByIDModelResponse{
-		ID:            req.ID,
-		DriverID:      req.DriverID,
-		FromPoint:     req.FromPoint,
-		ToPoint:       req.ToPoint,
-		CreatedAt:     req.CreatedAt,
-		DepartureTime: req.DepartureTime,
-		Seats:         req.Seats,
-		Status:        req.Status,
+// TripEntityToOutput closes the entity boundary inside usecase (Contract-style).
+func TripEntityToOutput(entity *Entity) *GetTripByIDOutput {
+	if entity == nil {
+		return nil
+	}
+	return &GetTripByIDOutput{
+		ID:            entity.ID,
+		DriverID:      entity.DriverID,
+		FromPoint:     entity.FromPoint,
+		ToPoint:       entity.ToPoint,
+		Seats:         entity.Seats,
+		CreatedAt:     entity.CreatedAt,
+		DepartureTime: entity.DepartureTime,
+		Status:        entity.Status,
 	}
 }

@@ -11,8 +11,6 @@ import (
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
 
-	"job4j.ru/share_trip/internal/trip/domain"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,7 +46,7 @@ func TestServer_CreateTrip(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got domain.CreateTripDraftResponse
+		var got api.CreateTripDraftResponse
 		require.NoError(t, json.Unmarshal(respBody, &got))
 		require.Equal(t, fixtures.NormalClientID, got.DriverID)
 		require.Equal(t, payload.FromPoint, got.FromPoint)
@@ -125,8 +123,8 @@ func TestServer_CreateTrip(t *testing.T) {
 	})
 }
 
-func createTripRequestModel() api.CreateTripRequestModel {
-	return api.CreateTripRequestModel{
+func createTripRequestModel() api.CreateTripDraftRequest {
+	return api.CreateTripDraftRequest{
 		FromPoint:      "Moscow city, st. Big Road, h.10O",
 		ToPoint:        "Moscow city, st. Big Road, h.10",
 		DepartureTime:  time.Now(),

@@ -4,72 +4,93 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"job4j.ru/share_trip/internal/trip/domain"
 )
 
+type StatusEnum string
 type ServiceCodeEnum string
 
 const (
-	ServiceCodeTripPublication ServiceCodeEnum = "trip_publication" // ServiceCode for trip publication
-	ServiceCodeTripStart       ServiceCodeEnum = "trip_start"       // ServiceCode for trip start
+	ServiceCodeTripPublication  ServiceCodeEnum = "trip_publication"
+	ServiceCodeTripCancellation ServiceCodeEnum = "trip_cancellation"
+	ServiceCodeTripCompletion   ServiceCodeEnum = "trip_completion"
+	ServiceCodeTripStart        ServiceCodeEnum = "trip_start"
+	ServiceCodeTripEnd          ServiceCodeEnum = "trip_end"
 )
 
-type GetTripByIDRequestModel struct {
-	ID string `validate:"required,uuid"`
+type GetTripByIDRequest struct {
+	ID string `validate:"required,uuid" param:"tripId"`
 }
 
-func (req GetTripByIDRequestModel) ToGetByIDRequestModel() domain.GetByIDModelRequest {
-	return domain.GetByIDModelRequest{ID: req.ID}
-}
-
-type MoveTripDraftToPublishRequestModel struct {
+type MoveTripDraftToPublishRequest struct {
 	ID       string    `validate:"required,uuid"`
 	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"`
 }
 
-type MoveTripPublishedToStartedRequestModel struct {
+type MoveTripPublishedToStartedRequest struct {
 	ID          string          `validate:"required,uuid"`             // trip id (path)
 	CompanyID   string          `validate:"required,min=2,max=10"`     // company id (path)
 	ServiceCode ServiceCodeEnum `validate:"required,oneof=trip_start"` // service code (path)
 }
 
-func (req MoveTripPublishedToStartedRequestModel) ToMoveTripPublishedToStartedModel() domain.MoveTripPublishedToStartedModel {
-	return domain.MoveTripPublishedToStartedModel{
-		ID:          req.ID,
-		CompanyID:   req.CompanyID,
-		ServiceCode: domain.ServiceCodeEnum(req.ServiceCode),
-	}
-}
-
-type CreateTripRequestModel struct {
+type CreateTripDraftRequest struct {
 	FromPoint      string    `json:"fromPoint" validate:"required,min=20,max=155"`
 	ToPoint        string    `json:"toPoint" validate:"required,min=20,max=155"`
 	DepartureTime  time.Time `json:"departureTime" validate:"required"`
 	AvailableSeats int       `json:"seats" validate:"required,min=1,max=4"`
 }
 
-// ToCreateTripRequestModel maps HTTP body → domain.
-// DriverID is NOT taken from body — handler sets it from Keycloak sub.
-func (req *CreateTripRequestModel) ToCreateTripRequestModel() domain.CreateTripRequestModel {
-	return domain.CreateTripRequestModel{
-		FromPoint:      req.FromPoint,
-		ToPoint:        req.ToPoint,
-		DepartureTime:  req.DepartureTime,
-		AvailableSeats: req.AvailableSeats,
-	}
+type CreateTripDraftResponse struct {
+	ID            uuid.UUID  `json:"id"`
+	DriverID      uuid.UUID  `json:"driverId"`
+	FromPoint     string     `json:"fromPoint"`
+	ToPoint       string     `json:"toPoint"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	DepartureTime time.Time  `json:"departureTime"`
+	Seats         int        `json:"seats"`
+	Status        StatusEnum `json:"status"`
 }
 
-func (req *MoveTripDraftToPublishRequestModel) ToMoveTripDraftToPublishModel() domain.MoveTripDraftToPublishModel {
-	return domain.MoveTripDraftToPublishModel{
-		ID:       req.ID,
-		ClientID: req.ClientID,
-	}
+type GetTripByIDResponse struct {
+	ID            uuid.UUID  `json:"id"`
+	DriverID      uuid.UUID  `json:"driverId"`
+	FromPoint     string     `json:"fromPoint"`
+	ToPoint       string     `json:"toPoint"`
+	Seats         int        `json:"seats"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	DepartureTime time.Time  `json:"departureTime"`
+	Status        StatusEnum `json:"status"`
 }
 
-type CreateTripRequest struct {
-	DriverID       uuid.UUID `json:"driverId" validate:"required,uuid"`
-	FromPoint      string    `json:"fromPoint" validate:"required,min=20,max=155"`
-	ToPoint        string    `json:"toPoint" validate:"required,min=20,max=155"`
-	DepartureTime  time.Time `json:"departureTime" validate:"required"`
-	AvailableSeats int       `json:"seats" validate:"required,min=1,max=3"`
+type MoveTripDraftToPublishResponse struct {
+	ID            uuid.UUID  `json:"id"`
+	DriverID      uuid.UUID  `json:"driverId"`
+	FromPoint     string     `json:"fromPoint"`
+	ToPoint       string     `json:"toPoint"`
+	Seats         int        `json:"seats"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	DepartureTime time.Time  `json:"departureTime"`
+	Status        StatusEnum `json:"status"`
+}
+
+type MoveTripPublishedToStartedResponse struct {
+	ID            uuid.UUID  `json:"id"`
+	DriverID      uuid.UUID  `json:"driverId"`
+	FromPoint     string     `json:"fromPoint"`
+	ToPoint       string     `json:"toPoint"`
+	Seats         int        `json:"seats"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	DepartureTime time.Time  `json:"departureTime"`
+	Status        StatusEnum `json:"status"`
+	Allowed       bool       `json:"allowed"`
+	Reason        string     `json:"reason"`
+}
+
+// PageResponse model info
+// @Description Employee account information
+// @Description with employee result, page_size, page_number, total
+type PageResponse struct {
+	Result     []CreateTripDraftResponse `json:"result"`
+	PageSize   int64                     `json:"page_size" `
+	PageNumber int64                     `json:"page_number"`
+	Total      int64                     `json:"total"`
 }

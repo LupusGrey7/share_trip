@@ -19,8 +19,8 @@ func (t *TripUseCase) MoveTripDraftToPublishTx(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo storage.BaseTxTripRepository,
-	req domain.MoveTripDraftToPublishModel,
-) (*domain.MoveTripDraftToPublishModelResponse, error) {
+	req domain.MoveTripDraftToPublishInput,
+) (*domain.MoveTripDraftToPublishOutput, error) {
 	//tracing Jaeger
 	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.MoveTripDraftToPublishTx")
 	defer span.End()
@@ -51,7 +51,7 @@ func (t *TripUseCase) MoveTripDraftToPublishTx(
 
 	if resp.Status == domain.StatusPublished {
 		logger.Debug("move trip draft to publish transaction useCase completed", slog.String("trip_id", resp.ID.String()))
-		return &domain.MoveTripDraftToPublishModelResponse{ID: resp.ID}, nil
+		return &domain.MoveTripDraftToPublishOutput{ID: resp.ID}, nil
 	}
 
 	if resp.Status != domain.StatusDraft {
@@ -71,5 +71,5 @@ func (t *TripUseCase) MoveTripDraftToPublishTx(
 	}
 
 	logger.Debug("move draft to publish completed", slog.String("trip_id", resp.ID.String()))
-	return updatedTrip.ToUpdatedPublishModelResponse(), nil
+	return updatedTrip.ToMoveTripDraftToPublishOutput(), nil
 }

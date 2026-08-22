@@ -20,9 +20,9 @@ func (t *TripUseCase) MoveTripPublishedToStartedTx(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo storage.BaseTxTripRepository,
-	req domain.MoveTripPublishedToStartedModel,
+	req domain.MoveTripPublishedToStartedInput,
 	contractResult contracts.CheckResult,
-) (*domain.MoveTripPublishedToStartedModelResponse, error) {
+) (*domain.MoveTripPublishedToStartedOutput, error) {
 	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.MoveTripPublishedToStartedTx")
 	defer span.End()
 
@@ -64,7 +64,7 @@ func (t *TripUseCase) MoveTripPublishedToStartedTx(
 	// Idempotent: already started → empty DriverID for handler 204
 	if resp.Status == domain.StatusStarted {
 		logger.Debug("trip already started", slog.String("trip_id", resp.ID.String()))
-		return &domain.MoveTripPublishedToStartedModelResponse{ID: resp.ID}, nil
+		return &domain.MoveTripPublishedToStartedOutput{ID: resp.ID}, nil
 	}
 
 	if resp.Status != domain.StatusPublished {
@@ -83,5 +83,5 @@ func (t *TripUseCase) MoveTripPublishedToStartedTx(
 	}
 
 	logger.Debug("move published to started completed", slog.String("trip_id", resp.ID.String()))
-	return updatedTrip.ToPublishedStartModelResponse(contractResult.Allowed, contractResult.Reason), nil
+	return updatedTrip.ToMoveTripPublishedToStartedOutput(contractResult.Allowed, contractResult.Reason), nil
 }

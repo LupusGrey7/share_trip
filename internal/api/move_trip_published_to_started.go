@@ -23,7 +23,7 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 		slog.String("trace_id", traceID),
 	)
 
-	var request MoveTripPublishedToStartedRequestModel
+	var request MoveTripPublishedToStartedRequest
 
 	tripID := c.Params("tripId")
 	if tripID == "" {
@@ -69,8 +69,7 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 	ctx = logctx.WithLogger(ctx, logger)
 	logger.Debug("move trip published to started request accepted")
 
-	domainReq := request.ToMoveTripPublishedToStartedModel()
-	domainReq.ClientID = clientID
+	domainReq := toMoveTripPublishedToStartedInput(request, clientID)
 
 	resp, err := s.TripService.MoveTripPublishedToStarted(ctx, domainReq)
 	if err != nil {
@@ -86,5 +85,5 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 	logger.Debug("move trip published to started completed",
 		slog.String("status", string(resp.Status)),
 	)
-	return c.Status(fiber.StatusOK).JSON(resp)
+	return c.Status(fiber.StatusOK).JSON(toMoveTripPublishedToStartedResponse(resp))
 }

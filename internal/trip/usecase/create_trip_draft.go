@@ -16,8 +16,8 @@ func (t *TripUseCase) CreateTripDraftTx(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo storage.BaseTxTripRepository,
-	req domain.CreateTripRequestModel,
-) (*domain.CreateTripDraftResponse, error) {
+	req domain.CreateTripInput,
+) (*domain.CreateTripOutput, error) {
 	//tracing Jaeger
 	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.CreateTripDraftTx")
 	defer span.End()
@@ -41,5 +41,5 @@ func (t *TripUseCase) CreateTripDraftTx(
 	}
 
 	logger.Debug("create trip draft usecase completed", slog.String("trip_id", resp.ID.String()))
-	return resp.ToCreateResponse(), nil
+	return resp.ToCreateTripOutput(), nil
 }

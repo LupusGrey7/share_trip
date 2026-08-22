@@ -13,10 +13,10 @@ import (
 )
 
 type Service interface {
-	CreateTripWithTx(context.Context, domain.CreateTripRequestModel) (*domain.CreateTripDraftResponse, error)
-	MoveTripDraftToPublish(ctx context.Context, req domain.MoveTripDraftToPublishModel) (*domain.MoveTripDraftToPublishModelResponse, error)
-	GetTripByID(ctx context.Context, req domain.GetByIDModelRequest) (*domain.GetTripByIDModelResponse, error)
-	MoveTripPublishedToStarted(ctx context.Context, req domain.MoveTripPublishedToStartedModel) (*domain.MoveTripPublishedToStartedModelResponse, error)
+	CreateTripDraft(ctx context.Context, req domain.CreateTripInput) (*domain.CreateTripOutput, error)
+	MoveTripDraftToPublish(ctx context.Context, req domain.MoveTripDraftToPublishInput) (*domain.MoveTripDraftToPublishOutput, error)
+	GetTripByID(ctx context.Context, input *domain.GetByIDInput) (*domain.GetTripByIDOutput, error)
+	MoveTripPublishedToStarted(ctx context.Context, req domain.MoveTripPublishedToStartedInput) (*domain.MoveTripPublishedToStartedOutput, error)
 }
 
 type TripService struct {

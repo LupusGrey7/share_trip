@@ -32,7 +32,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 
 		created := mustCreateTripDraft(t, createTripDraftRequestModel())
 
-		publishBody := api.MoveTripDraftToPublishRequestModel{
+		publishBody := api.MoveTripDraftToPublishRequest{
 			ClientID: fixtures.NormalClientID,
 		}
 		resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
@@ -47,10 +47,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got domain.MoveTripDraftToPublishModelResponse
+		var got api.MoveTripDraftToPublishResponse
 		require.NoError(t, json.Unmarshal(respBody, &got))
 
-		want := domain.MoveTripDraftToPublishModelResponse{
+		want := api.MoveTripDraftToPublishResponse{
 			ID:            got.ID,
 			DriverID:      fixtures.NormalClientID,
 			FromPoint:     got.FromPoint,
@@ -58,7 +58,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 			CreatedAt:     got.CreatedAt,
 			DepartureTime: got.DepartureTime,
 			Seats:         got.Seats,
-			Status:        domain.StatusPublished,
+			Status:        api.StatusEnum("published"),
 		}
 		require.Equal(t, want, got)
 	})
@@ -71,7 +71,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 
 		created := mustCreateTripDraft(t, createTripDraftRequestModel())
 
-		publishBody := api.MoveTripDraftToPublishRequestModel{
+		publishBody := api.MoveTripDraftToPublishRequest{
 			ClientID: fixtures.InvalidClientID,
 		}
 		resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
@@ -106,7 +106,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		nonExistentTripID := "00000000-0000-0000-0000-000000000001"
-		publishBody := api.MoveTripDraftToPublishRequestModel{
+		publishBody := api.MoveTripDraftToPublishRequest{
 			ClientID: fixtures.NormalClientID,
 		}
 		resp := mustPublishTripDraft(t, nonExistentTripID, publishBody)
@@ -142,7 +142,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		publishBody := api.MoveTripDraftToPublishRequestModel{
+		publishBody := api.MoveTripDraftToPublishRequest{
 			ClientID: fixtures.NormalClientID,
 		}
 		resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
@@ -173,7 +173,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 
 		created := mustCreateTripDraft(t, createTripDraftRequestModel())
 
-		publishBody := api.MoveTripDraftToPublishRequestModel{
+		publishBody := api.MoveTripDraftToPublishRequest{
 			ClientID: uuid.Nil,
 		}
 		resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
@@ -195,8 +195,8 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 	})
 }
 
-func createTripDraftRequestModel() api.CreateTripRequestModel {
-	return api.CreateTripRequestModel{
+func createTripDraftRequestModel() api.CreateTripDraftRequest {
+	return api.CreateTripDraftRequest{
 		FromPoint:      "Mockov city, st. Big Street, h.101",
 		ToPoint:        "Mockov city, st. Big Street, h.10O",
 		DepartureTime:  time.Now(),
@@ -204,7 +204,7 @@ func createTripDraftRequestModel() api.CreateTripRequestModel {
 	}
 }
 
-func mustCreateTripDraft(t *testing.T, payload api.CreateTripRequestModel) domain.CreateTripDraftResponse {
+func mustCreateTripDraft(t *testing.T, payload api.CreateTripDraftRequest) api.CreateTripDraftResponse {
 	t.Helper()
 
 	body, err := json.Marshal(payload)
@@ -228,7 +228,7 @@ func mustCreateTripDraft(t *testing.T, payload api.CreateTripRequestModel) domai
 	respBody, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	var created domain.CreateTripDraftResponse
+	var created api.CreateTripDraftResponse
 	require.NoError(t, json.Unmarshal(respBody, &created))
 	require.Equal(t, fixtures.CurrentStubClientID(), created.DriverID)
 	return created
@@ -237,7 +237,7 @@ func mustCreateTripDraft(t *testing.T, payload api.CreateTripRequestModel) domai
 func mustPublishTripDraft(
 	t *testing.T,
 	tripID string,
-	body api.MoveTripDraftToPublishRequestModel,
+	body api.MoveTripDraftToPublishRequest,
 ) *http.Response {
 	t.Helper()
 

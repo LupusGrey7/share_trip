@@ -16,8 +16,8 @@ import (
 
 func (s *TripService) CreateTripDraft(
 	ctx context.Context,
-	req domain.CreateTripRequestModel,
-) (res *domain.CreateTripDraftResponse, err error) {
+	req domain.CreateTripInput,
+) (res *domain.CreateTripOutput, err error) {
 	// 1. Integration with Jaeger: create a child span for this layer (ctx now contains the ID of this span)
 	ctxSpc, span := otel.Tracer("TripService").Start(ctx, "TripService.CreateTripDraft")
 
@@ -55,7 +55,7 @@ func (s *TripService) CreateTripDraft(
 	txCtx, txSpan := otel.Tracer("database").Start(ctxSpc, "DB.Transaction")
 	defer txSpan.End()
 
-	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*domain.CreateTripDraftResponse, error) {
+	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*domain.CreateTripOutput, error) {
 		txLogger := logger.With(slog.String("layer", "transaction"))
 		txLogger.Debug("transaction create trip draft execution started")
 
