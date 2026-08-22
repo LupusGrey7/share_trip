@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"job4j.ru/share_trip/internal/client/contracts"
 )
 
 type StatusEnum string
@@ -73,10 +74,11 @@ type CreateTripOutput struct {
 }
 
 type MoveTripPublishedToStartedInput struct {
-	ID          string
-	ClientID    uuid.UUID
-	CompanyID   string
-	ServiceCode ServiceCodeEnum
+	ID            string
+	ClientID      uuid.UUID
+	CompanyID     string
+	ServiceCode   ServiceCodeEnum
+	ContractCheck *contracts.CheckResult // if result is nil, then contract check is not performed
 }
 
 type MoveTripDraftToPublishInput struct {

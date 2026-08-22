@@ -24,52 +24,32 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 	)
 
 	var request MoveTripPublishedToStartedRequest
-
-	tripID := c.Params("tripId")
-	if tripID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
+	c.ParamsParser(&request) //parse all url params to request
+	driverID, err := getDriverIDFromContext(c)
+	if err != nil {
+		logger.Error("failed to get driver ID from context", slog.Any("error", err))
+		return HandleError(c, ErrInvalidValidate)
 	}
-	request.ID = tripID
-
-	request.CompanyID = c.Params("companyId")
-	if request.CompanyID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
-	}
-
-	request.ServiceCode = ServiceCodeEnum(c.Params("serviceCode"))
-	if request.ServiceCode == "" {
-		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
-	}
+	request.DriverID = driverID
 
 	if err := s.validator.Struct(&request); err != nil {
 		logger.Warn("move trip published to started invalid request",
-			slog.String("tripId", tripID),
+			slog.String("tripId", request.ID),
 			slog.Any("error", err),
 		)
 		return HandleError(c, ErrInvalidValidate)
-	}
-
-	claims, err := GetClaimsFromContext(c)
-	if err != nil {
-		logger.Error("failed to get claims from context", slog.Any("error", err))
-		return HandleError(c, err)
-	}
-	clientID, err := ClientIDFromClaims(claims)
-	if err != nil {
-		logger.Error("failed to parse client ID from token subject", slog.Any("error", err))
-		return HandleError(c, err)
 	}
 
 	logger = logger.With(
 		slog.String("trip_id", request.ID),
 		slog.String("company_id", request.CompanyID),
 		slog.String("service_code", string(request.ServiceCode)),
-		slog.String("client_id", clientID.String()),
+		slog.String("client_id", driverID.String()),
 	)
 	ctx = logctx.WithLogger(ctx, logger)
 	logger.Debug("move trip published to started request accepted")
 
-	domainReq := toMoveTripPublishedToStartedInput(request, clientID)
+	domainReq := toMoveTripPublishedToStartedInput(request, driverID)
 
 	resp, err := s.TripService.MoveTripPublishedToStarted(ctx, domainReq)
 	if err != nil {
@@ -86,4 +66,16 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 		slog.String("status", string(resp.Status)),
 	)
 	return c.Status(fiber.StatusOK).JSON(toMoveTripPublishedToStartedResponse(resp))
+}
+
+func getDriverIDFromContext(c *fiber.Ctx) (uuid.UUID, error) {
+	claims, err := GetClaimsFromContext(c)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	clientID, err := ClientIDFromClaims(claims)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return clientID, nil
 }

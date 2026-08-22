@@ -63,6 +63,7 @@ func (s *TripService) MoveTripPublishedToStarted(
 		logger.Error("contract denied trip start", slog.String("reason", businessDenyReason))
 		return nil, fmt.Errorf("%w: %s", usecase.ErrConflict, businessDenyReason)
 	}
+	req.ContractCheck = &contractResult
 
 	// 2) Short DB transaction: FOR UPDATE → status → commit
 	txCtx, txSpan := otel.Tracer("database").Start(ctxSpc, "DB.Transaction")
@@ -72,7 +73,7 @@ func (s *TripService) MoveTripPublishedToStarted(
 		txLogger := logger.With(slog.String("layer", "transaction"))
 		txLogger.Debug("move trip published to started transaction execution started")
 
-		resp, err := s.useCase.MoveTripPublishedToStartedTx(txCtx, tx, s.repo, req, contractResult)
+		resp, err := s.useCase.MoveTripPublishedToStartedTx(txCtx, tx, s.repo, req)
 		if err != nil {
 			txLogger.Error("move trip published to started usecase failed", slog.Any("error", err))
 			return nil, err

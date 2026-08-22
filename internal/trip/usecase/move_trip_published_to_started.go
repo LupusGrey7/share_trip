@@ -8,7 +8,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"go.opentelemetry.io/otel"
-	"job4j.ru/share_trip/internal/client/contracts"
 	"job4j.ru/share_trip/internal/observability/logctx"
 	"job4j.ru/share_trip/internal/storage"
 	"job4j.ru/share_trip/internal/trip/domain"
@@ -21,7 +20,6 @@ func (t *TripUseCase) MoveTripPublishedToStartedTx(
 	tx pgx.Tx,
 	repo storage.BaseTxTripRepository,
 	req domain.MoveTripPublishedToStartedInput,
-	contractResult contracts.CheckResult,
 ) (*domain.MoveTripPublishedToStartedOutput, error) {
 	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.MoveTripPublishedToStartedTx")
 	defer span.End()
@@ -36,9 +34,9 @@ func (t *TripUseCase) MoveTripPublishedToStartedTx(
 	)
 	logger.Debug("move trip published to started transaction useCase started")
 
-	if !contractResult.IsAllowed() {
+	if !req.ContractCheck.IsAllowed() {
 		logger.Error("move trip published to started denied by contract",
-			slog.String("reason", contractResult.Reason),
+			slog.String("reason", req.ContractCheck.Reason),
 		)
 		return nil, fmt.Errorf("%w: service is not allowed", ErrConflict)
 	}
@@ -83,5 +81,5 @@ func (t *TripUseCase) MoveTripPublishedToStartedTx(
 	}
 
 	logger.Debug("move published to started completed", slog.String("trip_id", resp.ID.String()))
-	return updatedTrip.ToMoveTripPublishedToStartedOutput(contractResult.Allowed, contractResult.Reason), nil
+	return updatedTrip.ToMoveTripPublishedToStartedOutput(req.ContractCheck.Allowed, req.ContractCheck.Reason), nil
 }

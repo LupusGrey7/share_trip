@@ -30,6 +30,7 @@ type MoveTripPublishedToStartedRequest struct {
 	ID          string          `validate:"required,uuid"`             // trip id (path)
 	CompanyID   string          `validate:"required,min=2,max=10"`     // company id (path)
 	ServiceCode ServiceCodeEnum `validate:"required,oneof=trip_start"` // service code (path)
+	DriverID    uuid.UUID       `validate:"required,uuid"`
 }
 
 type CreateTripDraftRequest struct {
