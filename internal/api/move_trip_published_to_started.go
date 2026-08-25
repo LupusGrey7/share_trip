@@ -24,7 +24,12 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 	)
 
 	var request MoveTripPublishedToStartedRequest
-	c.ParamsParser(&request) //parse all url params to request
+
+	if err := c.ParamsParser(&request); err != nil {
+		logger.Error("failed to parse request", slog.Any("error", err))
+		return HandleError(c, ErrInvalidValidate)
+	}
+
 	driverID, err := getDriverIDFromContext(c)
 	if err != nil {
 		logger.Error("failed to get driver ID from context", slog.Any("error", err))

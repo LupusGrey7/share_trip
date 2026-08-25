@@ -26,7 +26,7 @@ func (t *TripUseCase) CheckServiceAllowed(
 	)
 	logger.Debug("contract check for service allowed started")
 
-	result, err := t.contractUsecase.CheckAvailableService(ctxSpc, companyID, serviceCode)
+	result, err := t.contractUseCase.CheckAvailableService(ctxSpc, companyID, serviceCode)
 	if err != nil {
 		logger.Error("contract check for service allowed failed", slog.Any("error", err))
 		return contracts.CheckResult{}, err

@@ -11,19 +11,18 @@ import (
 )
 
 type BaseTripUseCase interface {
-	CreateTripDraftTx(ctx context.Context, tx pgx.Tx, repo storage.BaseTxTripRepository, req domain.CreateTripRequestModel) (*domain.CreateTripDraftResponse, error)
-	MoveTripDraftToPublishTx(ctx context.Context, tx pgx.Tx, repo storage.BaseTxTripRepository, req domain.MoveTripDraftToPublishModel) (*domain.MoveTripDraftToPublishModelResponse, error)
-	GetTripByIDTx(ctx context.Context, tx pgx.Tx, repo storage.BaseTxTripRepository, req domain.GetByIDInput) (*domain.GetTripByIDOutput, error)
+	CreateTripDraftTx(ctx context.Context, tx pgx.Tx, repo storage.BaseTxTripRepository, req domain.CreateTripInput) (*domain.CreateTripOutput, error)
+	MoveTripDraftToPublishTx(ctx context.Context, tx pgx.Tx, repo storage.BaseTxTripRepository, req domain.MoveTripDraftToPublishInput) (*domain.MoveTripDraftToPublishOutput, error)
+	GetTripByIDTx(ctx context.Context, tx pgx.Tx, repo storage.BaseTxTripRepository, req *domain.GetByIDInput) (*domain.GetTripByIDOutput, error)
 	CheckServiceAllowed(ctx context.Context, companyID string, serviceCode string) (contracts.CheckResult, error)
-	MoveTripPublishedToStartedTx(ctx context.Context, tx pgx.Tx, repo storage.BaseTxTripRepository, req domain.MoveTripPublishedToStartedInput) (*domain.MoveTripPublishedToStartedModelResponse, error)
+	MoveTripPublishedToStartedTx(ctx context.Context, tx pgx.Tx, repo storage.BaseTxTripRepository, req domain.MoveTripPublishedToStartedInput) (*domain.MoveTripPublishedToStartedOutput, error)
 }
-
 type TripUseCase struct {
-	contractUsecase contractusecase.BaseContractUsecase
+	contractUseCase contractusecase.BaseContractUsecase
 }
 
 func NewTripUseCase(contractUsecase contractusecase.BaseContractUsecase) *TripUseCase {
 	return &TripUseCase{
-		contractUsecase: contractUsecase,
+		contractUseCase: contractUsecase,
 	}
 }

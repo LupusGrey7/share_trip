@@ -13,10 +13,7 @@ import (
 	"job4j.ru/share_trip/internal/trip/domain"
 )
 
-func (s *TripService) GetTripByID(
-	ctx context.Context,
-	input *domain.GetByIDInput,
-) (res *domain.GetTripByIDOutput, err error) {
+func (s *TripService) GetTripByID(ctx context.Context, input *domain.GetByIDInput) (res *domain.GetTripByIDOutput, err error) {
 	ctx, span := otel.Tracer("TripService").Start(ctx, "TripService.GetTripByID")
 
 	started := time.Now()

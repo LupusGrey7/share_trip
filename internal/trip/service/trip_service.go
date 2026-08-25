@@ -15,7 +15,7 @@ import (
 type Service interface {
 	CreateTripDraft(ctx context.Context, req domain.CreateTripInput) (*domain.CreateTripOutput, error)
 	MoveTripDraftToPublish(ctx context.Context, req domain.MoveTripDraftToPublishInput) (*domain.MoveTripDraftToPublishOutput, error)
-	GetTripByID(ctx context.Context, input *domain.GetByIDInput) (*domain.GetTripByIDOutput, error)
+	GetTripByID(ctx context.Context, input domain.GetByIDInput) (*domain.GetTripByIDOutput, error)
 	MoveTripPublishedToStarted(ctx context.Context, req domain.MoveTripPublishedToStartedInput) (*domain.MoveTripPublishedToStartedOutput, error)
 }
 
