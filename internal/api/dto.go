@@ -27,10 +27,10 @@ type MoveTripDraftToPublishRequest struct {
 }
 
 type MoveTripPublishedToStartedRequest struct {
-	ID          string          `validate:"required,uuid"`             // trip id (path)
-	CompanyID   string          `validate:"required,min=2,max=10"`     // company id (path)
-	ServiceCode ServiceCodeEnum `validate:"required,oneof=trip_start"` // service code (path)
-	DriverID    uuid.UUID       `validate:"required,uuid"`
+	ID          string          `param:"tripId" validate:"required,uuid"`
+	CompanyID   string          `param:"companyId" validate:"required,min=2,max=10"`
+	ServiceCode ServiceCodeEnum `param:"serviceCode" validate:"required,oneof=trip_start"`
+	DriverID    uuid.UUID       `validate:"required,uuid"` // из Keycloak middleware, не из path
 }
 
 type CreateTripDraftRequest struct {

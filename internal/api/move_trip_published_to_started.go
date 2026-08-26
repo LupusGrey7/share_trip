@@ -25,24 +25,25 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 
 	var request MoveTripPublishedToStartedRequest
 
+	// parse / auth / validate — разные классы ошибок → разные HTTP (см. handler-error-mapping-cheatsheet)
 	if err := c.ParamsParser(&request); err != nil {
-		logger.Error("failed to parse request", slog.Any("error", err))
-		return HandleError(c, ErrInvalidValidate)
+		logger.Warn("failed to parse path params", slog.Any("error", err))
+		return HandleError(c, ErrInvalidValidate) // 400
 	}
 
 	driverID, err := getDriverIDFromContext(c)
 	if err != nil {
 		logger.Error("failed to get driver ID from context", slog.Any("error", err))
-		return HandleError(c, ErrInvalidValidate)
+		return HandleError(c, err) // 401 / 403 / 502 — НЕ подменять на ErrInvalidValidate
 	}
 	request.DriverID = driverID
 
 	if err := s.validator.Struct(&request); err != nil {
 		logger.Warn("move trip published to started invalid request",
 			slog.String("tripId", request.ID),
-			slog.Any("error", err),
+			slog.Any("error", err), // детали — в лог, клиенту короткий класс
 		)
-		return HandleError(c, ErrInvalidValidate)
+		return HandleError(c, ErrInvalidValidate) // 400
 	}
 
 	logger = logger.With(
