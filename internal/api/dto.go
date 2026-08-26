@@ -18,18 +18,18 @@ const (
 )
 
 type GetTripByIDRequest struct {
-	ID string `validate:"required,uuid" param:"tripId"`
+	ID string `params:"tripId" validate:"required,uuid"`
 }
 
 type MoveTripDraftToPublishRequest struct {
-	ID       string    `validate:"required,uuid"`
+	ID       string    `params:"tripId" validate:"required,uuid"`
 	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"`
 }
 
 type MoveTripPublishedToStartedRequest struct {
-	ID          string          `param:"tripId" validate:"required,uuid"`
-	CompanyID   string          `param:"companyId" validate:"required,min=2,max=10"`
-	ServiceCode ServiceCodeEnum `param:"serviceCode" validate:"required,oneof=trip_start"`
+	ID          string          `params:"tripId" validate:"required,uuid"`
+	CompanyID   string          `params:"companyId" validate:"required,min=2,max=10"`
+	ServiceCode ServiceCodeEnum `params:"serviceCode" validate:"required,oneof=trip_start"`
 	DriverID    uuid.UUID       `validate:"required,uuid"` // из Keycloak middleware, не из path
 }
 
