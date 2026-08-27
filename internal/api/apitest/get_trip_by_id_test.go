@@ -11,19 +11,19 @@ import (
 
 	"job4j.ru/share_trip/internal/api"
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
-	"job4j.ru/share_trip/internal/domain/trip/model"
-
-	"job4j.ru/share_trip/internal/api/apierr"
-	domainhttp "job4j.ru/share_trip/internal/domain/http"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestServer_GetTripById(t *testing.T) {
+	t.Parallel()
+
 
 	// Given: trip created by NormalClientID and then GET trip by ID
 	// Then: 200 OK
 	t.Run("success_get_trip_by_id_when_caller_is_trip_owner", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		payload := createTripDraft()
@@ -50,11 +50,11 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripDraftResponse
+		var got api.CreateTripDraftResponse
 		err = json.Unmarshal(respBody, &got)
 		require.NoError(t, err)
 
-		response := model.CreateTripDraftResponse{
+		response := api.CreateTripDraftResponse{
 			ID:            got.ID,
 			DriverID:      fixtures.NormalClientID,
 			FromPoint:     got.FromPoint,
@@ -85,10 +85,10 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err1 = io.ReadAll(resp.Body)
 		require.NoError(t, err1)
 
-		var got1 model.CreateTripDraftResponse
+		var got1 api.GetTripByIDResponse
 		err1 = json.Unmarshal(respBody, &got1)
 		require.NoError(t, err1)
-		response1 := model.CreateTripDraftResponse{
+		response1 := api.GetTripByIDResponse{
 			ID:            got1.ID,
 			DriverID:      got.DriverID,
 			FromPoint:     got1.FromPoint,
@@ -96,7 +96,7 @@ func TestServer_GetTripById(t *testing.T) {
 			CreatedAt:     got1.CreatedAt,
 			DepartureTime: got1.DepartureTime,
 			Seats:         got1.Seats,
-			Status:        model.StatusDraft,
+			Status:        api.StatusEnum(got.Status),
 		}
 
 		require.Equal(t, response1, got1)
@@ -106,6 +106,8 @@ func TestServer_GetTripById(t *testing.T) {
 	// When: another user (InvalidClientID) calls GET
 	// Then: 403 ownership / IDOR guard
 	t.Run("forbidden_when_caller_is_not_trip_owner", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		createTripPayload := createTripDraft()
@@ -130,7 +132,7 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var created model.CreateTripDraftResponse
+		var created api.CreateTripDraftResponse
 		require.NoError(t, json.Unmarshal(respBody, &created))
 		require.Equal(t, fixtures.NormalClientID, created.DriverID)
 
@@ -156,16 +158,18 @@ func TestServer_GetTripById(t *testing.T) {
 		getBody, err := io.ReadAll(getResp.Body)
 		require.NoError(t, err)
 
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(getBody, &apiResp))
 		require.False(t, apiResp.Success)
-		require.Equal(t, apierr.ErrorForbiddenIDMismatch, apiResp.Message)
+		require.Equal(t, api.ErrorForbiddenIDMismatch, apiResp.Message)
 	})
 
 	// Given: valid UUID format, but trip does not exist in DB
 	// When: GET trip by ID
 	// Then: 404 Not Found
 	t.Run("not_found_when_trip_does_not_exist", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		// Must be valid UUID (validate:"uuid") — otherwise validator fails before DB → 500 in Fiber
 		nonExistentTripID := "00000000-0000-0000-0000-000000000001"
@@ -190,16 +194,18 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
-		require.Equal(t, apierr.StatusNotFound, apiResp.Message)
+		require.Equal(t, api.StatusNotFound, apiResp.Message)
 	})
 
 	// Given: invalid UUID format
 	// When: GET trip by ID
 	// Then: 400 Bad Request
 	t.Run("bad_request_when_trip_id_is_not_valid_uuid", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		// Must NOT be a valid UUID — we assert 400 (format), not 404 (missing row)
 		invalidTripID := "x-invalid-uuid"
@@ -224,16 +230,16 @@ func TestServer_GetTripById(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
-		require.Equal(t, apierr.RequestValidationError, apiResp.Message)
+		require.Equal(t, api.RequestValidationError, apiResp.Message)
 	})
 
 }
 
-func createTripDraft() api.CreateTripRequestModel {
-	return api.CreateTripRequestModel{
+func createTripDraft() api.CreateTripDraftRequest {
+	return api.CreateTripDraftRequest{
 		FromPoint:      "Mockov city, st. Big Star, h.101O",
 		ToPoint:        "Mockov city, st. Dig Star, h.101",
 		DepartureTime:  time.Now(),

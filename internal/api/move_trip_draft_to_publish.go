@@ -8,7 +8,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
-	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
@@ -27,7 +26,7 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 		slog.String("trace_id", traceID), // Key field for Grafana
 	)
 
-	var request MoveTripDraftToPublishRequestModel
+	var request MoveTripDraftToPublishRequest
 
 	// request param
 	tripID := c.Params("tripId")
@@ -54,7 +53,7 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 			slog.String("tripId", tripID),
 			slog.Any("error", err),
 		)
-		return HandleError(c, apierr.ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
+		return HandleError(c, ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
 	}
 
 	logger = logger.With(
@@ -64,7 +63,7 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 	ctx = logctx.WithLogger(ctx, logger)
 	logger.Debug("move trip to publish")
 
-	resp, err := s.TripService.MoveTripDraftToPublish(ctx, request.ToMoveTripDraftToPublishModel())
+	resp, err := s.TripService.MoveTripDraftToPublish(ctx, toMoveTripDraftToPublishInput(&request))
 	if err != nil {
 		logger.Error("move trip to publish failed", slog.Any("error", err))
 		return HandleError(c, err)
@@ -76,5 +75,5 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 	}
 
 	logger.Debug("move trip to publish completed")
-	return c.Status(fiber.StatusOK).JSON(resp) //200
+	return c.Status(fiber.StatusOK).JSON(toMoveTripDraftToPublishResponse(resp)) //200
 }

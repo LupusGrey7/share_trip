@@ -6,44 +6,43 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"job4j.ru/share_trip/internal/api/apierr"
-	contracts "job4j.ru/share_trip/internal/clients/http/contract"
-	"job4j.ru/share_trip/internal/domain/trip/usecase"
+	"job4j.ru/share_trip/internal/clients/http/contract"
 	"job4j.ru/share_trip/internal/middleware"
+	"job4j.ru/share_trip/internal/trip/usecase"
 )
 
 // HandleError maps domain/api sentinel errors to HTTP responses.
 func HandleError(c *fiber.Ctx, err error) error {
 	switch {
-	case errors.Is(err, apierr.ErrClaimsNotFound): // 401
-		return apierr.ErrResponse(c, fiber.StatusUnauthorized, apierr.ErrorClaimsNotFound)
-	case errors.Is(err, apierr.ErrForbiddenRole): // 403
-		return apierr.ErrResponse(c, fiber.StatusForbidden, apierr.ErrorForbiddenRole)
-	case errors.Is(err, apierr.ErrForbiddenIDMismatch): // 403 — body driverId ≠ JWT sub
-		return apierr.ErrResponse(c, fiber.StatusForbidden, apierr.ErrorForbiddenIDMismatch)
+	case errors.Is(err, ErrClaimsNotFound): // 401
+		return ErrResponse(c, fiber.StatusUnauthorized, ErrorClaimsNotFound)
+	case errors.Is(err, ErrForbiddenRole): // 403
+		return ErrResponse(c, fiber.StatusForbidden, ErrorForbiddenRole)
+	case errors.Is(err, ErrForbiddenIDMismatch): // 403 — body driverId ≠ JWT sub
+		return ErrResponse(c, fiber.StatusForbidden, ErrorForbiddenIDMismatch)
 	case errors.Is(err, usecase.ErrForbidden): // 403
 		if unwrapped := errors.Unwrap(err); unwrapped != nil {
-			return apierr.ErrResponse(c, fiber.StatusForbidden, unwrapped.Error())
+			return ErrResponse(c, fiber.StatusForbidden, unwrapped.Error())
 		}
-		return apierr.ErrResponse(c, fiber.StatusForbidden, apierr.ErrorForbidden)
-	case errors.Is(err, apierr.ErrInvalidValidate): // 400
-		return apierr.ErrResponse(c, fiber.StatusBadRequest, apierr.RequestValidationError)
+		return ErrResponse(c, fiber.StatusForbidden, ErrorForbidden)
+	case errors.Is(err, ErrInvalidValidate): // 400
+		return ErrResponse(c, fiber.StatusBadRequest, RequestValidationError)
 	case errors.Is(err, usecase.ErrTripNotFound): // 404
-		return apierr.ErrResponse(c, fiber.StatusNotFound, apierr.StatusNotFound)
+		return ErrResponse(c, fiber.StatusNotFound, StatusNotFound)
 	case errors.Is(err, usecase.ErrConflict): // 409 - business deny (deny / wrong status / company not found)
-		return apierr.ErrResponse(c, fiber.StatusConflict, err.Error())
+		return ErrResponse(c, fiber.StatusConflict, err.Error())
 	case errors.Is(err, contracts.ErrTimeout): // 504 — Contract timeout, fail closed
-		return apierr.ErrResponse(c, fiber.StatusGatewayTimeout, apierr.ErrorContractTimeout)
+		return ErrResponse(c, fiber.StatusGatewayTimeout, ErrorContractTimeout)
 	case errors.Is(err, contracts.ErrUnavailable): // 503 — Contract down / 5xx after retry
-		return apierr.ErrResponse(c, fiber.StatusServiceUnavailable, apierr.ErrorContractUnavailable)
+		return ErrResponse(c, fiber.StatusServiceUnavailable, ErrorContractUnavailable)
 	case errors.Is(err, contracts.ErrBadRequest): // 400 — Contract отклонил запрос как невалидный
-		return apierr.ErrResponse(c, fiber.StatusBadRequest, apierr.ErrorContractBadRequest)
+		return ErrResponse(c, fiber.StatusBadRequest, ErrorContractBadRequest)
 	case errors.Is(err, contracts.ErrForbidden): // 403
-		return apierr.ErrResponse(c, fiber.StatusForbidden, apierr.ErrorContractForbidden)
-	case errors.Is(err, apierr.ErrBadGateway): // 502 — e.g. sub is not a UUID
-		return apierr.ErrResponse(c, fiber.StatusBadGateway, apierr.ErrorBadGateway)
+		return ErrResponse(c, fiber.StatusForbidden, ErrorContractForbidden)
+	case errors.Is(err, ErrBadGateway): // 502 — e.g. sub is not a UUID
+		return ErrResponse(c, fiber.StatusBadGateway, ErrorBadGateway)
 	default:
-		return apierr.ErrResponse(c, fiber.StatusInternalServerError, apierr.InternalServerError)
+		return ErrResponse(c, fiber.StatusInternalServerError, InternalServerError)
 	}
 }
 
@@ -55,12 +54,12 @@ func GetClaimsFromContext(c *fiber.Ctx) (*middleware.KeycloakClaims, error) {
 
 	claims, ok := raw.(*middleware.KeycloakClaims)
 	if !ok || claims == nil {
-		return nil, apierr.ErrClaimsNotFound
+		return nil, ErrClaimsNotFound
 	}
 
 	// HasClientRole(clientID, role) — first arg is OAuth client name, second is role
 	if !claims.HasClientRole(middleware.KeycloakClientID, middleware.KeycloakClientRole) {
-		return nil, apierr.ErrForbiddenRole
+		return nil, ErrForbiddenRole
 	}
 
 	return claims, nil
@@ -70,7 +69,7 @@ func GetClaimsFromContext(c *fiber.Ctx) (*middleware.KeycloakClaims, error) {
 func ClientIDFromClaims(claims *middleware.KeycloakClaims) (uuid.UUID, error) {
 	clientID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return uuid.Nil, apierr.ErrBadGateway
+		return uuid.Nil, ErrBadGateway
 	}
 	return clientID, nil
 }

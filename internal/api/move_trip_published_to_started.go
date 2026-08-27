@@ -7,7 +7,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
-	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
@@ -24,54 +23,39 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 		slog.String("trace_id", traceID),
 	)
 
-	var request MoveTripPublishedToStartedRequestModel
+	var request MoveTripPublishedToStartedRequest
 
-	tripID := c.Params("tripId")
-	if tripID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
+	// parse / auth / validate — разные классы ошибок → разные HTTP (см. handler-error-mapping-cheatsheet)
+	if err := c.ParamsParser(&request); err != nil {
+		logger.Warn("failed to parse path params", slog.Any("error", err))
+		return HandleError(c, ErrInvalidValidate) // 400
 	}
-	request.ID = tripID
-// FIXME
-	request.CompanyID = c.Params("companyId")
-	if request.CompanyID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
+
+	driverID, err := getDriverIDFromContext(c)
+	if err != nil {
+		logger.Error("failed to get driver ID from context", slog.Any("error", err))
+		return HandleError(c, err) // 401 / 403 / 502 — НЕ подменять на ErrInvalidValidate
 	}
-//FIXME
-	request.ServiceCode = ServiceCodeEnum(c.Params("serviceCode"))
-	if request.ServiceCode == "" {
-		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
-	}
+	request.DriverID = driverID
 
 	if err := s.validator.Struct(&request); err != nil {
 		logger.Warn("move trip published to started invalid request",
-			slog.String("tripId", tripID),
-			slog.Any("error", err),
+			slog.String("tripId", request.ID),
+			slog.Any("error", err), // детали — в лог, клиенту короткий класс
 		)
-		return HandleError(c, apierr.ErrInvalidValidate)
-	}
-
-	claims, err := GetClaimsFromContext(c)
-	if err != nil {
-		logger.Error("failed to get claims from context", slog.Any("error", err))
-		return HandleError(c, err)
-	}
-	clientID, err := ClientIDFromClaims(claims)
-	if err != nil {
-		logger.Error("failed to parse client ID from token subject", slog.Any("error", err))
-		return HandleError(c, err)
+		return HandleError(c, ErrInvalidValidate) // 400
 	}
 
 	logger = logger.With(
 		slog.String("trip_id", request.ID),
 		slog.String("company_id", request.CompanyID),
 		slog.String("service_code", string(request.ServiceCode)),
-		slog.String("client_id", clientID.String()),
+		slog.String("client_id", driverID.String()),
 	)
 	ctx = logctx.WithLogger(ctx, logger)
 	logger.Debug("move trip published to started request accepted")
 
-	domainReq := request.ToMoveTripPublishedToStartedModel()
-	domainReq.ClientID = clientID
+	domainReq := toMoveTripPublishedToStartedInput(request, driverID)
 
 	resp, err := s.TripService.MoveTripPublishedToStarted(ctx, domainReq)
 	if err != nil {
@@ -87,5 +71,17 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 	logger.Debug("move trip published to started completed",
 		slog.String("status", string(resp.Status)),
 	)
-	return c.Status(fiber.StatusOK).JSON(resp)
+	return c.Status(fiber.StatusOK).JSON(toMoveTripPublishedToStartedResponse(resp))
+}
+
+func getDriverIDFromContext(c *fiber.Ctx) (uuid.UUID, error) {
+	claims, err := GetClaimsFromContext(c)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	clientID, err := ClientIDFromClaims(claims)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return clientID, nil
 }

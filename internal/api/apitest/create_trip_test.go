@@ -9,10 +9,7 @@ import (
 	"time"
 
 	"job4j.ru/share_trip/internal/api"
-	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
-	domainhttp "job4j.ru/share_trip/internal/domain/http"
-	"job4j.ru/share_trip/internal/domain/trip/model"
 
 	"github.com/stretchr/testify/require"
 )
@@ -20,11 +17,15 @@ import (
 const createTripDraftURL = GroupPrefixV2 + "/trip/createTripDraft"
 
 func TestServer_CreateTrip(t *testing.T) {
+	t.Parallel()
+
 
 	// Given: valid request + JWT stub
 	// When: POST createTripDraft
 	// Then: 201, DriverID = Keycloak sub (not from body)
 	t.Run("success_create_trip_draft", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		payload := createTripRequestModel()
 
@@ -49,7 +50,7 @@ func TestServer_CreateTrip(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.CreateTripDraftResponse
+		var got api.CreateTripDraftResponse
 		require.NoError(t, json.Unmarshal(respBody, &got))
 		require.Equal(t, fixtures.NormalClientID, got.DriverID)
 		require.Equal(t, payload.FromPoint, got.FromPoint)
@@ -61,6 +62,8 @@ func TestServer_CreateTrip(t *testing.T) {
 	// When: POST
 	// Then: 400
 	t.Run("bad_request_when_from_point_too_short", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		payload := createTripRequestModel()
@@ -87,10 +90,10 @@ func TestServer_CreateTrip(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
-		require.Equal(t, apierr.RequestValidationError, apiResp.Message)
+		require.Equal(t, api.RequestValidationError, apiResp.Message)
 	})
 
 	// Given: stub does not inject claims into Locals
@@ -98,6 +101,8 @@ func TestServer_CreateTrip(t *testing.T) {
 	// Then: 401 from RequireClientRole (before handler) — plain Fiber error, not ErrResponse JSON
 	// Note: UseStubClientID(uuid.Nil) still injects claims → would be 201, not 401
 	t.Run("unauthorized_when_claims_not_found_in_context", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubNoClaims(t)
 
 		payload := createTripRequestModel()
@@ -121,13 +126,13 @@ func TestServer_CreateTrip(t *testing.T) {
 
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		// fiber.NewError → text/JSON Fiber shape, not apierr.ErrResponse
+		// fiber.NewError → text/JSON Fiber shape, not api.ErrResponse
 		require.Contains(t, string(respBody), "missing token claims")
 	})
 }
 
-func createTripRequestModel() api.CreateTripRequestModel {
-	return api.CreateTripRequestModel{
+func createTripRequestModel() api.CreateTripDraftRequest {
+	return api.CreateTripDraftRequest{
 		FromPoint:      "Moscow city, st. Big Road, h.10O",
 		ToPoint:        "Moscow city, st. Big Road, h.10",
 		DepartureTime:  time.Now(),

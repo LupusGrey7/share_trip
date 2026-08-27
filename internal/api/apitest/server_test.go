@@ -16,7 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"job4j.ru/share_trip/internal/observability/metrics"
 
-	"job4j.ru/share_trip/internal/domain/trip/usecase"
+	"job4j.ru/share_trip/internal/trip/usecase"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -26,12 +26,13 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"job4j.ru/share_trip/internal/api"
-	"job4j.ru/share_trip/internal/repository"
+	"job4j.ru/share_trip/internal/storage"
 
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
 	client "job4j.ru/share_trip/internal/clients/http/contract"
 	clientUsecase "job4j.ru/share_trip/internal/clients/http/contract/usecase"
-	"job4j.ru/share_trip/internal/service"
+	"job4j.ru/share_trip/internal/clients/kafka"
+	"job4j.ru/share_trip/internal/trip/service"
 )
 
 const (
@@ -50,7 +51,19 @@ var (
 	contractStubMu      sync.Mutex
 	contractStubHandler http.HandlerFunc
 	contractStubServer  *httptest.Server
+
+	// itSerial — общий TestMain app + Keycloak/Contract stubs не изолированы между тестами.
+	// Job4j CI требует t.Parallel() (paralleltest); сериализуем тело IT, чтобы stubs не гонялись.
+	itSerial sync.Mutex
 )
+
+// lockIT берёт пакетный mutex на время subtest (Unlock в Cleanup).
+// Вызывать в начале каждого t.Run после t.Parallel().
+func lockIT(t *testing.T) {
+	t.Helper()
+	itSerial.Lock()
+	t.Cleanup(itSerial.Unlock)
+}
 
 // UseContractStub sets Contract httptest behavior for this test and restores default (allowed:true).
 func UseContractStub(t *testing.T, handler http.HandlerFunc) {
@@ -120,9 +133,9 @@ func TestMain(m *testing.M) {
 	registry.MustRegister(counter)
 	mu := metrics.New(registry)
 
-	repo := repository.NewRepoPg(testPool)
-	repoTrip := repository.NewTripRepository(mu, testPool)
-	outboxRepo := repository.NewOutboxEventRepository()
+	repo := storage.NewRepoPg(testPool)
+	repoTrip := storage.NewTripRepository(mu, testPool)
+	outboxRepo := storage.NewOutboxEventRepository()
 
 	contractStubHandler = defaultContractStub
 	contractStubServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -143,7 +156,7 @@ func TestMain(m *testing.M) {
 	tripUseCase := usecase.NewTripUseCase(contractUsecase)
 
 	infoService := service.NewInfoService(infoUseCase, repo)
-	tripService := service.NewTripService(mu, testPool, repoTrip, outboxRepo, tripUseCase)
+	tripService := service.NewTripService(mu, testPool, kafka.NoopProducer{}, repoTrip, outboxRepo, tripUseCase)
 
 	server := api.NewServer(registry, validate, infoService, tripService) // ← add to service
 

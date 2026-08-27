@@ -10,10 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"job4j.ru/share_trip/internal/api"
-	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
-	domainhttp "job4j.ru/share_trip/internal/domain/http"
-	"job4j.ru/share_trip/internal/domain/trip/model"
 )
 
 const (
@@ -24,7 +21,11 @@ const (
 )
 
 func TestServer_MoveTripPublishedToStarted(t *testing.T) {
+	t.Parallel()
+
 	t.Run("success_when_contract_allows", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		UseContractStub(t, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -41,15 +42,17 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got model.MoveTripPublishedToStartedModelResponse
+		var got api.MoveTripPublishedToStartedResponse
 		require.NoError(t, json.Unmarshal(body, &got))
-		require.Equal(t, model.StatusStarted, got.Status)
+		require.Equal(t, api.StatusEnum("started"), got.Status)
 		require.True(t, got.Allowed)
 
 		require.Equal(t, "started", tripStatusName(t, tripID))
 	})
 
 	t.Run("conflict_when_contract_denies_status_unchanged", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		UseContractStub(t, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -66,6 +69,8 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 	})
 
 	t.Run("conflict_when_contract_company_not_found", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		UseContractStub(t, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -81,13 +86,15 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 		require.Equal(t, http.StatusConflict, resp.StatusCode)
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(body, &apiResp))
 		require.Contains(t, strings.ToLower(apiResp.Message), "company not found")
 		require.Equal(t, "published", tripStatusName(t, tripID))
 	})
 
 	t.Run("unavailable_when_contract_503_status_unchanged", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		UseContractStub(t, func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -102,13 +109,15 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		var apiResp domainhttp.Response
+		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(body, &apiResp))
-		require.Equal(t, apierr.ErrorContractUnavailable, apiResp.Message)
+		require.Equal(t, api.ErrorContractUnavailable, apiResp.Message)
 		require.Equal(t, "published", tripStatusName(t, tripID))
 	})
 
 	t.Run("forbidden_when_caller_is_not_driver", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		UseContractStub(t, defaultContractStub)
 
@@ -123,6 +132,8 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 	})
 
 	t.Run("unauthorized_without_claims", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		tripID := mustCreatePublishedTrip(t)
 
@@ -137,7 +148,7 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 func mustCreatePublishedTrip(t *testing.T) string {
 	t.Helper()
 	created := mustCreateTripDraft(t, createTripDraftRequestModel())
-	publishBody := api.MoveTripDraftToPublishRequestModel{
+	publishBody := api.MoveTripDraftToPublishRequest{
 		ClientID: fixtures.CurrentStubClientID(),
 	}
 	resp := mustPublishTripDraft(t, created.ID.String(), publishBody)

@@ -1,0 +1,75 @@
+package usecase
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+
+	"go.opentelemetry.io/otel"
+
+	"job4j.ru/share_trip/internal/observability/logctx"
+	"job4j.ru/share_trip/internal/storage"
+	"job4j.ru/share_trip/internal/trip/domain"
+
+	"github.com/jackc/pgx/v5"
+)
+
+func (t *TripUseCase) MoveTripDraftToPublishTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	repo storage.BaseTxTripRepository,
+	req domain.MoveTripDraftToPublishInput,
+) (*domain.MoveTripDraftToPublishOutput, error) {
+	//tracing Jaeger
+	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.MoveTripDraftToPublishTx")
+	defer span.End()
+
+	//getting custom logger context
+	logger := logctx.Logger(ctxSpc).With(
+		slog.String("layer", "useCase"),
+		slog.String("useCase", "TripUseCase.MoveTripDraftToPublishTx"),
+		slog.String("client_id", req.ID),
+	)
+	logger.Debug("move trip draft to publish transaction useCase started")
+
+	resp, err := repo.GetForUpdateByIDTx(ctxSpc, tx, req.ID)
+	if err != nil {
+		if errors.Is(err, storage.ErrTripNotFound) {
+			logger.Error("move trip draft to publish transaction get trip repository failed", slog.Any("error", err))
+			return nil, ErrTripNotFound
+		}
+		// If this is not a ErrEntityNotFound, This means it's a system failure (500 error)
+		logger.Error("move trip draft to publish transaction get trip repository failed", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	if resp.DriverID != req.ClientID {
+		logger.Error("move trip draft to publish useCase failed", slog.Any("error", err))
+		return nil, fmt.Errorf("%w: client %s is not driver of trip %s", ErrForbidden, req.ClientID, req.ID)
+	}
+
+	if resp.Status == domain.StatusPublished {
+		logger.Debug("move trip draft to publish transaction useCase completed", slog.String("trip_id", resp.ID.String()))
+		return &domain.MoveTripDraftToPublishOutput{ID: resp.ID}, nil
+	}
+
+	if resp.Status != domain.StatusDraft {
+		logger.Error(
+			"move draft to publish useCase failed",
+			slog.Any("error", err),
+		)
+		return nil, fmt.Errorf("%w: invalid entity status: expected %s", ErrConflict, domain.StatusDraft)
+	}
+
+	resp.Status = domain.StatusPublished
+
+	updatedTrip, err := repo.UpdateTripTx(ctxSpc, tx, resp)
+	if err != nil {
+		logger.Error("update trip repository failed", slog.Any("error", err))
+		return nil, err
+	}
+
+	logger.Debug("move draft to publish completed", slog.String("trip_id", resp.ID.String()))
+	return updatedTrip.ToMoveTripDraftToPublishOutput(), nil
+}

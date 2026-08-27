@@ -26,9 +26,28 @@ chapter on construction
 ### build
 chapter on construction
 
+## Quick start
 - Make
  for start build or start test etc
 open terminal and 
+
+```powershell
+# 1) Postgres
+make deploy
+
+# 2) Migrations
+make migrate-up
+
+# 3) API on the host (loads .env.dev)
+make run
+```
+
+Smoke check:
+
+```powershell
+curl http://127.0.0.1:8080/health
+```
+
 ```bash
 make help
 ```
