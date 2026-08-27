@@ -50,7 +50,19 @@ var (
 	contractStubMu      sync.Mutex
 	contractStubHandler http.HandlerFunc
 	contractStubServer  *httptest.Server
+
+	// itSerial — общий TestMain app + Keycloak/Contract stubs не изолированы между тестами.
+	// Job4j CI требует t.Parallel() (paralleltest); сериализуем тело IT, чтобы stubs не гонялись.
+	itSerial sync.Mutex
 )
+
+// lockIT берёт пакетный mutex на время subtest (Unlock в Cleanup).
+// Вызывать в начале каждого t.Run после t.Parallel().
+func lockIT(t *testing.T) {
+	t.Helper()
+	itSerial.Lock()
+	t.Cleanup(itSerial.Unlock)
+}
 
 // UseContractStub sets Contract httptest behavior for this test and restores default (allowed:true).
 func UseContractStub(t *testing.T, handler http.HandlerFunc) {

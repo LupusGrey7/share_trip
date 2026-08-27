@@ -21,7 +21,11 @@ const (
 )
 
 func TestServer_MoveTripPublishedToStarted(t *testing.T) {
+	t.Parallel()
+
 	t.Run("success_when_contract_allows", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		UseContractStub(t, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -47,6 +51,8 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 	})
 
 	t.Run("conflict_when_contract_denies_status_unchanged", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		UseContractStub(t, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -63,6 +69,8 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 	})
 
 	t.Run("conflict_when_contract_company_not_found", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		UseContractStub(t, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -85,6 +93,8 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 	})
 
 	t.Run("unavailable_when_contract_503_status_unchanged", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		UseContractStub(t, func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -106,6 +116,8 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 	})
 
 	t.Run("forbidden_when_caller_is_not_driver", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		UseContractStub(t, defaultContractStub)
 
@@ -120,6 +132,8 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 	})
 
 	t.Run("unauthorized_without_claims", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		tripID := mustCreatePublishedTrip(t)
 

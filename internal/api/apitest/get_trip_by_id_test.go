@@ -16,10 +16,14 @@ import (
 )
 
 func TestServer_GetTripById(t *testing.T) {
+	t.Parallel()
+
 
 	// Given: trip created by NormalClientID and then GET trip by ID
 	// Then: 200 OK
 	t.Run("success_get_trip_by_id_when_caller_is_trip_owner", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		payload := createTripDraft()
@@ -102,6 +106,8 @@ func TestServer_GetTripById(t *testing.T) {
 	// When: another user (InvalidClientID) calls GET
 	// Then: 403 ownership / IDOR guard
 	t.Run("forbidden_when_caller_is_not_trip_owner", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		createTripPayload := createTripDraft()
@@ -162,6 +168,8 @@ func TestServer_GetTripById(t *testing.T) {
 	// When: GET trip by ID
 	// Then: 404 Not Found
 	t.Run("not_found_when_trip_does_not_exist", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		// Must be valid UUID (validate:"uuid") — otherwise validator fails before DB → 500 in Fiber
 		nonExistentTripID := "00000000-0000-0000-0000-000000000001"
@@ -196,6 +204,8 @@ func TestServer_GetTripById(t *testing.T) {
 	// When: GET trip by ID
 	// Then: 400 Bad Request
 	t.Run("bad_request_when_trip_id_is_not_valid_uuid", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		// Must NOT be a valid UUID — we assert 400 (format), not 404 (missing row)
 		invalidTripID := "x-invalid-uuid"

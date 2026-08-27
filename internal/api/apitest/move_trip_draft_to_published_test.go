@@ -24,10 +24,14 @@ const (
 )
 
 func TestServer_MoveTripDraftToPublish(t *testing.T) {
+	t.Parallel()
+
 	// Given: trip draft owned by NormalClientID
 	// When: owner publishes
 	// Then: 200 + status published
 	t.Run("success_when_caller_is_trip_owner", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		created := mustCreateTripDraft(t, createTripDraftRequestModel())
@@ -67,6 +71,8 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 	// When: body.clientId is another user
 	// Then: 403 (use case ownership check)
 	t.Run("forbidden_when_client_id_is_not_trip_owner", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		created := mustCreateTripDraft(t, createTripDraftRequestModel())
@@ -103,6 +109,8 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 	// When: publish
 	// Then: 404
 	t.Run("not_found_when_trip_does_not_exist", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		nonExistentTripID := "00000000-0000-0000-0000-000000000001"
@@ -132,6 +140,8 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 	// When: owner publishes
 	// Then: 409
 	t.Run("conflict_when_trip_is_cancelled", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		created := mustCreateTripDraft(t, createTripDraftRequestModel())
@@ -169,6 +179,8 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 	// When: publish
 	// Then: 400 (HandleError ErrInvalidValidate), not 500
 	t.Run("bad_request_when_client_id_is_nil_uuid", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		created := mustCreateTripDraft(t, createTripDraftRequestModel())

@@ -17,11 +17,15 @@ import (
 const createTripDraftURL = GroupPrefixV2 + "/trip/createTripDraft"
 
 func TestServer_CreateTrip(t *testing.T) {
+	t.Parallel()
+
 
 	// Given: valid request + JWT stub
 	// When: POST createTripDraft
 	// Then: 201, DriverID = Keycloak sub (not from body)
 	t.Run("success_create_trip_draft", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 		payload := createTripRequestModel()
 
@@ -58,6 +62,8 @@ func TestServer_CreateTrip(t *testing.T) {
 	// When: POST
 	// Then: 400
 	t.Run("bad_request_when_from_point_too_short", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		payload := createTripRequestModel()
@@ -95,6 +101,8 @@ func TestServer_CreateTrip(t *testing.T) {
 	// Then: 401 from RequireClientRole (before handler) — plain Fiber error, not ErrResponse JSON
 	// Note: UseStubClientID(uuid.Nil) still injects claims → would be 201, not 401
 	t.Run("unauthorized_when_claims_not_found_in_context", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
 		fixtures.UseStubNoClaims(t)
 
 		payload := createTripRequestModel()
