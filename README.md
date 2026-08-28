@@ -126,4 +126,20 @@ UI: http://localhost:16686 → Service `share-trip` → Find Traces.
 
 Подробнее: [`.docs/cheatsheets/observability-cheatsheet.md`](.docs/cheatsheets/observability-cheatsheet.md) §4, §11.
 
+### Grafana — дашборды (что / где / зачем)
+
+UI: http://localhost:3000 → папка **`Share_Trip`** (автозагрузка из `deploy/grafana/dashboards_files/`).
+
+| Дашборд | Файл | Зачем |
+|---------|------|--------|
+| **HTTP Status Codes** | `http_status_codes_go.json` | **Коды ответа**: error rate %, 2xx/4xx/5xx, top failing endpoints |
+| Process Metrics | `app_metrics_go.json` | HTTP RPS/latency + бизнес trip (create/publish) + repository |
+| Runtime Go | `runtime_go.json` | goroutines, heap, GC, CPU |
+| PostgreSQL | `postgresql_go.json` | БД: up, connections, commits/rollbacks |
+
+`app_metrics_go` показывает `status` в одной панели RPS
+`http_status_codes_go.json` дашборд по кодам ответа — для ревью 4xx/5xx открывай в Графана **HTTP Status Codes** 
+
+Подробно: [`.docs/cheatsheets/grafana-dashboards-cheatsheet.md`](.docs/cheatsheets/grafana-dashboards-cheatsheet.md).
+
 ---
