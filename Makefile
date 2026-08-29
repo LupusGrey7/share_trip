@@ -26,7 +26,7 @@ GO := go
 GO_PKG := ./...
 APP_NAME=sharetrip
 BUILD_DIR=./build
-MAIN_FILE=cmd/sharetrip/main.go
+MAIN_FILE=./cmd/sharetrip
 DB_DSN=${DB_DRIVER}://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${DB_SSLMODE}
 MIGRATIONS_DIR = ./migrations
 DEPLOY_DIR := ./deploy

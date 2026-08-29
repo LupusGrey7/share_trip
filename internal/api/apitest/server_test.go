@@ -162,7 +162,7 @@ func TestMain(m *testing.M) {
 	// === 2. Create Fiber application ===
 	//testApp = fiber.New()
 	testApp = fiber.New(fiber.Config{
-		EnablePrintRoutes: true, // ← Enable automatic route output at startup
+		EnablePrintRoutes: false,
 	})
 	testApp.Use(requestid.New())
 	testApp.Use(func(c *fiber.Ctx) error {

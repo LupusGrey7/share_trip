@@ -72,7 +72,7 @@ make fmt
 | **ShareTrip API** | http://localhost:8080 |
 | **ShareTrip ready** | http://localhost:8080/ready |
 | **ShareTrip metrics** | http://localhost:8080/metrics |
-| **Contract API** (внешний сервис) | http://localhost:8081 — env `CONTRACT_SERVICE_URL` |
+| **Contract API** (внешний сервис) | http://localhost:8082 — env `CONTRACT_SERVICE_URL` |
 | **Contract availability** | `GET /api/v2/companies/{companyId}/services/{serviceCode}/availability` |
 | **Jaeger UI** | http://localhost:16686 |
 | **OTEL Collector** (экспорт с хоста) | `localhost:4319` (HTTP OTLP → Jaeger) |
@@ -140,6 +140,6 @@ UI: http://localhost:3000 → папка **`Share_Trip`** (автозагруз�
 `app_metrics_go` показывает `status` в одной панели RPS
 `http_status_codes_go.json` дашборд по кодам ответа — для ревью 4xx/5xx открывай в Графана **HTTP Status Codes** 
 
-Подробно: [`.docs/cheatsheets/grafana-dashboards-cheatsheet.md`](.docs/cheatsheets/grafana-dashboards-cheatsheet.md).
+Подробно: [`.docs/cheatsheets/grafana-dashboards-cheatsheet.md`](.docs/cheatsheets/grafana-dashboards-cheatsheet.md) (§2 — цепочка app→Prometheus→Grafana, минимум стека).
 
 ---

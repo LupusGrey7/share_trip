@@ -24,3 +24,8 @@ func EnvInt(key string, def int) int {
 	}
 	return n
 }
+
+// ContractServiceURL returns CONTRACT_SERVICE_URL or configs.BaseURL default.
+func ContractServiceURL() string {
+	return Env(ContractServiceEnv, BaseURL)
+}
