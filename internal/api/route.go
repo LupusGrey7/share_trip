@@ -80,7 +80,7 @@ func (s *Server) SetupRoutes(app *fiber.App, keycloakAuth fiber.Handler) {
 		s.CreateTripDraft,
 	)
 	tripGroupV2.Patch(
-		"/moveTripDraft-ToPublish/:tripId",
+		"/moveTripDraft-ToPublish/:tripId/company/:companyId",
 		middleware.RequireClientRole(middleware.KeycloakClientID, middleware.KeycloakClientRole),
 		s.MoveTripDraftToPublishTx,
 	)

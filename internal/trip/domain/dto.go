@@ -82,7 +82,8 @@ type MoveTripPublishedToStartedInput struct {
 }
 
 type MoveTripDraftToPublishInput struct {
-	ID       string
+	ID        string
+	CompanyID string
 	ClientID uuid.UUID
 }
 

@@ -102,13 +102,12 @@ func (s *TripService) MoveTripDraftToPublish(
 	}
 
 	// 6. Publish to Kafka after successful COMMIT (dual-write; poller later).
-	// CompanyID: publish API (Contract) не несёт company — заполним когда появится источник (path/config).
 	if pubErr := s.kafka.PublishTripPublished(
 		ctxSpc,
 		kafka.TripPublished{
 			TripID:     res.ID.String(),
 			DriverID:   res.DriverID.String(),
-			CompanyID:  "",
+			CompanyID:  req.CompanyID,
 			EventType:  kafka.EventTypePublished,
 			EventID:    eventID,
 			OccurredAt: occurredAt,

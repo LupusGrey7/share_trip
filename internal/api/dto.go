@@ -22,8 +22,9 @@ type GetTripByIDRequest struct {
 }
 
 type MoveTripDraftToPublishRequest struct {
-	ID       string    `params:"tripId" validate:"required,uuid"`
-	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"`
+	ID        string    `params:"tripId" validate:"required,uuid"`
+	CompanyID string    `params:"companyId" validate:"required,min=2,max=10"`
+	ClientID  uuid.UUID `json:"clientId" validate:"required,uuid"`
 }
 
 type MoveTripPublishedToStartedRequest struct {

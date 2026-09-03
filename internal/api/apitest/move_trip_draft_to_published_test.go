@@ -19,8 +19,9 @@ import (
 )
 
 const (
+	testCompanyIDForPublish      = "acme01"
 	createTripDraftURLForPublish = GroupPrefixV2 + "/trip/createTripDraft"
-	moveTripDraftToPublishURL    = GroupPrefixV2 + "/trip/moveTripDraft-ToPublish/%s"
+	moveTripDraftToPublishURL    = GroupPrefixV2 + "/trip/moveTripDraft-ToPublish/%s/company/%s"
 )
 
 func TestServer_MoveTripDraftToPublish(t *testing.T) {
@@ -246,19 +247,13 @@ func mustCreateTripDraft(t *testing.T, payload api.CreateTripDraftRequest) api.C
 	return created
 }
 
-func mustPublishTripDraft(
-	t *testing.T,
-	tripID string,
-	body api.MoveTripDraftToPublishRequest,
-) *http.Response {
-	t.Helper()
-
+func mustPublishTripDraft(t *testing.T, tripID string, body api.MoveTripDraftToPublishRequest) *http.Response {
 	marshalBody, err := json.Marshal(body)
 	require.NoError(t, err)
 
 	req, err := http.NewRequest(
 		http.MethodPatch,
-		fmt.Sprintf(moveTripDraftToPublishURL, tripID),
+		fmt.Sprintf(moveTripDraftToPublishURL, tripID, testCompanyIDForPublish),
 		bytes.NewReader(marshalBody),
 	)
 	require.NoError(t, err)
