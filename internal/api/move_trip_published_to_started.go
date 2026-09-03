@@ -1,11 +1,11 @@
 // scenario: move trip published to started (published → started)
+
 package api
 
 import (
 	"log/slog"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
@@ -25,23 +25,16 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 
 	var request MoveTripPublishedToStartedRequest
 
-	// parse / auth / validate — разные классы ошибок → разные HTTP (см. handler-error-mapping-cheatsheet)
+	// parse / auth / validate — different error classes → different HTTP (см. handler-error-mapping-cheatsheet)
 	if err := c.ParamsParser(&request); err != nil {
 		logger.Warn("failed to parse path params", slog.Any("error", err))
 		return HandleError(c, ErrInvalidValidate) // 400
 	}
 
-	driverID, err := getDriverIDFromContext(c)
-	if err != nil {
-		logger.Error("failed to get driver ID from context", slog.Any("error", err))
-		return HandleError(c, err) // 401 / 403 / 502 — НЕ подменять на ErrInvalidValidate
-	}
-	request.DriverID = driverID
-
 	if err := s.validator.Struct(&request); err != nil {
 		logger.Warn("move trip published to started invalid request",
 			slog.String("tripId", request.ID),
-			slog.Any("error", err), // детали — в лог, клиенту короткий класс
+			slog.Any("error", err), // details in the log, short class for the client
 		)
 		return HandleError(c, ErrInvalidValidate) // 400
 	}
@@ -50,12 +43,12 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 		slog.String("trip_id", request.ID),
 		slog.String("company_id", request.CompanyID),
 		slog.String("service_code", string(request.ServiceCode)),
-		slog.String("client_id", driverID.String()),
+		slog.String("client_id", request.DriverID.String()),
 	)
 	ctx = logctx.WithLogger(ctx, logger)
 	logger.Debug("move trip published to started request accepted")
 
-	domainReq := toMoveTripPublishedToStartedInput(request, driverID)
+	domainReq := toMoveTripPublishedToStartedInput(request)
 
 	resp, err := s.TripService.MoveTripPublishedToStarted(ctx, domainReq)
 	if err != nil {
@@ -63,25 +56,6 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 		return HandleError(c, err)
 	}
 
-	if resp.DriverID == uuid.Nil {
-		logger.Debug("move trip published to started skipped: already started")
-		return c.SendStatus(fiber.StatusNoContent)
-	}
-
-	logger.Debug("move trip published to started completed",
-		slog.String("status", string(resp.Status)),
-	)
+	logger.Debug("move trip published to started completed")
 	return c.Status(fiber.StatusOK).JSON(toMoveTripPublishedToStartedResponse(resp))
-}
-
-func getDriverIDFromContext(c *fiber.Ctx) (uuid.UUID, error) {
-	claims, err := GetClaimsFromContext(c)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	clientID, err := ClientIDFromClaims(claims)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	return clientID, nil
 }

@@ -1,3 +1,5 @@
+// repository/outbox_repo.go
+
 package storage
 
 import (
@@ -9,6 +11,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 )
+
+
 
 const (
 	createEvent = `

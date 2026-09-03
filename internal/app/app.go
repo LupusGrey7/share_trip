@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"job4j.ru/share_trip/configs"
 	"job4j.ru/share_trip/internal/api"
-	clientContract "job4j.ru/share_trip/internal/clients/http/contract"
 	clientContractUsecase "job4j.ru/share_trip/internal/clients/http/contract/usecase"
 	"job4j.ru/share_trip/internal/clients/kafka"
 	"job4j.ru/share_trip/internal/middleware"
@@ -34,9 +33,6 @@ func BuildServer(
 ) {
 	// Initialize the validator instance
 	validate := validator.New(validator.WithRequiredStructEnabled())
-
-	// rest http client for contract service
-	contractClient := clientContract.NewContractClient(configs.Env(configs.ContractServiceEnv, configs.BaseURL))
 
 	repo := storage.NewRepoPg(pool)
 	repoTrip := storage.NewTripRepository(m, pool)
@@ -94,6 +90,14 @@ func GetKeycloakConfig() middleware.KeycloakConfig {
 		ClientID:     configs.Env("KEYCLOAK_CLIENT_ID", "sharetrip-api"),
 		ClientSecret: configs.Env("KEYCLOAK_CLIENT_SECRET", ""),
 	}
+}
+
+// LogContractConfig logs resolved Contract Service base URL (from .env or default).
+func LogContractConfig() {
+	logctx.Logger(context.Background()).Info("contract service config",
+		slog.String("url", configs.ContractServiceURL()),
+		slog.String("env_var", configs.ContractServiceEnv),
+	)
 }
 
 // logKeycloakConfig - log the keycloak config

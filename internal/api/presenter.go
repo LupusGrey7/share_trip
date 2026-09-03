@@ -1,7 +1,6 @@
 package api
 
 import (
-	"github.com/google/uuid"
 	"job4j.ru/share_trip/internal/trip/domain"
 )
 
@@ -84,13 +83,10 @@ func toMoveTripDraftToPublishResponse(output *domain.MoveTripDraftToPublishOutpu
 	}
 }
 
-func toMoveTripPublishedToStartedInput(
-	req MoveTripPublishedToStartedRequest,
-	clientID uuid.UUID,
-) domain.MoveTripPublishedToStartedInput {
+func toMoveTripPublishedToStartedInput(req MoveTripPublishedToStartedRequest) domain.MoveTripPublishedToStartedInput {
 	return domain.MoveTripPublishedToStartedInput{
 		ID:          req.ID,
-		ClientID:    clientID,
+		ClientID:    req.DriverID,
 		CompanyID:   req.CompanyID,
 		ServiceCode: domain.ServiceCodeEnum(req.ServiceCode),
 	}

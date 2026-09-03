@@ -83,9 +83,7 @@ func main() {
 	}()
 
 	//app fiber
-	app := fiber.New(fiber.Config{
-		EnablePrintRoutes: true,
-	})
+	app := fiber.New()
 	app.Use(tracing.NewFiberMiddleware()) // init Tracing OpenTelemetry
 	app.Use(func(c *fiber.Ctx) error {
 		ctx := c.UserContext()
@@ -102,9 +100,13 @@ func main() {
 
 	keycloakCfg := appConfigs.GetKeycloakConfig()
 	appConfigs.LogKeycloakConfig(keycloakCfg)
+	appConfigs.LogContractConfig()
 
 	//build the Server
 	appConfigs.BuildServer(app, pool, registry, m, keycloakCfg)
+
+	// log registered routes
+	api.LogRegisteredRoutes(":8080")
 
 	//listen the app
 	err = app.Listen(":8080")
