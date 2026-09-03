@@ -22,8 +22,8 @@ var NormalClientID = uuid.MustParse("11111111-1111-1111-1111-111111111111")
 // stubSubject — «кто сейчас залогинен» в тестовом middleware.
 // TestMain регистрирует middleware один раз; тесты меняют только этот UUID.
 var (
-	stubMu         sync.Mutex
-	stubSubject    = NormalClientID
+	stubMu           sync.Mutex
+	stubSubject      = NormalClientID
 	stubInjectClaims = true // false → Locals без claims → handler 401
 )
 

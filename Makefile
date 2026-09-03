@@ -26,7 +26,7 @@ GO := go
 GO_PKG := ./...
 APP_NAME=sharetrip
 BUILD_DIR=./build
-MAIN_FILE=cmd/sharetrip/main.go
+MAIN_FILE=./cmd/sharetrip
 DB_DSN=${DB_DRIVER}://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${DB_SSLMODE}
 MIGRATIONS_DIR = ./migrations
 DEPLOY_DIR := ./deploy
@@ -84,14 +84,14 @@ fmt:
 .PHONY: lint
 lint:
 ifeq ($(OS),Windows_NT)
-	golangci-lint run
+	golangci-lint run --enable=paralleltest ./...
 else
 	@if ! command -v golangci-lint >/dev/null 2>&1; then \
 		echo "❌ golangci-lint is not installed. Please install it:"; \
 		echo "   https://golangci-lint.run"; \
 		exit 1; \
 	fi
-	golangci-lint run
+	golangci-lint run --enable=paralleltest ./...
 endif
 
 # Task - Run tests (detailed output (test names and PASS/FAIL))

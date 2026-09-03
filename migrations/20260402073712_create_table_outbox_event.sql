@@ -1,27 +1,32 @@
 -- +goose Up
 -- +goose StatementBegin
-create table IF NOT EXISTS outbox_event
+
+CREATE TABLE IF NOT EXISTS outbox_event
 (
-    id           bigserial primary key,
-    event_name   text        not null,
-    aggregate_id UUID        NOT NULL,
-    payload      jsonb       not null, -- JSON с trip_id.
-    created_at   timestamptz not null default now()
+    id bigserial PRIMARY KEY,
+    event_name text NOT NULL,
+    aggregate_id uuid NOT NULL,
+    payload jsonb NOT NULL, -- JSON с trip_id.
+    created_at timestamptz NOT NULL DEFAULT now()
 );
 
-comment
-    on table outbox_event is 'сохранение события о состояния поездки';
-comment
-    on column outbox_event.event_name is 'технический статус обработки';
-comment
-    on column outbox_event.aggregate_id is 'идентификатор агрегата';
-comment
-    on column outbox_event.payload is 'полезную нагрузку события';
-comment
-    on column outbox_event.created_at is 'время создания';
+CREATE INDEX idx_outbox_event_event_name ON outbox_event (event_name);
+CREATE INDEX idx_outbox_event_created_at ON outbox_event (created_at);
+CREATE INDEX idx_outbox_event_aggregate_id ON outbox_event (aggregate_id);
+
+COMMENT ON TABLE outbox_event IS 'saving the event of the trip status';
+COMMENT ON COLUMN outbox_event.event_name IS 'technical status of processing';
+COMMENT ON COLUMN outbox_event.aggregate_id IS 'aggregate identifier';
+COMMENT ON COLUMN outbox_event.payload IS 'useful payload of the event';
+COMMENT ON COLUMN outbox_event.created_at IS 'creation time';
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-drop table IF EXISTS outbox_event;
+
+DROP INDEX IF EXISTS idx_outbox_event_event_name;
+DROP INDEX IF EXISTS idx_outbox_event_created_at;
+DROP INDEX IF EXISTS idx_outbox_event_aggregate_id;
+
+DROP TABLE IF EXISTS outbox_event;
 -- +goose StatementEnd

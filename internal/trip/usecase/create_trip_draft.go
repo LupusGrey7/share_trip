@@ -1,0 +1,45 @@
+package usecase
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+
+	"github.com/jackc/pgx/v5"
+	"go.opentelemetry.io/otel"
+	"job4j.ru/share_trip/internal/observability/logctx"
+	"job4j.ru/share_trip/internal/storage"
+	"job4j.ru/share_trip/internal/trip/domain"
+)
+
+func (t *TripUseCase) CreateTripDraftTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	repo storage.BaseTxTripRepository,
+	req domain.CreateTripInput,
+) (*domain.CreateTripOutput, error) {
+	//tracing Jaeger
+	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.CreateTripDraftTx")
+	defer span.End()
+
+	//getting custom logger context
+	logger := logctx.Logger(ctxSpc).With(
+		slog.String("layer", "usecase"),
+		slog.String("usecase", "TripUseCase.CreateTripDraftTx"),
+		slog.String("client_id", req.DriverID.String()),
+	)
+	logger.Debug("create trip draft usecase started")
+
+	entity := req.ToEntity()
+	entity.Status = domain.StatusDraft
+
+	resp, err := repo.CreateTripDraftTx(ctxSpc, tx, entity)
+
+	if err != nil {
+		logger.Error("repository create trip draft failed", slog.Any("error", err))
+		return nil, fmt.Errorf("repoTrip.Create: %w", err)
+	}
+
+	logger.Debug("create trip draft usecase completed", slog.String("trip_id", resp.ID.String()))
+	return resp.ToCreateTripOutput(), nil
+}

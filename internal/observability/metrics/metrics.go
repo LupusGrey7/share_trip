@@ -35,6 +35,10 @@ type Metrics struct {
 	TripDraftToPublishTotal    *prometheus.CounterVec
 	TripDraftToPublishDuration *prometheus.HistogramVec
 
+	// Trip published → started metrics
+	TripPublishedToStartTotal    *prometheus.CounterVec
+	TripPublishedToStartDuration *prometheus.HistogramVec
+
 	// Repository metrics
 	RepositoryQueryTotal    *prometheus.CounterVec
 	RepositoryQueryDuration *prometheus.HistogramVec
@@ -139,6 +143,27 @@ func New(reg prometheus.Registerer) *Metrics {
 				Subsystem: "trip",
 				Name:      "publish_duration_seconds",
 				Help:      "Trip publication operation latency in seconds",
+				Buckets:   prometheus.DefBuckets,
+			},
+			[]string{labelResult},
+		),
+
+		TripPublishedToStartTotal: factory.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "sharetrip",
+				Subsystem: "trip",
+				Name:      "start_total",
+				Help:      "Total number of trip start (published→started) attempts",
+			},
+			[]string{labelResult},
+		),
+
+		TripPublishedToStartDuration: factory.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace: "sharetrip",
+				Subsystem: "trip",
+				Name:      "start_duration_seconds",
+				Help:      "Trip start (published→started) operation latency in seconds",
 				Buckets:   prometheus.DefBuckets,
 			},
 			[]string{labelResult},

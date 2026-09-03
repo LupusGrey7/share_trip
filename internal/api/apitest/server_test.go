@@ -3,16 +3,20 @@ package apitest
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"job4j.ru/share_trip/internal/observability/metrics"
 
-	"job4j.ru/share_trip/internal/domain/trip/usecase"
+	"job4j.ru/share_trip/internal/trip/usecase"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -22,10 +26,12 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"job4j.ru/share_trip/internal/api"
-	"job4j.ru/share_trip/internal/repository"
+	"job4j.ru/share_trip/internal/storage"
 
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
-	"job4j.ru/share_trip/internal/service"
+	client "job4j.ru/share_trip/internal/client/contracts"
+	clientUsecase "job4j.ru/share_trip/internal/client/contracts/usecase"
+	"job4j.ru/share_trip/internal/trip/service"
 )
 
 const (
@@ -40,7 +46,43 @@ var (
 	testPool      *pgxpool.Pool
 	testApp       *fiber.App
 	testContainer *postgres.PostgresContainer
+
+	contractStubMu      sync.Mutex
+	contractStubHandler http.HandlerFunc
+	contractStubServer  *httptest.Server
+
+	// itSerial — общий TestMain app + Keycloak/Contract stubs не изолированы между тестами.
+	// Job4j CI требует t.Parallel() (paralleltest); сериализуем тело IT, чтобы stubs не гонялись.
+	itSerial sync.Mutex
 )
+
+// lockIT берёт пакетный mutex на время subtest (Unlock в Cleanup).
+// Вызывать в начале каждого t.Run после t.Parallel().
+func lockIT(t *testing.T) {
+	t.Helper()
+	itSerial.Lock()
+	t.Cleanup(itSerial.Unlock)
+}
+
+// UseContractStub sets Contract httptest behavior for this test and restores default (allowed:true).
+func UseContractStub(t *testing.T, handler http.HandlerFunc) {
+	t.Helper()
+	contractStubMu.Lock()
+	prev := contractStubHandler
+	contractStubHandler = handler
+	contractStubMu.Unlock()
+
+	t.Cleanup(func() {
+		contractStubMu.Lock()
+		contractStubHandler = prev
+		contractStubMu.Unlock()
+	})
+}
+
+func defaultContractStub(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"allowed": true, "reason": "ok"})
+}
 
 /*
 === Registered Routes ===
@@ -90,12 +132,27 @@ func TestMain(m *testing.M) {
 	registry.MustRegister(counter)
 	mu := metrics.New(registry)
 
-	repo := repository.NewRepoPg(testPool)
-	repoTrip := repository.NewTripRepository(mu, testPool)
-	outboxRepo := repository.NewOutboxEventRepository()
+	repo := storage.NewRepoPg(testPool)
+	repoTrip := storage.NewTripRepository(mu, testPool)
+	outboxRepo := storage.NewOutboxEventRepository()
+
+	contractStubHandler = defaultContractStub
+	contractStubServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contractStubMu.Lock()
+		h := contractStubHandler
+		contractStubMu.Unlock()
+		if h == nil {
+			defaultContractStub(w, r)
+			return
+		}
+		h(w, r)
+	}))
+
+	contractClient := client.NewContractClient(contractStubServer.URL)
+	contractUsecase := clientUsecase.NewContractUsecase(contractClient)
 
 	infoUseCase := usecase.NewInfoUseCase()
-	tripUseCase := usecase.NewTripUseCase()
+	tripUseCase := usecase.NewTripUseCase(contractUsecase)
 
 	infoService := service.NewInfoService(infoUseCase, repo)
 	tripService := service.NewTripService(mu, testPool, repoTrip, outboxRepo, tripUseCase)
@@ -105,7 +162,7 @@ func TestMain(m *testing.M) {
 	// === 2. Create Fiber application ===
 	//testApp = fiber.New()
 	testApp = fiber.New(fiber.Config{
-		EnablePrintRoutes: true, // ← Enable automatic route output at startup
+		EnablePrintRoutes: false,
 	})
 	testApp.Use(requestid.New())
 	testApp.Use(func(c *fiber.Ctx) error {
@@ -125,6 +182,10 @@ func TestMain(m *testing.M) {
 
 	// === 3. Correct shutdown of resources ===
 	log.Println("=== Starting forced shutdown sequence ===")
+
+	if contractStubServer != nil {
+		contractStubServer.Close()
+	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 	defer cancel()

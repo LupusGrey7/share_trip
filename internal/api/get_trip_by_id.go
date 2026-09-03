@@ -8,7 +8,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 
-	"job4j.ru/share_trip/internal/api/apierr"
 	"job4j.ru/share_trip/internal/observability/logctx"
 
 	"github.com/gofiber/fiber/v2"
@@ -28,17 +27,15 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 		slog.String("trace_id", traceID), // Key field for Grafana
 	)
 
-	tripID := c.Params("tripId")
-	if tripID == "" {
+	var request GetTripByIDRequest
+	if err := c.ParamsParser(&request); err != nil {
 		logger.Warn("get trip by id failed: invalid request", slog.String("error", invalidIdParamFormat))
-		return apierr.ErrResponse(c, fiber.StatusBadRequest, invalidIdParamFormat)
+		return ErrResponse(c, fiber.StatusBadRequest, invalidIdParamFormat)
 	}
 
-	request := GetTripByIDRequestModel{ID: tripID}
-
-	if err := s.validator.Struct(request); err != nil {
+	if err := s.validator.Struct(&request); err != nil {
 		logger.Warn("get trip by id failed: invalid request", slog.Any("error", err))
-		return HandleError(c, apierr.ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
+		return HandleError(c, ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
 	}
 
 	// identity from Keycloak (role already checked on route; helper = defense in depth)
@@ -58,12 +55,12 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 
 	//tracing
 	span.SetAttributes(
-		attribute.String("trip_id", tripID),
+		attribute.String("trip_id", request.ID),
 	)
 	// logging at the component boundary
-	logger.Debug("get trip by id", slog.String("tripId", tripID))
+	logger.Debug("get trip by id", slog.String("tripId", request.ID))
 
-	resp, err := s.TripService.GetTripByID(ctx, request.ToGetByIDRequestModel())
+	resp, err := s.TripService.GetTripByID(ctx, toGetByIDInput(&request))
 	if err != nil {
 		logger.Error("get trip by id failed", slog.Any("error", err))
 		return HandleError(c, err)
@@ -75,9 +72,10 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 			slog.String("trip_driver_id", resp.DriverID.String()),
 			slog.String("token_sub", clientID.String()),
 		)
-		return HandleError(c, apierr.ErrForbiddenIDMismatch)
+		return HandleError(c, ErrForbiddenIDMismatch)
 	}
 
+	out := toGetTripByIDResponse(resp)
 	logger.Debug("get trip by id completed", slog.String("trip_id", request.ID))
-	return c.Status(fiber.StatusOK).JSON(resp)
+	return c.Status(fiber.StatusOK).JSON(out)
 }
