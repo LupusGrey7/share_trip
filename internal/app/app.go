@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"job4j.ru/share_trip/configs"
 	"job4j.ru/share_trip/internal/api"
+	clientContract "job4j.ru/share_trip/internal/clients/http/contract"
 	clientContractUsecase "job4j.ru/share_trip/internal/clients/http/contract/usecase"
 	"job4j.ru/share_trip/internal/clients/kafka"
 	"job4j.ru/share_trip/internal/middleware"
@@ -34,13 +35,16 @@ func BuildServer(
 	// Initialize the validator instance
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
+	// rest client for contract service
+	contractClient := clientContract.NewContractClient(configs.ContractServiceURL())
+
 	repo := storage.NewRepoPg(pool)
 	repoTrip := storage.NewTripRepository(m, pool)
 	outboxRepo := storage.NewOutboxEventRepository()
 
 	infoUseCase := usecase.NewInfoUseCase()
-	contractUsecase := clientContractUsecase.NewContractUsecase(contractClient)
-	tripUseCase := usecase.NewTripUseCase(contractUsecase)
+	contractUseCase := clientContractUsecase.NewContractUsecase(contractClient)
+	tripUseCase := usecase.NewTripUseCase(contractUseCase)
 
 	kafkaProducer := newKafkaProducer()
 
