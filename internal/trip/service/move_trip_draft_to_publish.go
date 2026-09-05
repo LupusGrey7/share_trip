@@ -22,7 +22,7 @@ func (s *TripService) MoveTripDraftToPublish(
 	req domain.MoveTripDraftToPublishInput,
 ) (res *domain.MoveTripDraftToPublishOutput, err error) {
 	// 1. Integration with Jaeger: create a child span for this layer (ctx now contains the ID of this span)
-	ctxSpc, span := otel.Tracer("TripService").Start(ctx, "TripService.MoveTripDraftToPublishTx")
+	ctxSpc, span := otel.Tracer("TripService").Start(ctx, "TripService.MoveTripDraftToPublish")
 
 	//2. metrics - time fo Prometheus + Grafana (Integration with Prometheus)
 	started := time.Now()
@@ -47,7 +47,7 @@ func (s *TripService) MoveTripDraftToPublish(
 	// 3. getting custom logger context
 	logger := logctx.Logger(ctxSpc).With(
 		slog.String("service", "TripService"),
-		slog.String("operation", "MoveTripDraftToPublishTx"),
+		slog.String("operation", "MoveTripDraftToPublish"),
 		slog.String("client_id", req.ID),
 	)
 	logger.Debug("move trip draft to publish transaction started")
@@ -81,7 +81,7 @@ func (s *TripService) MoveTripDraftToPublish(
 			CreatedAt:   occurredAt,
 		}
 
-		err = s.outboxRepo.CreateOutboxEventTripPublishTx(ctxSpc, tx, &event)
+		err = s.outboxRepo.CreateOutboxEventTripPublishTx(ctxSpc, tx, &event) //FIXME
 		if err != nil {
 			txLogger.Error("move trip draft to publish outbox create event failed", slog.Any("error", err))
 			return nil, fmt.Errorf("error while MoveTripDraftToPublish create Outbox Event: %w", err)

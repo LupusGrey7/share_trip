@@ -40,7 +40,7 @@ func BuildServer(
 
 	repo := storage.NewRepoPg(pool)
 	repoTrip := storage.NewTripRepository(m, pool)
-	outboxRepo := storage.NewOutboxEventRepository()
+	outboxRepo := storage.NewOutboxEventRepository(m)
 
 	infoUseCase := usecase.NewInfoUseCase()
 	contractUseCase := clientContractUsecase.NewContractUsecase(contractClient)
