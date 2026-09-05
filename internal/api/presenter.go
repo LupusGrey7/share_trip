@@ -62,8 +62,9 @@ func toMoveTripDraftToPublishInput(req *MoveTripDraftToPublishRequest) domain.Mo
 		return domain.MoveTripDraftToPublishInput{}
 	}
 	return domain.MoveTripDraftToPublishInput{
-		ID:       req.ID,
-		ClientID: req.ClientID,
+		ID:        req.ID,
+		CompanyID: req.CompanyID,
+		ClientID:  req.ClientID,
 	}
 }
 

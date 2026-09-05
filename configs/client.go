@@ -10,7 +10,7 @@ import (
 
 const (
 	ContractServiceEnv = "CONTRACT_SERVICE_URL"  // environment variable for the contract service url
-	BaseURL            = "http://localhost:8082" // base url for the contract service
+	BaseURL            = "http://localhost:8081" // base url for the contract service
 
 	Timeout          = 2 * time.Second        // Every trying to get response from server, it waits for 2 seconds
 	RetryCount       = 2                      // retry count for the http request (1 try + 2 retries)

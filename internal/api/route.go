@@ -31,7 +31,11 @@ func RegisteredRoutes() []RouteInfo {
 		{Method: "GET", Path: MetricsInfo, Note: "Prometheus scrape"},
 		{Method: "GET", Path: GroupPrefixV2 + TripPath + "/:tripId", Note: "get trip by id (Keycloak)"},
 		{Method: "POST", Path: GroupPrefixV2 + TripPath + "/createTripDraft", Note: "create trip draft (Keycloak)"},
-		{Method: "PATCH", Path: GroupPrefixV2 + TripPath + "/moveTripDraft-ToPublish/:tripId", Note: "draft → published (Keycloak)"},
+		{
+			Method: "PATCH",
+			Path:   GroupPrefixV2 + TripPath + "/moveTripDraft-ToPublish/:tripId/company/:companyId",
+			Note:   "draft → published (Keycloak) -> Kafka -> Notification app",
+		},
 		{
 			Method: "PATCH",
 			Path:   GroupPrefixV2 + TripPath + "/moveTripPublished-ToStarted/:tripId/company/:companyId/service/:serviceCode",
@@ -80,7 +84,7 @@ func (s *Server) SetupRoutes(app *fiber.App, keycloakAuth fiber.Handler) {
 		s.CreateTripDraft,
 	)
 	tripGroupV2.Patch(
-		"/moveTripDraft-ToPublish/:tripId",
+		"/moveTripDraft-ToPublish/:tripId/company/:companyId",
 		middleware.RequireClientRole(middleware.KeycloakClientID, middleware.KeycloakClientRole),
 		s.MoveTripDraftToPublishTx,
 	)

@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
-	"job4j.ru/share_trip/internal/client/contracts"
-	contractusecase "job4j.ru/share_trip/internal/client/contracts/usecase"
+	"job4j.ru/share_trip/internal/clients/http/contract"
+	contractusecase "job4j.ru/share_trip/internal/clients/http/contract/usecase"
 	"job4j.ru/share_trip/internal/storage"
 	"job4j.ru/share_trip/internal/trip/domain"
 )

@@ -29,8 +29,9 @@ import (
 	"job4j.ru/share_trip/internal/storage"
 
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
-	client "job4j.ru/share_trip/internal/client/contracts"
-	clientUsecase "job4j.ru/share_trip/internal/client/contracts/usecase"
+	client "job4j.ru/share_trip/internal/clients/http/contract"
+	clientUsecase "job4j.ru/share_trip/internal/clients/http/contract/usecase"
+	"job4j.ru/share_trip/internal/clients/kafka"
 	"job4j.ru/share_trip/internal/trip/service"
 )
 
@@ -134,7 +135,7 @@ func TestMain(m *testing.M) {
 
 	repo := storage.NewRepoPg(testPool)
 	repoTrip := storage.NewTripRepository(mu, testPool)
-	outboxRepo := storage.NewOutboxEventRepository()
+	outboxRepo := storage.NewOutboxEventRepository(mu)
 
 	contractStubHandler = defaultContractStub
 	contractStubServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -155,14 +156,14 @@ func TestMain(m *testing.M) {
 	tripUseCase := usecase.NewTripUseCase(contractUsecase)
 
 	infoService := service.NewInfoService(infoUseCase, repo)
-	tripService := service.NewTripService(mu, testPool, repoTrip, outboxRepo, tripUseCase)
+	tripService := service.NewTripService(mu, testPool, kafka.NoopProducer{}, repoTrip, outboxRepo, tripUseCase)
 
 	server := api.NewServer(registry, validate, infoService, tripService) // ← add to service
 
 	// === 2. Create Fiber application ===
 	//testApp = fiber.New()
 	testApp = fiber.New(fiber.Config{
-		EnablePrintRoutes: false,
+		EnablePrintRoutes: true, // ← Enable automatic route output at startup
 	})
 	testApp.Use(requestid.New())
 	testApp.Use(func(c *fiber.Ctx) error {

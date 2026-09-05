@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"job4j.ru/share_trip/internal/client/contracts"
+	"job4j.ru/share_trip/internal/clients/http/contract"
 )
 
 type StatusEnum string
@@ -82,7 +82,8 @@ type MoveTripPublishedToStartedInput struct {
 }
 
 type MoveTripDraftToPublishInput struct {
-	ID       string
+	ID        string
+	CompanyID string
 	ClientID uuid.UUID
 }
 

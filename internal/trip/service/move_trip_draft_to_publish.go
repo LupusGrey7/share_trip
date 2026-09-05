@@ -8,10 +8,12 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
+	"job4j.ru/share_trip/internal/clients/kafka"
 	"job4j.ru/share_trip/internal/observability/logctx"
 	outboxdomain "job4j.ru/share_trip/internal/outbox/domain"
 	"job4j.ru/share_trip/internal/trip/domain"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -20,7 +22,7 @@ func (s *TripService) MoveTripDraftToPublish(
 	req domain.MoveTripDraftToPublishInput,
 ) (res *domain.MoveTripDraftToPublishOutput, err error) {
 	// 1. Integration with Jaeger: create a child span for this layer (ctx now contains the ID of this span)
-	ctxSpc, span := otel.Tracer("TripService").Start(ctx, "TripService.MoveTripDraftToPublishTx")
+	ctxSpc, span := otel.Tracer("TripService").Start(ctx, "TripService.MoveTripDraftToPublish")
 
 	//2. metrics - time fo Prometheus + Grafana (Integration with Prometheus)
 	started := time.Now()
@@ -45,10 +47,14 @@ func (s *TripService) MoveTripDraftToPublish(
 	// 3. getting custom logger context
 	logger := logctx.Logger(ctxSpc).With(
 		slog.String("service", "TripService"),
-		slog.String("operation", "MoveTripDraftToPublishTx"),
+		slog.String("operation", "MoveTripDraftToPublish"),
 		slog.String("client_id", req.ID),
 	)
 	logger.Debug("move trip draft to publish transaction started")
+
+	// Stable event id for outbox row + Kafka message (same UUID).
+	eventID := uuid.New().String()
+	occurredAt := time.Now()
 
 	// 4. Open a database transaction
 	// Mandatory to create a sub-span for the transaction to measure its clean duration
@@ -65,25 +71,27 @@ func (s *TripService) MoveTripDraftToPublish(
 			return nil, err
 		}
 
-		// outbox
+		// outbox (same event_id as Kafka message)
 		payload := outboxdomain.PayloadEvent{TripID: resp.ID}
 		event := outboxdomain.Entity{
+			EventID:     eventID,
 			EventName:   string(outboxdomain.EventPublished),
 			AggregateId: resp.ID,
 			Payload:     payload,
+			CreatedAt:   occurredAt,
 		}
 
-		err = s.outboxRepo.CreateNotificationTripPublishTx(ctxSpc, tx, &event)
+		err = s.outboxRepo.CreateOutboxEventTripPublishTx(ctxSpc, tx, &event) //FIXME
 		if err != nil {
-			txLogger.Error("move trip draft to publish outbox create notification failed", slog.Any("error", err))
-			return nil, fmt.Errorf("error while MoveTripDraftToPublish create Notification: %w", err)
+			txLogger.Error("move trip draft to publish outbox create event failed", slog.Any("error", err))
+			return nil, fmt.Errorf("error while MoveTripDraftToPublish create Outbox Event: %w", err)
 		}
 
 		txLogger.Debug("transaction execution completed", slog.String("trip_id", resp.ID.String()))
 		return resp, nil
 	})
 
-	// 6. Fix the transaction error (if COMMIT failed or logic inside failed) using txSpan
+	// 5. Fix the transaction error (if COMMIT failed or logic inside failed) using txSpan
 	if err != nil {
 		logger.Error("move trip draft to publish failed", slog.Any("error", err))
 
@@ -91,6 +99,28 @@ func (s *TripService) MoveTripDraftToPublish(
 		txSpan.SetStatus(codes.Error, err.Error())
 		// Span will be closed automatically through defer txSpan.End() above
 		return nil, err
+	}
+
+	// 6. Publish to Kafka after successful COMMIT (dual-write; poller later).
+	if pubErr := s.kafka.PublishTripPublished(
+		ctxSpc,
+		kafka.TripPublished{
+			EventID:    eventID,
+			EventType:  kafka.EventTypePublished,
+			OccurredAt: occurredAt,
+			Payload: kafka.TripPublishedPayload{
+				TripID:    res.ID.String(),
+				DriverID:  res.DriverID.String(),
+				CompanyID: req.CompanyID,
+			},
+		}); pubErr != nil {
+		// dual-write gap: trip is published in DB but event not sent
+		// TODO: outbox poller will resend; for now log + return success
+		logger.Error("kafka publish failed after commit, event lost until poller",
+			slog.String("trip_id", res.ID.String()),
+			slog.String("event_id", eventID),
+			slog.Any("error", pubErr),
+		)
 	}
 
 	logger.Debug("move trip draft to publish completed", slog.String("trip_id", res.ID.String()))

@@ -25,7 +25,7 @@ func (c *OutboxEventUseCase) CreateEventWhenTripToPublish(
 		Payload:     payload,
 	}
 
-	err := repo.CreateNotificationTripPublishTx(ctx, tx, &event)
+	err := repo.CreateOutboxEventTripPublishTx(ctx, tx, &event)
 	if err != nil {
 		return fmt.Errorf("error outboxRepository.Create: %w", err)
 	}

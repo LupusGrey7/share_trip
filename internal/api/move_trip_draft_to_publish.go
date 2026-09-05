@@ -28,15 +28,16 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 
 	var request MoveTripDraftToPublishRequest
 
-	// request param
-	tripID := c.Params("tripId")
-	if tripID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, invalidIdParamFormat)
+	// parse / auth / validate — different error classes → different HTTP (см. handler-error-mapping-cheatsheet)
+	if err := c.ParamsParser(&request); err != nil {
+		logger.Warn("failed to parse path params", slog.Any("error", err))
+		return HandleError(c, ErrInvalidValidate) // 400
 	}
+
 	// Parse request body
 	if err := c.BodyParser(&request); err != nil {
 		logger.Warn("move trip to publish: invalid json body",
-			slog.String("tripId", tripID),
+			slog.String("tripId", request.ID),
 			slog.Any("error", err),
 		)
 		return c.Status(fiber.StatusBadRequest).JSON(
@@ -45,12 +46,12 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 				"reason": err,
 			})
 	}
-	request.ID = tripID
 
 	// validation
 	if err := s.validator.Struct(&request); err != nil {
 		logger.Warn("move trip draft to publish invalid request",
-			slog.String("tripId", tripID),
+			slog.String("tripId", request.ID),
+			slog.String("companyId", request.CompanyID),
 			slog.Any("error", err),
 		)
 		return HandleError(c, ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500

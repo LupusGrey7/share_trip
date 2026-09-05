@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	testCompanyID                 = "acme01"
+	testCompanyIDForStart         = "acme01"
 	testServiceCode               = "trip_start"
 	moveTripPublishedToStartedURL = GroupPrefixV2 +
 		"/trip/moveTripPublished-ToStarted/%s/company/%s/service/%s"
@@ -166,7 +166,7 @@ func closeResponseBody(t *testing.T, resp *http.Response) {
 
 func mustStartTrip(t *testing.T, tripID string) *http.Response {
 	t.Helper()
-	url := fmt.Sprintf(moveTripPublishedToStartedURL, tripID, testCompanyID, testServiceCode)
+	url := fmt.Sprintf(moveTripPublishedToStartedURL, tripID, testCompanyIDForStart, testServiceCode)
 	req, err := http.NewRequest(http.MethodPatch, url, nil)
 	require.NoError(t, err)
 	req.Header.Set(fixtures.RefreshTokenHeader, fixtures.RefreshTokenValue)
