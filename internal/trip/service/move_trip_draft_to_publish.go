@@ -105,12 +105,14 @@ func (s *TripService) MoveTripDraftToPublish(
 	if pubErr := s.kafka.PublishTripPublished(
 		ctxSpc,
 		kafka.TripPublished{
-			TripID:     res.ID.String(),
-			DriverID:   res.DriverID.String(),
-			CompanyID:  req.CompanyID,
-			EventType:  kafka.EventTypePublished,
 			EventID:    eventID,
+			EventType:  kafka.EventTypePublished,
 			OccurredAt: occurredAt,
+			Payload: kafka.TripPublishedPayload{
+				TripID:    res.ID.String(),
+				DriverID:  res.DriverID.String(),
+				CompanyID: req.CompanyID,
+			},
 		}); pubErr != nil {
 		// dual-write gap: trip is published in DB but event not sent
 		// TODO: outbox poller will resend; for now log + return success

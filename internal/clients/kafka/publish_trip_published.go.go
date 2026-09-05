@@ -21,11 +21,11 @@ func (p *Producer) PublishTripPublished(ctx context.Context, event TripPublished
 	}
 
 	// write message to kafka
-	// key for massage (trip_id is key) and value is event data
+	// key = trip_id (partitioning); value = envelope JSON
 	return p.writer.WriteMessages( // returns error if message is not written
 		ctx,
 		kafka.Message{
-			Key:   []byte(event.TripID),
+			Key:   []byte(event.Payload.TripID),
 			Value: data,
 		})
 }

@@ -135,7 +135,7 @@ func TestMain(m *testing.M) {
 
 	repo := storage.NewRepoPg(testPool)
 	repoTrip := storage.NewTripRepository(mu, testPool)
-	outboxRepo := storage.NewOutboxEventRepository()
+	outboxRepo := storage.NewOutboxEventRepository(mu)
 
 	contractStubHandler = defaultContractStub
 	contractStubServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
