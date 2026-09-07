@@ -148,10 +148,7 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 func mustCreatePublishedTrip(t *testing.T) string {
 	t.Helper()
 	created := mustCreateTripDraft(t, createTripDraftRequestModel())
-	publishBody := api.MoveTripDraftToPublishRequest{
-		ClientID: fixtures.CurrentStubClientID(),
-	}
-	resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
+	resp := mustPublishTripDraft(t, created.ID.String())
 	defer closeResponseBody(t, resp)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	return created.ID.String()

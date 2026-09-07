@@ -34,32 +34,26 @@ func (s *Server) MoveTripDraftToPublishTx(c *fiber.Ctx) error {
 		return HandleError(c, ErrInvalidValidate) // 400
 	}
 
-	// Parse request body
-	if err := c.BodyParser(&request); err != nil {
-		logger.Warn("move trip to publish: invalid json body",
-			slog.String("tripId", request.ID),
-			slog.Any("error", err),
-		)
-		return c.Status(fiber.StatusBadRequest).JSON(
-			fiber.Map{
-				"error":  invalidParseJson,
-				"reason": err,
-			})
+	// Identity from Keycloak JWT sub — not from body (lead requirement / IDOR-safe)
+	driverID, err := getDriverIDFromContext(c)
+	if err != nil {
+		logger.Error("failed to get driver ID from context", slog.Any("error", err))
+		return HandleError(c, err) // 401 / 403 / 502
 	}
+	request.DriverID = driverID
 
-	// validation
 	if err := s.validator.Struct(&request); err != nil {
 		logger.Warn("move trip draft to publish invalid request",
 			slog.String("tripId", request.ID),
 			slog.String("companyId", request.CompanyID),
 			slog.Any("error", err),
 		)
-		return HandleError(c, ErrInvalidValidate) // → 400, not unmapped RequestValidationError → 500
+		return HandleError(c, ErrInvalidValidate) // → 400
 	}
 
 	logger = logger.With(
 		slog.String("tripId", request.ID),
-		slog.String("client_id", request.ClientID.String()),
+		slog.String("client_id", request.DriverID.String()),
 	)
 	ctx = logctx.WithLogger(ctx, logger)
 	logger.Debug("move trip to publish")

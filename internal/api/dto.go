@@ -18,20 +18,20 @@ const (
 )
 
 type GetTripByIDRequest struct {
-	ID string `params:"tripId" validate:"required,uuid"`
+	ID string `params:"tripId" json:"-" validate:"required,uuid"`
 }
 
 type MoveTripDraftToPublishRequest struct {
-	ID        string    `params:"tripId" validate:"required,uuid"`
-	CompanyID string    `params:"companyId" validate:"required,min=2,max=10"`
-	ClientID  uuid.UUID `json:"clientId" validate:"required,uuid"`
+	ID        string    `params:"tripId" json:"-" validate:"required,uuid"`
+	CompanyID string    `params:"companyId" json:"-" validate:"required,min=2,max=10"`
+	DriverID  uuid.UUID `json:"-" validate:"required,uuid"` // из Keycloak JWT sub, не из body (требование лида)
 }
 
 type MoveTripPublishedToStartedRequest struct {
-	ID          string          `params:"tripId" validate:"required,uuid"`
-	CompanyID   string          `params:"companyId" validate:"required,min=2,max=10"`
-	ServiceCode ServiceCodeEnum `params:"serviceCode" validate:"required,oneof=trip_start"`
-	DriverID    uuid.UUID       `validate:"required,uuid"` // из Keycloak middleware, не из path
+	ID          string          `params:"tripId" json:"-" validate:"required,uuid"`
+	CompanyID   string          `params:"companyId" json:"-" validate:"required,min=2,max=10"`
+	ServiceCode ServiceCodeEnum `params:"serviceCode" json:"-" validate:"required,oneof=trip_start"`
+	DriverID    uuid.UUID       `json:"-" validate:"required,uuid"` // из Keycloak JWT sub, не из path/body
 }
 
 type CreateTripDraftRequest struct {

@@ -64,7 +64,7 @@ func toMoveTripDraftToPublishInput(req *MoveTripDraftToPublishRequest) domain.Mo
 	return domain.MoveTripDraftToPublishInput{
 		ID:        req.ID,
 		CompanyID: req.CompanyID,
-		ClientID:  req.ClientID,
+		ClientID:  req.DriverID, // JWT sub → domain ownership check
 	}
 }
 
