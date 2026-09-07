@@ -26,7 +26,7 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 
 	var request MoveTripPublishedToStartedRequest
 
-	// parse / auth / validate — разные классы ошибок → разные HTTP (см. handler-error-mapping-cheatsheet)
+	// parse / auth / validate — different error classes → different HTTP (see handler-error-mapping-cheatsheet)
 	if err := c.ParamsParser(&request); err != nil {
 		logger.Warn("failed to parse path params", slog.Any("error", err))
 		return HandleError(c, ErrInvalidValidate) // 400
@@ -35,7 +35,7 @@ func (s *Server) MoveTripPublishedToStarted(c *fiber.Ctx) error {
 	driverID, err := getDriverIDFromContext(c)
 	if err != nil {
 		logger.Error("failed to get driver ID from context", slog.Any("error", err))
-		return HandleError(c, err) // 401 / 403 / 502 — НЕ подменять на ErrInvalidValidate
+		return HandleError(c, err) // 401 / 403 / 502 — do not replace with ErrInvalidValidate
 	}
 	request.DriverID = driverID
 
