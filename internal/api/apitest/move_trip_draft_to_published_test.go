@@ -23,7 +23,7 @@ const (
 	moveTripDraftToPublishURL    = GroupPrefixV2 + "/trip/moveTripDraft-ToPublish/%s/company/%s"
 )
 
-func TestServer_MoveTripDraftToPublish(t *testing.T) {
+func TestServer_MoveTripFromDraftToPublish(t *testing.T) {
 	t.Parallel()
 
 	// Given: trip draft owned by NormalClientID
@@ -48,10 +48,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got api.MoveTripDraftToPublishResponse
+		var got api.MoveTripFromDraftToPublishResponse
 		require.NoError(t, json.Unmarshal(respBody, &got))
 
-		want := api.MoveTripDraftToPublishResponse{
+		want := api.MoveTripFromDraftToPublishResponse{
 			ID:            got.ID,
 			DriverID:      fixtures.NormalClientID,
 			FromPoint:     got.FromPoint,

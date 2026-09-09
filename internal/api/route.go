@@ -86,11 +86,11 @@ func (s *Server) SetupRoutes(app *fiber.App, keycloakAuth fiber.Handler) {
 	tripGroupV2.Patch(
 		"/moveTripDraft-ToPublish/:tripId/company/:companyId",
 		middleware.RequireClientRole(middleware.KeycloakClientID, middleware.KeycloakClientRole),
-		s.MoveTripDraftToPublishTx,
+		s.MoveTripFromDraftToPublish,
 	)
 	tripGroupV2.Patch(
 		"/moveTripPublished-ToStarted/:tripId/company/:companyId/service/:serviceCode",
 		middleware.RequireClientRole(middleware.KeycloakClientID, middleware.KeycloakClientRole),
-		s.MoveTripPublishedToStarted,
+		s.MoveTripFromPublishedToStarted,
 	)
 }

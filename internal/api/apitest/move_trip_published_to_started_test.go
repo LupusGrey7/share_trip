@@ -20,7 +20,7 @@ const (
 		"/trip/moveTripPublished-ToStarted/%s/company/%s/service/%s"
 )
 
-func TestServer_MoveTripPublishedToStarted(t *testing.T) {
+func TestServer_MoveTripFromPublishedToStarted(t *testing.T) {
 	t.Parallel()
 
 	t.Run("success_when_contract_allows", func(t *testing.T) {
@@ -42,7 +42,7 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got api.MoveTripPublishedToStartedResponse
+		var got api.MoveTripFromPublishedToStartedResponse
 		require.NoError(t, json.Unmarshal(body, &got))
 		require.Equal(t, api.StatusEnum("started"), got.Status)
 		require.True(t, got.Allowed)
