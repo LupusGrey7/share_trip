@@ -13,29 +13,29 @@ import (
 	"job4j.ru/share_trip/internal/trip/domain"
 )
 
-// MoveTripPublishedToStartedTx applies published→started under an already-open short transaction.
+// MoveTripFromPublishedToStarted applies published→started under an already-open short transaction.
 // Contract must already be checked by the service (outside tx).
-func (t *TripUseCase) MoveTripPublishedToStartedTx(
+func (t *TripUseCase) MoveTripFromPublishedToStarted(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo storage.BaseTxTripRepository,
-	req domain.MoveTripPublishedToStartedInput,
-) (*domain.MoveTripPublishedToStartedOutput, error) {
-	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.MoveTripPublishedToStartedTx")
+	req domain.MoveTripFromPublishedToStartedInput,
+) (*domain.MoveTripFromPublishedToStartedOutput, error) {
+	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.MoveTripFromPublishedToStarted")
 	defer span.End()
 
 	logger := logctx.Logger(ctxSpc).With(
 		slog.String("layer", "useCase"),
-		slog.String("useCase", "TripUseCase.MoveTripPublishedToStartedTx"),
+		slog.String("useCase", "TripUseCase.MoveTripFromPublishedToStarted"),
 		slog.String("trip_id", req.ID),
 		slog.String("company_id", req.CompanyID),
 		slog.String("service_code", string(req.ServiceCode)),
 		slog.String("client_id", req.ClientID.String()),
 	)
-	logger.Debug("move trip published to started transaction useCase started")
+	logger.Debug("move trip from published to started useCase started")
 
 	if !req.ContractCheck.IsAllowed() {
-		logger.Error("move trip published to started denied by contract",
+		logger.Error("move trip from published to started denied by contract",
 			slog.String("reason", req.ContractCheck.Reason),
 		)
 		return nil, fmt.Errorf("%w: service is not allowed", ErrConflict)
@@ -44,10 +44,10 @@ func (t *TripUseCase) MoveTripPublishedToStartedTx(
 	resp, err := repo.GetForUpdateByIDTx(ctxSpc, tx, req.ID)
 	if err != nil {
 		if errors.Is(err, storage.ErrTripNotFound) {
-			logger.Error("get trip for update failed", slog.Any("error", err))
+			logger.Error("move trip from published to started get trip for update failed", slog.Any("error", err))
 			return nil, ErrTripNotFound
 		}
-		logger.Error("get trip for update failed", slog.String("error", err.Error()))
+		logger.Error("move trip from published to started get trip for update failed", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -62,7 +62,7 @@ func (t *TripUseCase) MoveTripPublishedToStartedTx(
 	// Idempotent: already started → empty DriverID for handler 204
 	if resp.Status == domain.StatusStarted {
 		logger.Debug("trip already started", slog.String("trip_id", resp.ID.String()))
-		return &domain.MoveTripPublishedToStartedOutput{ID: resp.ID}, nil
+		return &domain.MoveTripFromPublishedToStartedOutput{ID: resp.ID}, nil
 	}
 
 	if resp.Status != domain.StatusPublished {
@@ -81,5 +81,5 @@ func (t *TripUseCase) MoveTripPublishedToStartedTx(
 	}
 
 	logger.Debug("move published to started completed", slog.String("trip_id", resp.ID.String()))
-	return updatedTrip.ToMoveTripPublishedToStartedOutput(req.ContractCheck.Allowed, req.ContractCheck.Reason), nil
+	return updatedTrip.ToMoveTripFromPublishedToStartedOutput(req.ContractCheck.Allowed, req.ContractCheck.Reason), nil
 }

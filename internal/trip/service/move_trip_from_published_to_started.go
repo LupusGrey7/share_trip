@@ -1,4 +1,4 @@
-// scenario: MoveTripPublishedToStarted: Contract Service Client — outside tx, then short DB transaction.
+// scenario: MoveTripFromPublishedToStarted — Contract check outside tx, then short DB transaction.
 package service
 
 import (
@@ -15,11 +15,11 @@ import (
 	"job4j.ru/share_trip/internal/trip/usecase"
 )
 
-func (s *TripService) MoveTripPublishedToStarted(
+func (s *TripService) MoveTripFromPublishedToStarted(
 	ctx context.Context,
-	req domain.MoveTripPublishedToStartedInput,
-) (res *domain.MoveTripPublishedToStartedOutput, err error) {
-	ctxSpc, span := otel.Tracer("TripService").Start(ctx, "TripService.MoveTripPublishedToStarted")
+	req domain.MoveTripFromPublishedToStartedInput,
+) (res *domain.MoveTripFromPublishedToStartedOutput, err error) {
+	ctxSpc, span := otel.Tracer("TripService").Start(ctx, "TripService.MoveTripFromPublishedToStarted")
 
 	started := time.Now()
 	result := "success"
@@ -30,7 +30,6 @@ func (s *TripService) MoveTripPublishedToStarted(
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
 		}
-		// metrics - time for Prometheus + Grafana (Integration with Prometheus)
 		s.metrics.TripPublishedToStartTotal.WithLabelValues(result).Inc()
 		s.metrics.TripPublishedToStartDuration.WithLabelValues(result).
 			Observe(time.Since(started).Seconds())
@@ -39,16 +38,15 @@ func (s *TripService) MoveTripPublishedToStarted(
 
 	logger := logctx.Logger(ctxSpc).With(
 		slog.String("service", "TripService"),
-		slog.String("operation", "MoveTripPublishedToStarted"),
+		slog.String("operation", "MoveTripFromPublishedToStarted"),
 		slog.String("trip_id", req.ID),
 		slog.String("company_id", req.CompanyID),
 		slog.String("service_code", string(req.ServiceCode)),
 		slog.String("client_id", req.ClientID.String()),
 	)
-	logger.Debug("move trip published to started started")
+	logger.Debug("move trip from published to started started")
 
-	// 1) Contract Service Client — outside transaction, check if service is allowed
-	contractResult, err := s.useCase.CheckServiceAllowed(ctxSpc, req.CompanyID, string(req.ServiceCode))
+	contractResult, err := s.useCase.CheckServiceIsAllowed(ctxSpc, req.CompanyID, string(req.ServiceCode))
 	if err != nil {
 		logger.Error("contract check failed", slog.Any("error", err))
 		return nil, err
@@ -65,17 +63,16 @@ func (s *TripService) MoveTripPublishedToStarted(
 	}
 	req.ContractCheck = &contractResult
 
-	// 2) Short DB transaction: FOR UPDATE → status → commit
 	txCtx, txSpan := otel.Tracer("database").Start(ctxSpc, "DB.Transaction")
 	defer txSpan.End()
 
-	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*domain.MoveTripPublishedToStartedOutput, error) {
+	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*domain.MoveTripFromPublishedToStartedOutput, error) {
 		txLogger := logger.With(slog.String("layer", "transaction"))
-		txLogger.Debug("move trip published to started transaction execution started")
+		txLogger.Debug("move trip from published to started transaction execution started")
 
-		resp, err := s.useCase.MoveTripPublishedToStartedTx(txCtx, tx, s.repo, req)
+		resp, err := s.useCase.MoveTripFromPublishedToStarted(txCtx, tx, s.repo, req)
 		if err != nil {
-			txLogger.Error("move trip published to started usecase failed", slog.Any("error", err))
+			txLogger.Error("move trip from published to started usecase failed", slog.Any("error", err))
 			return nil, err
 		}
 
@@ -84,12 +81,12 @@ func (s *TripService) MoveTripPublishedToStarted(
 	})
 
 	if err != nil {
-		logger.Error("move trip published to started failed", slog.Any("error", err))
+		logger.Error("move trip from published to started failed", slog.Any("error", err))
 		txSpan.RecordError(err)
 		txSpan.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
-	logger.Debug("move trip published to started completed", slog.String("trip_id", res.ID.String()))
+	logger.Debug("move trip from published to started completed", slog.String("trip_id", res.ID.String()))
 	return res, nil
 }

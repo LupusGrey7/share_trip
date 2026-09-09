@@ -24,7 +24,7 @@ values($1, $2, $3, $4, $5)
 )
 
 type OutboxRepository interface {
-	CreateOutboxEventTripPublishTx(ctx context.Context, tx pgx.Tx, o *domain.Entity) error
+	CreateEventWhenTripMovesFromDraftToPublishedTx(ctx context.Context, tx pgx.Tx, o *domain.Entity) error
 }
 
 type OutboxEventRepository struct {
@@ -37,10 +37,10 @@ func NewOutboxEventRepository(m *metrics.Metrics) *OutboxEventRepository {
 	}
 }
 
-func (r *OutboxEventRepository) CreateOutboxEventTripPublishTx(ctx context.Context, tx pgx.Tx, o *domain.Entity) error {
+func (r *OutboxEventRepository) CreateEventWhenTripMovesFromDraftToPublishedTx(ctx context.Context, tx pgx.Tx, o *domain.Entity) error {
 	//tracing Jaeger
 	tracer := otel.Tracer("OutboxEventRepository")
-	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.CreateOutboxEventTripPublishTx")
+	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.CreateEventWhenTripMovesFromDraftToPublishedTx")
 
 	// prometheus
 	started := time.Now()
@@ -65,10 +65,10 @@ func (r *OutboxEventRepository) CreateOutboxEventTripPublishTx(ctx context.Conte
 	logger := logctx.Logger(ctxSpc).With(
 		slog.String("layer", "repository"),
 		slog.String("repository", "OutboxEventRepository"),
-		slog.String("operation", "CreateOutboxEventTripPublishTx"),
+		slog.String("operation", "CreateEventWhenTripMovesFromDraftToPublishedTx"),
 		slog.String("client_id", o.AggregateId.String()),
 	)
-	logger.Debug("create outbox event trip publish repository started")
+	logger.Debug("create event when trip moves from draft to published repository started")
 
 	createdAt := o.CreatedAt
 	if createdAt.IsZero() {
@@ -84,6 +84,6 @@ func (r *OutboxEventRepository) CreateOutboxEventTripPublishTx(ctx context.Conte
 	}
 	defer rows.Close()
 
-	logger.Debug("create outbox event trip publish repository completed")
+	logger.Debug("create event when trip moves from draft to published completed")
 	return nil
 }

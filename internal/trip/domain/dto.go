@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"job4j.ru/share_trip/internal/clients/http/contract"
+	contracts "job4j.ru/share_trip/internal/clients/http/contract"
 )
 
 type StatusEnum string
@@ -73,7 +73,7 @@ type CreateTripOutput struct {
 	Status        StatusEnum
 }
 
-type MoveTripPublishedToStartedInput struct {
+type MoveTripFromPublishedToStartedInput struct {
 	ID            string
 	ClientID      uuid.UUID
 	CompanyID     string
@@ -81,13 +81,13 @@ type MoveTripPublishedToStartedInput struct {
 	ContractCheck *contracts.CheckResult // if result is nil, then contract check is not performed
 }
 
-type MoveTripDraftToPublishInput struct {
+type MoveTripFromDraftToPublishInput struct {
 	ID        string
 	CompanyID string
-	ClientID uuid.UUID
+	ClientID  uuid.UUID
 }
 
-type MoveTripDraftToPublishOutput struct {
+type MoveTripFromDraftToPublishOutput struct {
 	ID            uuid.UUID
 	DriverID      uuid.UUID
 	FromPoint     string
@@ -98,7 +98,7 @@ type MoveTripDraftToPublishOutput struct {
 	Status        StatusEnum
 }
 
-type MoveTripPublishedToStartedOutput struct {
+type MoveTripFromPublishedToStartedOutput struct {
 	ID            uuid.UUID
 	DriverID      uuid.UUID
 	FromPoint     string
@@ -151,11 +151,11 @@ func (e *Entity) ToCreateTripOutput() *CreateTripOutput {
 	return entityToCreateOutput(e)
 }
 
-func entityToPublishOutput(entity *Entity) *MoveTripDraftToPublishOutput {
+func entityToPublishOutput(entity *Entity) *MoveTripFromDraftToPublishOutput {
 	if entity == nil {
 		return nil
 	}
-	return &MoveTripDraftToPublishOutput{
+	return &MoveTripFromDraftToPublishOutput{
 		ID:            entity.ID,
 		DriverID:      entity.DriverID,
 		FromPoint:     entity.FromPoint,
@@ -167,16 +167,16 @@ func entityToPublishOutput(entity *Entity) *MoveTripDraftToPublishOutput {
 	}
 }
 
-func (e *Entity) ToMoveTripDraftToPublishOutput() *MoveTripDraftToPublishOutput {
+func (e *Entity) ToMoveTripFromDraftToPublishOutput() *MoveTripFromDraftToPublishOutput {
 	return entityToPublishOutput(e)
 }
 
-func (e *Entity) ToMoveTripPublishedToStartedOutput(allowed bool, reason string) *MoveTripPublishedToStartedOutput {
+func (e *Entity) ToMoveTripFromPublishedToStartedOutput(allowed bool, reason string) *MoveTripFromPublishedToStartedOutput {
 	out := entityToPublishOutput(e)
 	if out == nil {
 		return nil
 	}
-	return &MoveTripPublishedToStartedOutput{
+	return &MoveTripFromPublishedToStartedOutput{
 		ID:            out.ID,
 		DriverID:      out.DriverID,
 		FromPoint:     out.FromPoint,
