@@ -29,6 +29,8 @@ func HandleError(c *fiber.Ctx, err error) error {
 		return ErrResponse(c, fiber.StatusBadRequest, RequestValidationError)
 	case errors.Is(err, usecase.ErrTripNotFound): // 404
 		return ErrResponse(c, fiber.StatusNotFound, StatusNotFound)
+	case errors.Is(err, usecase.ErrAlreadyDone): // 204 — idempotent retry (already published/started)
+		return c.SendStatus(fiber.StatusNoContent)
 	case errors.Is(err, usecase.ErrConflict): // 409 - business deny (deny / wrong status / company not found)
 		return ErrResponse(c, fiber.StatusConflict, err.Error())
 	case errors.Is(err, contracts.ErrTimeout): // 504 — Contract timeout, fail closed

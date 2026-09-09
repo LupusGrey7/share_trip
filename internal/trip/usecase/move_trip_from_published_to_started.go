@@ -59,10 +59,10 @@ func (t *TripUseCase) MoveTripFromPublishedToStarted(
 		return nil, fmt.Errorf("%w: client %s is not driver of trip %s", ErrForbidden, req.ClientID, req.ID)
 	}
 
-	// Idempotent: already started → empty DriverID for handler 204
+	// Idempotent: already started → 204 via ErrAlreadyDone (not empty DriverID)
 	if resp.Status == domain.StatusStarted {
 		logger.Debug("trip already started", slog.String("trip_id", resp.ID.String()))
-		return &domain.MoveTripFromPublishedToStartedOutput{ID: resp.ID}, nil
+		return nil, ErrAlreadyDone
 	}
 
 	if resp.Status != domain.StatusPublished {

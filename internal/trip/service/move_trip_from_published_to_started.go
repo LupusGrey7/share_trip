@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -25,7 +26,7 @@ func (s *TripService) MoveTripFromPublishedToStarted(
 	result := "success"
 
 	defer func() {
-		if err != nil {
+		if err != nil && !errors.Is(err, usecase.ErrAlreadyDone) {
 			result = "error"
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
@@ -72,7 +73,9 @@ func (s *TripService) MoveTripFromPublishedToStarted(
 
 		resp, err := s.useCase.MoveTripFromPublishedToStarted(txCtx, tx, s.repo, req)
 		if err != nil {
-			txLogger.Error("move trip from published to started usecase failed", slog.Any("error", err))
+			if !errors.Is(err, usecase.ErrAlreadyDone) {
+				txLogger.Error("move trip from published to started usecase failed", slog.Any("error", err))
+			}
 			return nil, err
 		}
 
@@ -81,9 +84,11 @@ func (s *TripService) MoveTripFromPublishedToStarted(
 	})
 
 	if err != nil {
-		logger.Error("move trip from published to started failed", slog.Any("error", err))
-		txSpan.RecordError(err)
-		txSpan.SetStatus(codes.Error, err.Error())
+		if !errors.Is(err, usecase.ErrAlreadyDone) {
+			logger.Error("move trip from published to started failed", slog.Any("error", err))
+			txSpan.RecordError(err)
+			txSpan.SetStatus(codes.Error, err.Error())
+		}
 		return nil, err
 	}
 

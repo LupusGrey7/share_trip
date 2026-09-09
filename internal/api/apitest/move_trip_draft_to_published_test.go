@@ -180,6 +180,30 @@ func TestServer_MoveTripFromDraftToPublish(t *testing.T) {
 
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
+
+	// Given: trip already published
+	// When: owner publishes again
+	// Then: 204 (ErrAlreadyDone), no body
+	t.Run("no_content_when_trip_already_published", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
+		fixtures.UseStubClientID(t, fixtures.NormalClientID)
+
+		created := mustCreateTripDraft(t, createTripDraftRequestModel())
+
+		first := mustPublishTripDraft(t, created.ID.String())
+		require.Equal(t, http.StatusOK, first.StatusCode)
+		_ = first.Body.Close()
+
+		second := mustPublishTripDraft(t, created.ID.String())
+		defer func() {
+			if err := second.Body.Close(); err != nil {
+				t.Errorf("close response body: %v", err)
+			}
+		}()
+
+		require.Equal(t, http.StatusNoContent, second.StatusCode)
+	})
 }
 
 func createTripDraftRequestModel() api.CreateTripDraftRequest {

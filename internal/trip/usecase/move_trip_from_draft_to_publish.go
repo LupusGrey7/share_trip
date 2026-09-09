@@ -47,8 +47,8 @@ func (t *TripUseCase) MoveTripFromDraftToPublish(
 	}
 
 	if resp.Status == domain.StatusPublished {
-		logger.Debug("move trip from draft to publish useCase completed", slog.String("trip_id", resp.ID.String()))
-		return &domain.MoveTripFromDraftToPublishOutput{ID: resp.ID}, nil
+		logger.Debug("move trip from draft to publish already published", slog.String("trip_id", resp.ID.String()))
+		return nil, ErrAlreadyDone
 	}
 
 	if resp.Status != domain.StatusDraft {

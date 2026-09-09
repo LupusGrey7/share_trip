@@ -58,13 +58,7 @@ func (s *Server) MoveTripFromPublishedToStarted(c *fiber.Ctx) error {
 
 	resp, err := s.TripService.MoveTripFromPublishedToStarted(ctx, domainReq)
 	if err != nil {
-		logger.Error("move trip from published to started failed", slog.Any("error", err))
 		return HandleError(c, err)
-	}
-
-	if resp.DriverID == uuid.Nil {
-		logger.Debug("move trip from published to started skipped: already started")
-		return c.SendStatus(fiber.StatusNoContent)
 	}
 
 	logger.Debug("move trip from published to started completed",

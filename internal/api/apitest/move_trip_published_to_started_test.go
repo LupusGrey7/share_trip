@@ -143,6 +143,25 @@ func TestServer_MoveTripFromPublishedToStarted(t *testing.T) {
 
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
+
+	t.Run("no_content_when_trip_already_started", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
+		fixtures.UseStubClientID(t, fixtures.NormalClientID)
+		UseContractStub(t, defaultContractStub)
+
+		tripID := mustCreatePublishedTrip(t)
+
+		first := mustStartTrip(t, tripID)
+		require.Equal(t, http.StatusOK, first.StatusCode)
+		closeResponseBody(t, first)
+
+		second := mustStartTrip(t, tripID)
+		defer closeResponseBody(t, second)
+
+		require.Equal(t, http.StatusNoContent, second.StatusCode)
+		require.Equal(t, "started", tripStatusName(t, tripID))
+	})
 }
 
 func mustCreatePublishedTrip(t *testing.T) string {

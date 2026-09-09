@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"job4j.ru/share_trip/internal/observability/logctx"
 	outboxdomain "job4j.ru/share_trip/internal/outbox/domain"
 	"job4j.ru/share_trip/internal/trip/domain"
+	"job4j.ru/share_trip/internal/trip/usecase"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -27,7 +29,7 @@ func (s *TripService) MoveTripFromDraftToPublish(
 	result := "success"
 
 	defer func() {
-		if err != nil {
+		if err != nil && !errors.Is(err, usecase.ErrAlreadyDone) {
 			result = "error"
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
@@ -59,7 +61,9 @@ func (s *TripService) MoveTripFromDraftToPublish(
 
 		resp, err := s.useCase.MoveTripFromDraftToPublish(txCtx, tx, s.repo, req)
 		if err != nil {
-			txLogger.Error("move trip from draft to publish usecase failed", slog.Any("error", err))
+			if !errors.Is(err, usecase.ErrAlreadyDone) {
+				txLogger.Error("move trip from draft to publish usecase failed", slog.Any("error", err))
+			}
 			return nil, err
 		}
 
@@ -83,9 +87,11 @@ func (s *TripService) MoveTripFromDraftToPublish(
 	})
 
 	if err != nil {
-		logger.Error("move trip from draft to publish failed", slog.Any("error", err))
-		txSpan.RecordError(err)
-		txSpan.SetStatus(codes.Error, err.Error())
+		if !errors.Is(err, usecase.ErrAlreadyDone) {
+			logger.Error("move trip from draft to publish failed", slog.Any("error", err))
+			txSpan.RecordError(err)
+			txSpan.SetStatus(codes.Error, err.Error())
+		}
 		return nil, err
 	}
 

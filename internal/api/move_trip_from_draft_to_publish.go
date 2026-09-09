@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
@@ -55,13 +54,7 @@ func (s *Server) MoveTripFromDraftToPublish(c *fiber.Ctx) error {
 
 	resp, err := s.TripService.MoveTripFromDraftToPublish(ctx, toMoveTripFromDraftToPublishInput(&request))
 	if err != nil {
-		logger.Error("move trip from draft to publish failed", slog.Any("error", err))
 		return HandleError(c, err)
-	}
-
-	if resp.DriverID == uuid.Nil {
-		logger.Debug("move trip from draft to publish skipped: no changes detected")
-		return c.SendStatus(fiber.StatusNoContent)
 	}
 
 	logger.Debug("move trip from draft to publish completed")
