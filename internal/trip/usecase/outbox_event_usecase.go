@@ -9,7 +9,7 @@ import (
 )
 
 type BaseOutboxEventUseCase interface {
-	CreateEventWhenTripToPublish(ctx context.Context, tx pgx.Tx, repo storage.OutboxRepository, id uuid.UUID) error
+	CreateEventWhenTripMovesFromDraftToPublished(ctx context.Context, tx pgx.Tx, repo storage.OutboxRepository, id uuid.UUID) error
 }
 
 type OutboxEventUseCase struct {

@@ -18,19 +18,20 @@ const (
 )
 
 type GetTripByIDRequest struct {
-	ID string `params:"tripId" validate:"required,uuid"`
+	ID string `params:"tripId" json:"-" validate:"required,uuid"`
 }
 
-type MoveTripDraftToPublishRequest struct {
-	ID       string    `params:"tripId" validate:"required,uuid"`
-	ClientID uuid.UUID `json:"clientId" validate:"required,uuid"`
+type MoveTripFromDraftToPublishRequest struct {
+	ID        string    `params:"tripId" json:"-" validate:"required,uuid"`
+	CompanyID string    `params:"companyId" json:"-" validate:"required,min=2,max=10"`
+	DriverID  uuid.UUID `json:"-" validate:"required,uuid"` // из Keycloak JWT sub, не из body (требование лида)
 }
 
-type MoveTripPublishedToStartedRequest struct {
-	ID          string          `params:"tripId" validate:"required,uuid"`
-	CompanyID   string          `params:"companyId" validate:"required,min=2,max=10"`
-	ServiceCode ServiceCodeEnum `params:"serviceCode" validate:"required,oneof=trip_start"`
-	DriverID    uuid.UUID       `validate:"required,uuid"` // из Keycloak middleware, не из path
+type MoveTripFromPublishedToStartedRequest struct {
+	ID          string          `params:"tripId" json:"-" validate:"required,uuid"`
+	CompanyID   string          `params:"companyId" json:"-" validate:"required,min=2,max=10"`
+	ServiceCode ServiceCodeEnum `params:"serviceCode" json:"-" validate:"required,oneof=trip_start"`
+	DriverID    uuid.UUID       `json:"-" validate:"required,uuid"` // из Keycloak JWT sub, не из path/body
 }
 
 type CreateTripDraftRequest struct {
@@ -62,7 +63,7 @@ type GetTripByIDResponse struct {
 	Status        StatusEnum `json:"status"`
 }
 
-type MoveTripDraftToPublishResponse struct {
+type MoveTripFromDraftToPublishResponse struct {
 	ID            uuid.UUID  `json:"id"`
 	DriverID      uuid.UUID  `json:"driverId"`
 	FromPoint     string     `json:"fromPoint"`
@@ -73,7 +74,7 @@ type MoveTripDraftToPublishResponse struct {
 	Status        StatusEnum `json:"status"`
 }
 
-type MoveTripPublishedToStartedResponse struct {
+type MoveTripFromPublishedToStartedResponse struct {
 	ID            uuid.UUID  `json:"id"`
 	DriverID      uuid.UUID  `json:"driverId"`
 	FromPoint     string     `json:"fromPoint"`

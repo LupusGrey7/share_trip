@@ -14,13 +14,13 @@ import (
 )
 
 const (
-	testCompanyID                 = "acme01"
+	testCompanyIDForStart         = "acme01"
 	testServiceCode               = "trip_start"
 	moveTripPublishedToStartedURL = GroupPrefixV2 +
 		"/trip/moveTripPublished-ToStarted/%s/company/%s/service/%s"
 )
 
-func TestServer_MoveTripPublishedToStarted(t *testing.T) {
+func TestServer_MoveTripFromPublishedToStarted(t *testing.T) {
 	t.Parallel()
 
 	t.Run("success_when_contract_allows", func(t *testing.T) {
@@ -42,7 +42,7 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got api.MoveTripPublishedToStartedResponse
+		var got api.MoveTripFromPublishedToStartedResponse
 		require.NoError(t, json.Unmarshal(body, &got))
 		require.Equal(t, api.StatusEnum("started"), got.Status)
 		require.True(t, got.Allowed)
@@ -143,15 +143,31 @@ func TestServer_MoveTripPublishedToStarted(t *testing.T) {
 
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
+
+	t.Run("no_content_when_trip_already_started", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
+		fixtures.UseStubClientID(t, fixtures.NormalClientID)
+		UseContractStub(t, defaultContractStub)
+
+		tripID := mustCreatePublishedTrip(t)
+
+		first := mustStartTrip(t, tripID)
+		require.Equal(t, http.StatusOK, first.StatusCode)
+		closeResponseBody(t, first)
+
+		second := mustStartTrip(t, tripID)
+		defer closeResponseBody(t, second)
+
+		require.Equal(t, http.StatusNoContent, second.StatusCode)
+		require.Equal(t, "started", tripStatusName(t, tripID))
+	})
 }
 
 func mustCreatePublishedTrip(t *testing.T) string {
 	t.Helper()
 	created := mustCreateTripDraft(t, createTripDraftRequestModel())
-	publishBody := api.MoveTripDraftToPublishRequest{
-		ClientID: fixtures.CurrentStubClientID(),
-	}
-	resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
+	resp := mustPublishTripDraft(t, created.ID.String())
 	defer closeResponseBody(t, resp)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	return created.ID.String()
@@ -166,7 +182,7 @@ func closeResponseBody(t *testing.T, resp *http.Response) {
 
 func mustStartTrip(t *testing.T, tripID string) *http.Response {
 	t.Helper()
-	url := fmt.Sprintf(moveTripPublishedToStartedURL, tripID, testCompanyID, testServiceCode)
+	url := fmt.Sprintf(moveTripPublishedToStartedURL, tripID, testCompanyIDForStart, testServiceCode)
 	req, err := http.NewRequest(http.MethodPatch, url, nil)
 	require.NoError(t, err)
 	req.Header.Set(fixtures.RefreshTokenHeader, fixtures.RefreshTokenValue)

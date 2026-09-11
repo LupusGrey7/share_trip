@@ -28,6 +28,7 @@ type PayloadEvent struct {
 
 type Entity struct {
 	Id          int64        `db:"id"`
+	EventID     string       `db:"event_id"`
 	EventName   string       `db:"event_name"`
 	AggregateId uuid.UUID    `db:"aggregate_id"` //trip_id
 	Payload     PayloadEvent `db:"payload"`      //	Payload     json.RawMessage `db:"payload"`

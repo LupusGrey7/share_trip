@@ -12,18 +12,18 @@ import (
 	"job4j.ru/share_trip/internal/trip/domain"
 )
 
-func (t *TripUseCase) GetTripByIDTx(
+func (t *TripUseCase) GetTripByID(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo storage.BaseTxTripRepository,
 	input *domain.GetByIDInput,
 ) (*domain.GetTripByIDOutput, error) {
-	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.GetTripByIDTx")
+	ctxSpc, span := otel.Tracer("TripUseCase").Start(ctx, "TripUseCase.GetTripByID")
 	defer span.End()
 
 	logger := logctx.Logger(ctxSpc).With(
 		slog.String("layer", "useCase"),
-		slog.String("useCase", "TripUseCase.GetTripByIDTx"),
+		slog.String("useCase", "TripUseCase.GetTripByID"),
 		slog.String("trip_id", input.ID),
 	)
 	logger.Debug("get trip by ID useCase started")

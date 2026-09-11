@@ -14,20 +14,20 @@ import (
 
 	"job4j.ru/share_trip/internal/trip/domain"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
 const (
+	testCompanyIDForPublish      = "acme01"
 	createTripDraftURLForPublish = GroupPrefixV2 + "/trip/createTripDraft"
-	moveTripDraftToPublishURL    = GroupPrefixV2 + "/trip/moveTripDraft-ToPublish/%s"
+	moveTripDraftToPublishURL    = GroupPrefixV2 + "/trip/moveTripDraft-ToPublish/%s/company/%s"
 )
 
-func TestServer_MoveTripDraftToPublish(t *testing.T) {
+func TestServer_MoveTripFromDraftToPublish(t *testing.T) {
 	t.Parallel()
 
 	// Given: trip draft owned by NormalClientID
-	// When: owner publishes
+	// When: owner publishes (identity = JWT sub, empty body)
 	// Then: 200 + status published
 	t.Run("success_when_caller_is_trip_owner", func(t *testing.T) {
 		t.Parallel()
@@ -36,10 +36,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 
 		created := mustCreateTripDraft(t, createTripDraftRequestModel())
 
-		publishBody := api.MoveTripDraftToPublishRequest{
-			ClientID: fixtures.NormalClientID,
-		}
-		resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
+		resp := mustPublishTripDraft(t, created.ID.String())
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
 				t.Errorf("close response body: %v", err)
@@ -51,10 +48,10 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		respBody, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
 
-		var got api.MoveTripDraftToPublishResponse
+		var got api.MoveTripFromDraftToPublishResponse
 		require.NoError(t, json.Unmarshal(respBody, &got))
 
-		want := api.MoveTripDraftToPublishResponse{
+		want := api.MoveTripFromDraftToPublishResponse{
 			ID:            got.ID,
 			DriverID:      fixtures.NormalClientID,
 			FromPoint:     got.FromPoint,
@@ -68,19 +65,17 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 	})
 
 	// Given: trip draft owned by NormalClientID
-	// When: body.clientId is another user
+	// When: another user (InvalidClientID) calls publish with their token
 	// Then: 403 (use case ownership check)
-	t.Run("forbidden_when_client_id_is_not_trip_owner", func(t *testing.T) {
+	t.Run("forbidden_when_caller_is_not_trip_owner", func(t *testing.T) {
 		t.Parallel()
 		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		created := mustCreateTripDraft(t, createTripDraftRequestModel())
 
-		publishBody := api.MoveTripDraftToPublishRequest{
-			ClientID: fixtures.InvalidClientID,
-		}
-		resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
+		fixtures.UseStubClientID(t, fixtures.InvalidClientID)
+		resp := mustPublishTripDraft(t, created.ID.String())
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
 				t.Errorf("close response body: %v", err)
@@ -95,8 +90,6 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
-		// HandleError Unwrap'ит tx-обёртку → текст use case:
-		// fmt.Errorf("%w: client %s is not driver of trip %s", ErrForbidden, ...)
 		wantMsg := fmt.Sprintf(
 			"forbidden: client %s is not driver of trip %s",
 			fixtures.InvalidClientID,
@@ -105,8 +98,8 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		require.Equal(t, wantMsg, apiResp.Message)
 	})
 
-	// Given: valid clientId, trip id does not exist
-	// When: publish
+	// Given: trip id does not exist
+	// When: owner publishes
 	// Then: 404
 	t.Run("not_found_when_trip_does_not_exist", func(t *testing.T) {
 		t.Parallel()
@@ -114,10 +107,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		nonExistentTripID := "00000000-0000-0000-0000-000000000001"
-		publishBody := api.MoveTripDraftToPublishRequest{
-			ClientID: fixtures.NormalClientID,
-		}
-		resp := mustPublishTripDraft(t, nonExistentTripID, publishBody)
+		resp := mustPublishTripDraft(t, nonExistentTripID)
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
 				t.Errorf("close response body: %v", err)
@@ -132,7 +122,6 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
-		// ErrTripNotFound → константа StatusNotFound (без id в message)
 		require.Equal(t, api.StatusNotFound, apiResp.Message)
 	})
 
@@ -152,10 +141,7 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		publishBody := api.MoveTripDraftToPublishRequest{
-			ClientID: fixtures.NormalClientID,
-		}
-		resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
+		resp := mustPublishTripDraft(t, created.ID.String())
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
 				t.Errorf("close response body: %v", err)
@@ -170,40 +156,53 @@ func TestServer_MoveTripDraftToPublish(t *testing.T) {
 		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
-		// Unwrap tx → use case: "%w: invalid entity status: expected %s"
 		wantMsg := fmt.Sprintf("err tx block() with: conflict: invalid entity status: expected %s", domain.StatusDraft)
 		require.Equal(t, wantMsg, apiResp.Message)
 	})
 
-	// Given: clientId = uuid.Nil (fails validate required,uuid)
+	// Given: no claims in context
 	// When: publish
-	// Then: 400 (HandleError ErrInvalidValidate), not 500
-	t.Run("bad_request_when_client_id_is_nil_uuid", func(t *testing.T) {
+	// Then: 401
+	t.Run("unauthorized_without_claims", func(t *testing.T) {
 		t.Parallel()
 		lockIT(t)
 		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
 		created := mustCreateTripDraft(t, createTripDraftRequestModel())
 
-		publishBody := api.MoveTripDraftToPublishRequest{
-			ClientID: uuid.Nil,
-		}
-		resp := mustPublishTripDraft(t, created.ID.String(), publishBody)
+		fixtures.UseStubNoClaims(t)
+		resp := mustPublishTripDraft(t, created.ID.String())
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
 				t.Errorf("close response body: %v", err)
 			}
 		}()
 
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
 
-		respBody, err := io.ReadAll(resp.Body)
-		require.NoError(t, err)
+	// Given: trip already published
+	// When: owner publishes again
+	// Then: 204 (ErrAlreadyDone), no body
+	t.Run("no_content_when_trip_already_published", func(t *testing.T) {
+		t.Parallel()
+		lockIT(t)
+		fixtures.UseStubClientID(t, fixtures.NormalClientID)
 
-		var apiResp api.Response
-		require.NoError(t, json.Unmarshal(respBody, &apiResp))
-		require.False(t, apiResp.Success)
-		require.Equal(t, api.RequestValidationError, apiResp.Message)
+		created := mustCreateTripDraft(t, createTripDraftRequestModel())
+
+		first := mustPublishTripDraft(t, created.ID.String())
+		require.Equal(t, http.StatusOK, first.StatusCode)
+		_ = first.Body.Close()
+
+		second := mustPublishTripDraft(t, created.ID.String())
+		defer func() {
+			if err := second.Body.Close(); err != nil {
+				t.Errorf("close response body: %v", err)
+			}
+		}()
+
+		require.Equal(t, http.StatusNoContent, second.StatusCode)
 	})
 }
 
@@ -246,23 +245,16 @@ func mustCreateTripDraft(t *testing.T, payload api.CreateTripDraftRequest) api.C
 	return created
 }
 
-func mustPublishTripDraft(
-	t *testing.T,
-	tripID string,
-	body api.MoveTripDraftToPublishRequest,
-) *http.Response {
+// mustPublishTripDraft — PATCH publish; identity from JWT stub, body empty (lead: no clientId in JSON).
+func mustPublishTripDraft(t *testing.T, tripID string) *http.Response {
 	t.Helper()
-
-	marshalBody, err := json.Marshal(body)
-	require.NoError(t, err)
 
 	req, err := http.NewRequest(
 		http.MethodPatch,
-		fmt.Sprintf(moveTripDraftToPublishURL, tripID),
-		bytes.NewReader(marshalBody),
+		fmt.Sprintf(moveTripDraftToPublishURL, tripID, testCompanyIDForPublish),
+		nil,
 	)
 	require.NoError(t, err)
-	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(fixtures.RefreshTokenHeader, fixtures.RefreshTokenValue)
 
 	resp, err := testApp.Test(req, -1)

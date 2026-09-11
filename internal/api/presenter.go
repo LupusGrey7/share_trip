@@ -57,21 +57,22 @@ func toCreateTripDraftResponse(output *domain.CreateTripOutput) *CreateTripDraft
 	}
 }
 
-func toMoveTripDraftToPublishInput(req *MoveTripDraftToPublishRequest) domain.MoveTripDraftToPublishInput {
+func toMoveTripFromDraftToPublishInput(req *MoveTripFromDraftToPublishRequest) domain.MoveTripFromDraftToPublishInput {
 	if req == nil {
-		return domain.MoveTripDraftToPublishInput{}
+		return domain.MoveTripFromDraftToPublishInput{}
 	}
-	return domain.MoveTripDraftToPublishInput{
-		ID:       req.ID,
-		ClientID: req.ClientID,
+	return domain.MoveTripFromDraftToPublishInput{
+		ID:        req.ID,
+		CompanyID: req.CompanyID,
+		ClientID:  req.DriverID, // JWT sub → domain ownership check
 	}
 }
 
-func toMoveTripDraftToPublishResponse(output *domain.MoveTripDraftToPublishOutput) *MoveTripDraftToPublishResponse {
+func toMoveTripFromDraftToPublishResponse(output *domain.MoveTripFromDraftToPublishOutput) *MoveTripFromDraftToPublishResponse {
 	if output == nil {
 		return nil
 	}
-	return &MoveTripDraftToPublishResponse{
+	return &MoveTripFromDraftToPublishResponse{
 		ID:            output.ID,
 		DriverID:      output.DriverID,
 		FromPoint:     output.FromPoint,
@@ -83,8 +84,8 @@ func toMoveTripDraftToPublishResponse(output *domain.MoveTripDraftToPublishOutpu
 	}
 }
 
-func toMoveTripPublishedToStartedInput(req MoveTripPublishedToStartedRequest) domain.MoveTripPublishedToStartedInput {
-	return domain.MoveTripPublishedToStartedInput{
+func toMoveTripFromPublishedToStartedInput(req MoveTripFromPublishedToStartedRequest) domain.MoveTripFromPublishedToStartedInput {
+	return domain.MoveTripFromPublishedToStartedInput{
 		ID:          req.ID,
 		ClientID:    req.DriverID,
 		CompanyID:   req.CompanyID,
@@ -92,13 +93,13 @@ func toMoveTripPublishedToStartedInput(req MoveTripPublishedToStartedRequest) do
 	}
 }
 
-func toMoveTripPublishedToStartedResponse(
-	output *domain.MoveTripPublishedToStartedOutput,
-) *MoveTripPublishedToStartedResponse {
+func toMoveTripFromPublishedToStartedResponse(
+	output *domain.MoveTripFromPublishedToStartedOutput,
+) *MoveTripFromPublishedToStartedResponse {
 	if output == nil {
 		return nil
 	}
-	return &MoveTripPublishedToStartedResponse{
+	return &MoveTripFromPublishedToStartedResponse{
 		ID:            output.ID,
 		DriverID:      output.DriverID,
 		FromPoint:     output.FromPoint,

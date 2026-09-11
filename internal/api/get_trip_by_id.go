@@ -28,6 +28,7 @@ func (s *Server) GetTripById(c *fiber.Ctx) error {
 	)
 
 	var request GetTripByIDRequest
+	
 	if err := c.ParamsParser(&request); err != nil {
 		logger.Warn("get trip by id failed: invalid request", slog.String("error", invalidIdParamFormat))
 		return ErrResponse(c, fiber.StatusBadRequest, invalidIdParamFormat)

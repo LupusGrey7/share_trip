@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -11,8 +12,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"job4j.ru/share_trip/configs"
 	"job4j.ru/share_trip/internal/api"
-	clientContract "job4j.ru/share_trip/internal/client/contracts"
-	clientContractUsecase "job4j.ru/share_trip/internal/client/contracts/usecase"
+	clientContract "job4j.ru/share_trip/internal/clients/http/contract"
+	clientContractUsecase "job4j.ru/share_trip/internal/clients/http/contract/usecase"
+	"job4j.ru/share_trip/internal/clients/kafka"
 	"job4j.ru/share_trip/internal/middleware"
 	"job4j.ru/share_trip/internal/observability/logctx"
 	"job4j.ru/share_trip/internal/observability/metrics"
@@ -38,19 +40,31 @@ func BuildServer(
 
 	repo := storage.NewRepoPg(pool)
 	repoTrip := storage.NewTripRepository(m, pool)
-	outboxRepo := storage.NewOutboxEventRepository()
+	outboxRepo := storage.NewOutboxEventRepository(m)
 
 	infoUseCase := usecase.NewInfoUseCase()
-	contractUsecase := clientContractUsecase.NewContractUsecase(contractClient)
-	tripUseCase := usecase.NewTripUseCase(contractUsecase)
+	contractUseCase := clientContractUsecase.NewContractUsecase(contractClient)
+	tripUseCase := usecase.NewTripUseCase(contractUseCase)
+
+	kafkaProducer := newKafkaProducer()
 
 	infoService := service.NewInfoService(infoUseCase, repo)
-	tripService := service.NewTripService(m, pool, repoTrip, outboxRepo, tripUseCase)
+	tripService := service.NewTripService(m, pool, kafkaProducer, repoTrip, outboxRepo, tripUseCase)
 
 	server := api.NewServer(registry, validate, infoService, tripService)
 
 	keycloakAuth := middleware.KeycloakRefreshTokenMiddleware(keycloakCfg)
 	server.SetupRoutes(app, keycloakAuth)
+}
+
+func newKafkaProducer() kafka.TripEventProducer {
+	brokersCSV := configs.Env("KAFKA_BROKERS", "localhost:9092")
+	topic := configs.Env("KAFKA_TOPIC_TRIP_EVENTS", "trip.events")
+	brokers := strings.Split(brokersCSV, ",")
+	for i := range brokers {
+		brokers[i] = strings.TrimSpace(brokers[i])
+	}
+	return kafka.NewProducer(brokers, topic)
 }
 
 func ReadDBConfig() storage.Config {

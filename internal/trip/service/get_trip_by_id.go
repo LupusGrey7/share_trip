@@ -45,7 +45,7 @@ func (s *TripService) GetTripByID(ctx context.Context, input *domain.GetByIDInpu
 		txLogger := logger.With(slog.String("layer", "transaction"))
 		txLogger.Debug("transaction execution started")
 
-		resp, err := s.useCase.GetTripByIDTx(txCtx, tx, s.repo, input)
+		resp, err := s.useCase.GetTripByID(txCtx, tx, s.repo, input)
 		if err != nil {
 			txLogger.Error("get trip by ID useCase failed", slog.Any("error", err))
 			return nil, fmt.Errorf("useCase.GetTripByID: %w", err)

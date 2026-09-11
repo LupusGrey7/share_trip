@@ -11,13 +11,12 @@ import (
 	"job4j.ru/share_trip/internal/storage"
 )
 
-func (c *OutboxEventUseCase) CreateEventWhenTripToPublish(
+func (c *OutboxEventUseCase) CreateEventWhenTripMovesFromDraftToPublished(
 	ctx context.Context,
 	tx pgx.Tx,
 	repo storage.OutboxRepository,
 	id uuid.UUID,
 ) error {
-	//outbox
 	payload := domain.PayloadEvent{TripID: id}
 	event := domain.Entity{
 		EventName:   string(domain.EventPublished),
@@ -25,7 +24,7 @@ func (c *OutboxEventUseCase) CreateEventWhenTripToPublish(
 		Payload:     payload,
 	}
 
-	err := repo.CreateNotificationTripPublishTx(ctx, tx, &event)
+	err := repo.CreateEventWhenTripMovesFromDraftToPublishedTx(ctx, tx, &event)
 	if err != nil {
 		return fmt.Errorf("error outboxRepository.Create: %w", err)
 	}
