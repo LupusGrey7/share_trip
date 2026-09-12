@@ -86,7 +86,7 @@ make fmt
 | **postgres_exporter** | http://localhost:9187/metrics |
 
 Инфра: `make up` / `make down` → `deploy/docker-compose.yml`.  
-Подробнее про стек observability: [`.docs/cheatsheets/observability-cheatsheet.md`](.docs/cheatsheets/observability-cheatsheet.md).
+
 
 ### HTTP API ShareTrip Service
 
@@ -108,7 +108,6 @@ Smoke после `make run`:
 curl http://127.0.0.1:8080/ready
 ```
 
-Postman / JWT: [`.docs/cheatsheets/keycloak-cheatsheet.md`](.docs/cheatsheets/keycloak-cheatsheet.md).
 
 ### Трейсинг в Jaeger (ShareTrip)
 
@@ -124,8 +123,6 @@ Postman / JWT: [`.docs/cheatsheets/keycloak-cheatsheet.md`](.docs/cheatsheets/ke
 В Jaeger выбери сервис **`share-trip`** (не `trip-api`, не `sharetrip-contract`).  
 UI: http://localhost:16686 → Service `share-trip` → Find Traces.
 
-Подробнее: [`.docs/cheatsheets/observability-cheatsheet.md`](.docs/cheatsheets/observability-cheatsheet.md) §4, §11.
-
 ### Grafana — дашборды (что / где / зачем)
 
 UI: http://localhost:3000 → папка **`Share_Trip`** (автозагрузка из `deploy/grafana/dashboards_files/`).
@@ -140,6 +137,58 @@ UI: http://localhost:3000 → папка **`Share_Trip`** (автозагруз�
 `app_metrics_go` показывает `status` в одной панели RPS
 `http_status_codes_go.json` дашборд по кодам ответа — для ревью 4xx/5xx открывай в Графана **HTTP Status Codes** 
 
-Подробно: [`.docs/cheatsheets/grafana-dashboards-cheatsheet.md`](.docs/cheatsheets/grafana-dashboards-cheatsheet.md) (§2 — цепочка app→Prometheus→Grafana, минимум стека).
+
+---
+
+## Надёжная доставка `TripPublished` (outbox / inbox)
+
+> **Задача tsk-505677 — только теория** (README + диаграммы).  
+> **Код / PGQ / polling publisher / inbox** — в следующем уроке **tsk-505678** (не в этой ветке).
+
+### Проблема двойной записи (dual-write)
+
+После `draft → published` нужны **два** эффекта: строка в Postgres и сообщение в Kafka. Это два разных хранилища без общей транзакции.
+
+| Шаг | Что может случиться |
+|-----|---------------------|
+| COMMIT поездки OK, Produce Kafka **упал** | поездка published, Notification **не** узнает |
+| Produce OK, COMMIT **упал** | событие в Kafka есть, поездки в БД нет (ложь) |
+| Retry HTTP publish | поездка уже published → 204, Produce **не** повторится → событие потеряно |
+
+Поэтому «просто retry клиентом» для **пишущих** операций недостаточно: повтор запроса ≠ повтор Produce.
+
+### Читающая vs пишущая нагрузка
+
+| | Примеры | Риск |
+|--|---------|------|
+| **Чтение** | GET trip, Contract availability | можно retry / cache |
+| **Запись + событие** | publish trip + `TripPublished` | dual-write; нужен **outbox** (и inbox у потребителя) |
+
+### Outbox (ShareTrip)
+
+В **той же TX**, что смена статуса: `INSERT outbox_event(event_id, …)`. После COMMIT — Produce в Kafka (сейчас в коде — упрощённый dual-write сразу после COMMIT).  
+**Полный relay-poller / PGQ** — урок **505678**, здесь не реализуем.
+
+Один `event_id` в outbox и в Kafka → идемпотентность downstream.
+
+### Inbox (Notification)
+
+Таблица `processed_events(event_id)`: перед созданием уведомления проверить «уже видели?». Commit Kafka offset **только после** успешной обработки.  
+**Реализацию inbox** пишем в **505678**, не сейчас.
+
+### Компенсации (saga-смысл в ShareTrip)
+
+Полный распределённый saga-оркестратор в курсе не обязателен. Локальные «компенсации» по смыслу:
+
+| Сбой | Что не делать / что делать |
+|------|----------------------------|
+| Kafka fail после COMMIT | **не** откатывать published; оставить outbox + лог; poller (505678) дошлёт |
+| Contract deny на start | поездку **не** стартовать (fail closed) |
+| Consumer упал после notification до offset commit | inbox (505678) спасёт от дубля при re-delivery |
+
+### Диаграммы
+
+Черновики PlantUML — локально в учёбе; **сдача лиду — файл с сайта** после готовности.  
+Смысл: outbox (TX + Produce), inbox (processed_events + offset), e2e TripPublished → NotificationCreated.
 
 ---
