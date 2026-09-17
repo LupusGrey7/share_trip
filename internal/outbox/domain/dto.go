@@ -1,4 +1,4 @@
-package domain
+package outbox
 
 import (
 	"database/sql/driver"
