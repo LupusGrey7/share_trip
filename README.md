@@ -153,3 +153,18 @@ UI: http://localhost:3000 → папка **`Share_Trip`** (автозагруз�
 `http_status_codes_go.json` — дашборд по кодам ответа; для ревью 4xx/5xx открывай в Grafana **HTTP Status Codes**.
 
 ---
+### Надёжная доставка TripPublished (outbox)
+
+`PATCH .../moveTripDraft-ToPublish` в **одной TX**: trip → `published` + строка в `outbox_events` (`status=pending`). Ответ **200** не ждёт Kafka.
+
+Фоновый **outbox publisher** (горутина + ticker, env `OUTBOX_POLL_INTERVAL_MS` / `OUTBOX_BATCH_SIZE`):
+`SELECT pending … FOR UPDATE SKIP LOCKED` → Produce в topic `trip.events` → `sent` / при ошибке `attempts++`, `last_error`.
+
+Kafka producer живёт только у publisher, не у HTTP handler.
+
+| Таблица / topic | Роль |
+|----------------|------|
+| `outbox_events` | pending → sent (или failed после лимита попыток) |
+| `trip.events` | envelope TripPublished (`event_id` = `outbox_events.id`) |
+
+Inbox / идемпотентность consumer — в сервисе Notification (отдельный репозиторий).
