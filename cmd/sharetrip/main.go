@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -36,7 +39,9 @@ func init() {
 }
 
 func main() {
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	cfg := appConfigs.ReadDBConfig()
 
 	pool, err := storage.NewPool(ctx, cfg.DSN())
@@ -46,13 +51,11 @@ func main() {
 
 	defer pool.Close()
 
-	// logging connection to DB
 	if pingErr := pool.Ping(ctx); pingErr != nil {
 		log.Fatalf("failed to ping database: %v", pingErr)
 	}
 	log.Info("Connected to database successfully")
 
-	//logger
 	logger, logFile, err := appConfigs.NewLogger()
 	if err != nil {
 		panic(err)
@@ -64,11 +67,9 @@ func main() {
 		}
 	}(logFile)
 
-	//registry Prometheus
 	registry := prometheus.NewRegistry()
 	m := metrics.New(registry)
 
-	// init Tracing (OpenTelemetry → otel-collector → Jaeger)
 	tp, err := appConfigs.InitTracing(ctx)
 	if err != nil {
 		log.Error("init tracing failed", "error", err)
@@ -82,33 +83,40 @@ func main() {
 		}
 	}()
 
-	//app fiber
 	app := fiber.New()
-	app.Use(tracing.NewFiberMiddleware()) // init Tracing OpenTelemetry
+	app.Use(tracing.NewFiberMiddleware())
 	app.Use(func(c *fiber.Ctx) error {
-		ctx := c.UserContext()
-		// correlation id = OTel TraceID (X-Request-ID + Locals; в handlers — trace_id в slog)
-		traceID := trace.SpanFromContext(ctx).SpanContext().TraceID().String()
+		reqCtx := c.UserContext()
+		traceID := trace.SpanFromContext(reqCtx).SpanContext().TraceID().String()
 		c.Set("X-Request-ID", traceID)
 		c.Locals("requestid", traceID)
 		return c.Next()
 	})
-	//add custom logger, before add api and metrics
 	app.Use(middleware.Correlation(logger))
-	//add metrics middleware
 	app.Use(api.NewHTTPMetricsMiddleware(m))
 
 	keycloakCfg := appConfigs.GetKeycloakConfig()
 	appConfigs.LogKeycloakConfig(keycloakCfg)
 	appConfigs.LogContractConfig()
 
-	//build the Server
-	appConfigs.BuildServer(app, pool, registry, m, keycloakCfg)
+	outboxPublisher := appConfigs.BuildServer(app, pool, registry, m, keycloakCfg)
+	go func() {
+		if runErr := outboxPublisher.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
+			log.Errorf("outbox publisher stopped: %v", runErr)
+		}
+	}()
 
-	// log registered routes
 	api.LogRegisteredRoutes(":8080")
 
-	//listen the app
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if shutErr := app.ShutdownWithContext(shutdownCtx); shutErr != nil {
+			log.Errorf("fiber shutdown: %v", shutErr)
+		}
+	}()
+
 	err = app.Listen(":8080")
 	if err != nil {
 		log.Fatal("failed to listen: %v", err)

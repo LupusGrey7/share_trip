@@ -31,7 +31,6 @@ import (
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
 	client "job4j.ru/share_trip/internal/clients/http/contract"
 	clientUsecase "job4j.ru/share_trip/internal/clients/http/contract/usecase"
-	"job4j.ru/share_trip/internal/clients/kafka"
 	"job4j.ru/share_trip/internal/trip/service"
 )
 
@@ -156,7 +155,7 @@ func TestMain(m *testing.M) {
 	tripUseCase := usecase.NewTripUseCase(contractUsecase)
 
 	infoService := service.NewInfoService(infoUseCase, repo)
-	tripService := service.NewTripService(mu, testPool, kafka.NoopProducer{}, repoTrip, outboxRepo, tripUseCase)
+	tripService := service.NewTripService(mu, testPool, repoTrip, outboxRepo, tripUseCase)
 
 	server := api.NewServer(registry, validate, infoService, tripService) // ← add to service
 

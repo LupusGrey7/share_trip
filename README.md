@@ -3,14 +3,29 @@
 ## What is it
 Это приложение, которое обрабатывает поездки в Такси.
 Состоит из нескольких компонентов:
-1. Share Trip Service(этот проект) написана на Golang + goose+postgreSQL+kafka (в перспективеб пока не трогаем)
-- принимает данные из REST API проводит обработку(прием заказа, поиск заказа, обновление и тд)
-- возвращает быстрай ответ чтобы не задерживать потоки
-- дает возможность проверить status или создать транзакцию
-2. Share Trip Notification Service(app 2, stack Golang\goose\postgreSQL\kafka)
-    - принимает данные из Кафка о поезках и уведомления и проводит оповещение сторон
+1. Share Trip Service(этот проект, app1)
+tech stack: Golang / goose / postgreSQL / Kafka 
 
-3. Share Trip Contract Service (app 3, stack Golang\goose\postgreSQL)    
+ - принимает данные из REST API проводит обработку(прием заказа, поиск заказа, обновление и тд)
+ - возвращает быстрай ответ чтобы не задерживать потоки;
+ - дает возможность проверить status или создать транзакцию;
+2. Share Trip Notification Service(app2)
+tech stack: Golang / goose / postgreSQL / Kafka , stack 
+
+ - принимает данные из Кафка о поезках и уведомления и проводит оповещение сторон;
+
+3. Share Trip Contract Service(app 3)
+ tech stack: Golang / goose / postgreSQL / Kafka 
+
+
+4. Analytics Service (app4, обновляет статистику)
+tech stack: Golang / goose / postgreSQL / Kafka 
+
+5. Audit Service(app5, запишет действие)
+tech stack: Golang / goose / postgreSQL / Kafka 
+
+
+---
 
 ## Tech Stack
 - **Backend:** Go 1.25 (сервисы на Go — отдельные модули)
@@ -85,8 +100,7 @@ make fmt
 | **Loki** | http://localhost:3100 |
 | **postgres_exporter** | http://localhost:9187/metrics |
 
-Инфра: `make up` / `make down` → `deploy/docker-compose.yml`.  
-Подробнее про стек observability: [`.docs/cheatsheets/observability-cheatsheet.md`](.docs/cheatsheets/observability-cheatsheet.md).
+Инфра: `make up` / `make down` → `deploy/docker-compose.yml`.
 
 ### HTTP API ShareTrip Service
 
@@ -108,7 +122,7 @@ Smoke после `make run`:
 curl http://127.0.0.1:8080/ready
 ```
 
-Postman / JWT: [`.docs/cheatsheets/keycloak-cheatsheet.md`](.docs/cheatsheets/keycloak-cheatsheet.md).
+Keycloak: Bearer JWT + роль `client` для маршрутов `trip/*` (см. таблицу портов выше).
 
 ### Трейсинг в Jaeger (ShareTrip)
 
@@ -124,8 +138,6 @@ Postman / JWT: [`.docs/cheatsheets/keycloak-cheatsheet.md`](.docs/cheatsheets/ke
 В Jaeger выбери сервис **`share-trip`** (не `trip-api`, не `sharetrip-contract`).  
 UI: http://localhost:16686 → Service `share-trip` → Find Traces.
 
-Подробнее: [`.docs/cheatsheets/observability-cheatsheet.md`](.docs/cheatsheets/observability-cheatsheet.md) §4, §11.
-
 ### Grafana — дашборды (что / где / зачем)
 
 UI: http://localhost:3000 → папка **`Share_Trip`** (автозагрузка из `deploy/grafana/dashboards_files/`).
@@ -137,9 +149,7 @@ UI: http://localhost:3000 → папка **`Share_Trip`** (автозагруз�
 | Runtime Go | `runtime_go.json` | goroutines, heap, GC, CPU |
 | PostgreSQL | `postgresql_go.json` | БД: up, connections, commits/rollbacks |
 
-`app_metrics_go` показывает `status` в одной панели RPS
-`http_status_codes_go.json` дашборд по кодам ответа — для ревью 4xx/5xx открывай в Графана **HTTP Status Codes** 
-
-Подробно: [`.docs/cheatsheets/grafana-dashboards-cheatsheet.md`](.docs/cheatsheets/grafana-dashboards-cheatsheet.md) (§2 — цепочка app→Prometheus→Grafana, минимум стека).
+`app_metrics_go` показывает `status` в одной панели RPS.  
+`http_status_codes_go.json` — дашборд по кодам ответа; для ревью 4xx/5xx открывай в Grafana **HTTP Status Codes**.
 
 ---

@@ -19,23 +19,24 @@ import (
 	"job4j.ru/share_trip/internal/observability/logctx"
 	"job4j.ru/share_trip/internal/observability/metrics"
 	"job4j.ru/share_trip/internal/observability/tracing"
+	"job4j.ru/share_trip/internal/outbox"
+	outboxservice "job4j.ru/share_trip/internal/outbox/service"
+	outboxusecase "job4j.ru/share_trip/internal/outbox/usecase"
 	"job4j.ru/share_trip/internal/storage"
 	"job4j.ru/share_trip/internal/trip/service"
 	"job4j.ru/share_trip/internal/trip/usecase"
 )
 
-// build - build server
+// BuildServer wires HTTP API and returns the outbox publisher (start with go p.Run(ctx)).
 func BuildServer(
 	app *fiber.App,
 	pool *pgxpool.Pool,
 	registry *prometheus.Registry,
 	m *metrics.Metrics,
 	keycloakCfg middleware.KeycloakConfig,
-) {
-	// Initialize the validator instance
+) *outbox.Publisher {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	// rest client for contract service
 	contractClient := clientContract.NewContractClient(configs.ContractServiceURL())
 
 	repo := storage.NewRepoPg(pool)
@@ -49,12 +50,24 @@ func BuildServer(
 	kafkaProducer := newKafkaProducer()
 
 	infoService := service.NewInfoService(infoUseCase, repo)
-	tripService := service.NewTripService(m, pool, kafkaProducer, repoTrip, outboxRepo, tripUseCase)
+	tripService := service.NewTripService(m, pool, repoTrip, outboxRepo, tripUseCase)
+
+	outboxUC := outboxusecase.NewOutboxUseCase(outboxRepo)
+	outboxSvc := outboxservice.NewOutboxService(m, pool, outboxUC)
+	outboxPublisher := outbox.NewPublisher(
+		m,
+		kafkaProducer,
+		outboxSvc,
+		configs.EnvDurationMS("OUTBOX_POLL_INTERVAL_MS", 1000),
+		configs.EnvInt("OUTBOX_BATCH_SIZE", 50),
+	)
 
 	server := api.NewServer(registry, validate, infoService, tripService)
 
 	keycloakAuth := middleware.KeycloakRefreshTokenMiddleware(keycloakCfg)
 	server.SetupRoutes(app, keycloakAuth)
+
+	return outboxPublisher
 }
 
 func newKafkaProducer() kafka.TripEventProducer {

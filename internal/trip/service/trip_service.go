@@ -7,7 +7,6 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"job4j.ru/share_trip/internal/clients/kafka"
 	"job4j.ru/share_trip/internal/observability/metrics"
 	"job4j.ru/share_trip/internal/storage"
 	"job4j.ru/share_trip/internal/trip/domain"
@@ -24,7 +23,6 @@ type Service interface {
 type TripService struct {
 	metrics    *metrics.Metrics
 	pool       *pgxpool.Pool
-	kafka      kafka.TripEventProducer
 	repo       storage.BaseTxTripRepository
 	outboxRepo storage.OutboxRepository
 	useCase    usecase.BaseTripUseCase
@@ -33,7 +31,6 @@ type TripService struct {
 func NewTripService(
 	m *metrics.Metrics,
 	pool *pgxpool.Pool,
-	kafkaProducer kafka.TripEventProducer,
 	r storage.BaseTxTripRepository,
 	outbox storage.OutboxRepository,
 	uc usecase.BaseTripUseCase,
@@ -41,7 +38,6 @@ func NewTripService(
 	return &TripService{
 		metrics:    m,
 		pool:       pool,
-		kafka:      kafkaProducer,
 		repo:       r,
 		outboxRepo: outbox,
 		useCase:    uc,
