@@ -25,7 +25,6 @@ func (s *Server) MoveTripFromDraftToPublish(c *fiber.Ctx) error {
 	var request MoveTripFromDraftToPublishRequest
 
 	if err := c.ParamsParser(&request); err != nil {
-		logger.Warn("failed to parse path params", slog.Any("error", err))
 		return HandleError(c, ErrInvalidValidate)
 	}
 
@@ -50,13 +49,11 @@ func (s *Server) MoveTripFromDraftToPublish(c *fiber.Ctx) error {
 		slog.String("client_id", request.DriverID.String()),
 	)
 	ctx = logctx.WithLogger(ctx, logger)
-	logger.Debug("move trip from draft to publish")
 
 	resp, err := s.TripService.MoveTripFromDraftToPublish(ctx, toMoveTripFromDraftToPublishInput(&request))
 	if err != nil {
 		return HandleError(c, err)
 	}
 
-	logger.Debug("move trip from draft to publish completed")
 	return c.Status(fiber.StatusOK).JSON(toMoveTripFromDraftToPublishResponse(resp))
 }

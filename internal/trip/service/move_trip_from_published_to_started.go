@@ -45,7 +45,6 @@ func (s *TripService) MoveTripFromPublishedToStarted(
 		slog.String("service_code", string(req.ServiceCode)),
 		slog.String("client_id", req.ClientID.String()),
 	)
-	logger.Debug("move trip from published to started started")
 
 	contractResult, err := s.useCase.CheckServiceIsAllowed(ctxSpc, req.CompanyID, string(req.ServiceCode))
 	if err != nil {
@@ -69,7 +68,6 @@ func (s *TripService) MoveTripFromPublishedToStarted(
 
 	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*domain.MoveTripFromPublishedToStartedOutput, error) {
 		txLogger := logger.With(slog.String("layer", "transaction"))
-		txLogger.Debug("move trip from published to started transaction execution started")
 
 		resp, err := s.useCase.MoveTripFromPublishedToStarted(txCtx, tx, s.repo, req)
 		if err != nil {
@@ -79,7 +77,6 @@ func (s *TripService) MoveTripFromPublishedToStarted(
 			return nil, err
 		}
 
-		txLogger.Debug("transaction execution completed", slog.String("trip_id", resp.ID.String()))
 		return resp, nil
 	})
 
@@ -92,6 +89,5 @@ func (s *TripService) MoveTripFromPublishedToStarted(
 		return nil, err
 	}
 
-	logger.Debug("move trip from published to started completed", slog.String("trip_id", res.ID.String()))
 	return res, nil
 }

@@ -1,3 +1,4 @@
+// scenario: MoveTripFromDraftToPublish — Contract check outside tx, then short DB transaction.
 package service
 
 import (
@@ -46,7 +47,6 @@ func (s *TripService) MoveTripFromDraftToPublish(
 		slog.String("operation", "MoveTripFromDraftToPublish"),
 		slog.String("client_id", req.ID),
 	)
-	logger.Debug("move trip from draft to publish started")
 
 	eventID := uuid.New()
 	occurredAt := time.Now()
@@ -56,7 +56,6 @@ func (s *TripService) MoveTripFromDraftToPublish(
 
 	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*domain.MoveTripFromDraftToPublishOutput, error) {
 		txLogger := logger.With(slog.String("layer", "transaction"))
-		txLogger.Debug("move trip from draft to publish transaction execution started")
 
 		resp, err := s.useCase.MoveTripFromDraftToPublish(txCtx, tx, s.repo, req)
 		if err != nil {
@@ -80,10 +79,6 @@ func (s *TripService) MoveTripFromDraftToPublish(
 			return nil, fmt.Errorf("error while MoveTripFromDraftToPublish create outbox event: %w", err)
 		}
 
-		txLogger.Debug("transaction execution completed",
-			slog.String("trip_id", resp.ID.String()),
-			slog.String("event_id", eventID.String()),
-		)
 		return resp, nil
 	})
 
@@ -96,10 +91,5 @@ func (s *TripService) MoveTripFromDraftToPublish(
 		return nil, err
 	}
 
-	// Kafka: only via outbox publisher (poller). HTTP path writes pending row in TX above.
-	logger.Debug("move trip from draft to publish completed",
-		slog.String("trip_id", res.ID.String()),
-		slog.String("event_id", eventID.String()),
-	)
 	return res, nil
 }
