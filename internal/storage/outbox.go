@@ -172,10 +172,10 @@ func (r *OutboxEventRepository) LockPendingTx(
 	events := make([]*domain.Entity, 0, limit)
 	for rows.Next() {
 		var (
-			e          domain.Entity
-			status     string
-			lastError  *string
-			sentAt     *time.Time
+			e         domain.Entity
+			status    string
+			lastError *string
+			sentAt    *time.Time
 		)
 		if err := rows.Scan(
 			&e.ID,

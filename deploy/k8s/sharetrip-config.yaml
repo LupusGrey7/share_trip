@@ -1,0 +1,17 @@
+# Non-secret ENV for ShareTrip (keys match LoadAppConfig).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sharetrip-config
+  namespace: sharetrip
+data:
+  HTTP_PORT: "8080"
+  CONTRACT_SERVICE_URL: "http://contract-service:8082"
+  KAFKA_BROKERS: "kafka:9092"
+  KAFKA_TOPIC_TRIP_EVENTS: "trip.events"
+  REQUEST_TIMEOUT_MS: "1500"
+  RETRY_ATTEMPTS: "2"
+  OUTBOX_POLL_INTERVAL_MS: "1000"
+  OUTBOX_BATCH_SIZE: "50"
+  KEYCLOAK_ISSUER: "http://keycloak:8087/realms/sharetrip"
+  KEYCLOAK_CLIENT_ID: "sharetrip-api"

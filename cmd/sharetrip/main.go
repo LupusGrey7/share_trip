@@ -19,8 +19,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/joho/godotenv"
+	"job4j.ru/share_trip/config"
 	"job4j.ru/share_trip/internal/api"
-	appConfigs "job4j.ru/share_trip/internal/app"
+	appConfig "job4j.ru/share_trip/internal/app"
 	"job4j.ru/share_trip/internal/storage"
 )
 
@@ -42,13 +43,15 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	cfg := appConfigs.ReadDBConfig()
-
-	pool, err := storage.NewPool(ctx, cfg.DSN())
+	conf, err := config.LoadAppConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	pool, err := storage.NewPool(ctx, conf.DatabaseDSN)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer pool.Close()
 
 	if pingErr := pool.Ping(ctx); pingErr != nil {
@@ -56,7 +59,7 @@ func main() {
 	}
 	log.Info("Connected to database successfully")
 
-	logger, logFile, err := appConfigs.NewLogger()
+	logger, logFile, err := appConfig.NewLogger()
 	if err != nil {
 		panic(err)
 	}
@@ -70,7 +73,7 @@ func main() {
 	registry := prometheus.NewRegistry()
 	m := metrics.New(registry)
 
-	tp, err := appConfigs.InitTracing(ctx)
+	tp, err := appConfig.InitTracing(ctx)
 	if err != nil {
 		log.Error("init tracing failed", "error", err)
 		os.Exit(1)
@@ -95,18 +98,18 @@ func main() {
 	app.Use(middleware.Correlation(logger))
 	app.Use(api.NewHTTPMetricsMiddleware(m))
 
-	keycloakCfg := appConfigs.GetKeycloakConfig()
-	appConfigs.LogKeycloakConfig(keycloakCfg)
-	appConfigs.LogContractConfig()
+	keycloakCfg := appConfig.KeycloakFromConfig(conf)
+	appConfig.LogKeycloakConfig(keycloakCfg)
+	appConfig.LogContractConfig(conf)
 
-	outboxPublisher := appConfigs.BuildServer(app, pool, registry, m, keycloakCfg)
+	outboxPublisher := appConfig.BuildServer(app, pool, registry, m, keycloakCfg, conf)
 	go func() {
 		if runErr := outboxPublisher.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
 			log.Errorf("outbox publisher stopped: %v", runErr)
 		}
 	}()
 
-	api.LogRegisteredRoutes(":8080")
+	api.LogRegisteredRoutes(":" + conf.HTTPPort)
 
 	go func() {
 		<-ctx.Done()
@@ -117,7 +120,7 @@ func main() {
 		}
 	}()
 
-	err = app.Listen(":8080")
+	err = app.Listen(":" + conf.HTTPPort)
 	if err != nil {
 		log.Fatal("failed to listen: %v", err)
 	}

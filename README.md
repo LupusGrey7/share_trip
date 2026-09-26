@@ -102,6 +102,48 @@ make fmt
 
 Инфра: `make up` / `make down` → `deploy/docker-compose.yml`.
 
+### Конфигурация runtime (ENV) — анти–config drift
+
+Код **один** для local / stage / prod. Меняются только значения ENV.  
+Приложение читает `os.Getenv` → `config.LoadAppConfig()` и **падает на старте**, если обязательное пусто. Секреты в лог не пишутся.
+
+| Откуда ENV | Когда |
+|------------|--------|
+| Файл `.env` + `godotenv` | `make run` / IDE (локально) |
+| ConfigMap + Secret → `envFrom` | Kubernetes (`deploy/k8s/`) |
+| Vault / external secrets | prod (курс: достаточно K8s Secret) |
+
+**Одинаковые имена** ключей везде. Разные только значения (например `localhost` vs DNS в кластере).
+
+#### Обязательные (fail-fast)
+
+| ENV | Пример local | В K8s |
+|-----|--------------|-------|
+| `DATABASE_DSN` | `postgres://…@localhost:6543/share_trip?sslmode=disable` | **Secret** |
+| `CONTRACT_SERVICE_URL` | `http://localhost:8082` | ConfigMap |
+| `KAFKA_BROKERS` | `localhost:9092` | ConfigMap |
+| `KEYCLOAK_ISSUER` | `http://localhost:8087/realms/sharetrip` | ConfigMap |
+| `KEYCLOAK_CLIENT_ID` | `sharetrip-api` | ConfigMap |
+| `KEYCLOAK_CLIENT_SECRET` | (из Keycloak admin) | **Secret** |
+
+#### Опциональные (есть дефолт в коде)
+
+| ENV | Дефолт | В K8s |
+|-----|--------|-------|
+| `HTTP_PORT` | `8080` | ConfigMap |
+| `KAFKA_TOPIC_TRIP_EVENTS` | `trip.events` | ConfigMap |
+| `REQUEST_TIMEOUT_MS` | `1500` | ConfigMap |
+| `RETRY_ATTEMPTS` | `2` | ConfigMap |
+| `OUTBOX_POLL_INTERVAL_MS` | `1000` | ConfigMap |
+| `OUTBOX_BATCH_SIZE` | `50` | ConfigMap |
+
+Манифесты ShareTrip: `deploy/k8s/` (`*-config.yaml`, `*-secret.example.yaml`, Deployment, Service).  
+Реальные секреты — только локальный `sharetrip-secret.yaml` (не в git).
+
+`DB_HOST` / `DB_USER` / … — для `make migrate` / goose, **не** для `LoadAppConfig` (там один `DATABASE_DSN`).
+
+Contract / Notification — отдельные репозитории; их k8s-манифесты — этап D в конце задачи.
+
 ### HTTP API ShareTrip Service
 
 Базовый префикс: `/api/v2/trip`. Маршруты `trip/*` защищены Keycloak (Bearer + роль `client`).

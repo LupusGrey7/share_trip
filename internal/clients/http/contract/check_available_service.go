@@ -1,4 +1,5 @@
 // check_available_service.go - check if a service is available for a company
+
 package contracts
 
 import (

@@ -1,0 +1,7 @@
+# Namespace: isolate ShareTrip objects in the cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sharetrip
+  labels:
+    app.kubernetes.io/part-of: sharetrip

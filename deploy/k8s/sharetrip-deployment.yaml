@@ -1,0 +1,42 @@
+# Deployment: pods + envFrom ConfigMap/Secret (copy secret.example → secret.yaml before apply).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sharetrip
+  namespace: sharetrip
+  labels:
+    app: sharetrip
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sharetrip
+  template:
+    metadata:
+      labels:
+        app: sharetrip
+    spec:
+      containers:
+        - name: sharetrip
+          image: sharetrip/sharetrip:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: sharetrip-config
+            - secretRef:
+                name: sharetrip-secret
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20

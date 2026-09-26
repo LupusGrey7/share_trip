@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Config struct {
+type ConfigDB struct {
 	Host     string
 	Port     int
 	User     string
@@ -17,7 +17,9 @@ type Config struct {
 	SSLMode  string
 }
 
-func (c Config) DSN() string {
+// DSN builds a postgres URL. App runtime prefers DATABASE_DSN from config.LoadAppConfig;
+// this helper remains for ad-hoc / migrate tooling if needed.
+func (c ConfigDB) DSN() string {
 	ssl := c.SSLMode
 	if ssl == "" {
 		ssl = "disable"

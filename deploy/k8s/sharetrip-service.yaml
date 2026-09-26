@@ -1,0 +1,17 @@
+# Service: stable in-cluster DNS to ShareTrip pods (not docker -p).
+apiVersion: v1
+kind: Service
+metadata:
+  name: sharetrip
+  namespace: sharetrip
+  labels:
+    app: sharetrip
+spec:
+  type: ClusterIP
+  selector:
+    app: sharetrip
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
