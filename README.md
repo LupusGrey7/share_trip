@@ -3,14 +3,29 @@
 ## What is it
 Это приложение, которое обрабатывает поездки в Такси.
 Состоит из нескольких компонентов:
-1. Share Trip Service(этот проект) написана на Golang + goose+postgreSQL+kafka (в перспективеб пока не трогаем)
-- принимает данные из REST API проводит обработку(прием заказа, поиск заказа, обновление и тд)
-- возвращает быстрай ответ чтобы не задерживать потоки
-- дает возможность проверить status или создать транзакцию
-2. Share Trip Notification Service(app 2, stack Golang\goose\postgreSQL\kafka)
-    - принимает данные из Кафка о поезках и уведомления и проводит оповещение сторон
+1. Share Trip Service(этот проект, app1)
+tech stack: Golang / goose / postgreSQL / Kafka 
 
-3. Share Trip Contract Service (app 3, stack Golang\goose\postgreSQL)    
+ - принимает данные из REST API проводит обработку(прием заказа, поиск заказа, обновление и тд)
+ - возвращает быстрай ответ чтобы не задерживать потоки;
+ - дает возможность проверить status или создать транзакцию;
+2. Share Trip Notification Service(app2)
+tech stack: Golang / goose / postgreSQL / Kafka , stack 
+
+ - принимает данные из Кафка о поезках и уведомления и проводит оповещение сторон;
+
+3. Share Trip Contract Service(app 3)
+ tech stack: Golang / goose / postgreSQL / Kafka 
+
+
+4. Analytics Service (app4, обновляет статистику)
+tech stack: Golang / goose / postgreSQL / Kafka 
+
+5. Audit Service(app5, запишет действие)
+tech stack: Golang / goose / postgreSQL / Kafka 
+
+
+---
 
 ## Tech Stack
 - **Backend:** Go 1.25 (сервисы на Go — отдельные модули)
@@ -85,8 +100,49 @@ make fmt
 | **Loki** | http://localhost:3100 |
 | **postgres_exporter** | http://localhost:9187/metrics |
 
-Инфра: `make up` / `make down` → `deploy/docker-compose.yml`.  
-Подробнее про стек observability: [`.docs/cheatsheets/observability-cheatsheet.md`](.docs/cheatsheets/observability-cheatsheet.md).
+Инфра: `make up` / `make down` → `deploy/docker-compose.yml`.
+
+### Конфигурация runtime (ENV) — анти–config drift
+
+Код **один** для local / stage / prod. Меняются только значения ENV.  
+Приложение читает `os.Getenv` → `config.LoadAppConfig()` и **падает на старте**, если обязательное пусто. Секреты в лог не пишутся.
+
+| Откуда ENV | Когда |
+|------------|--------|
+| Файл `.env` + `godotenv` | `make run` / IDE (локально) |
+| ConfigMap + Secret → `envFrom` | Kubernetes (`deploy/k8s/`) |
+| Vault / external secrets | prod (курс: достаточно K8s Secret) |
+
+**Одинаковые имена** ключей везде. Разные только значения (например `localhost` vs DNS в кластере).
+
+#### Обязательные (fail-fast)
+
+| ENV | Пример local | В K8s |
+|-----|--------------|-------|
+| `DATABASE_DSN` | `postgres://…@localhost:6543/share_trip?sslmode=disable` | **Secret** |
+| `CONTRACT_SERVICE_URL` | `http://localhost:8082` | ConfigMap |
+| `KAFKA_BROKERS` | `localhost:9092` | ConfigMap |
+| `KEYCLOAK_ISSUER` | `http://localhost:8087/realms/sharetrip` | ConfigMap |
+| `KEYCLOAK_CLIENT_ID` | `sharetrip-api` | ConfigMap |
+| `KEYCLOAK_CLIENT_SECRET` | (из Keycloak admin) | **Secret** |
+
+#### Опциональные (есть дефолт в коде)
+
+| ENV | Дефолт | В K8s |
+|-----|--------|-------|
+| `HTTP_PORT` | `8080` | ConfigMap |
+| `KAFKA_TOPIC_TRIP_EVENTS` | `trip.events` | ConfigMap |
+| `REQUEST_TIMEOUT_MS` | `1500` | ConfigMap |
+| `RETRY_ATTEMPTS` | `2` | ConfigMap |
+| `OUTBOX_POLL_INTERVAL_MS` | `1000` | ConfigMap |
+| `OUTBOX_BATCH_SIZE` | `50` | ConfigMap |
+
+Манифесты ShareTrip: `deploy/k8s/` (`*-config.yaml`, `*-secret.example.yaml`, Deployment, Service).  
+Реальные секреты — только локальный `sharetrip-secret.yaml` (не в git).
+
+`DB_HOST` / `DB_USER` / … — для `make migrate` / goose, **не** для `LoadAppConfig` (там один `DATABASE_DSN`).
+
+Contract / Notification — отдельные репозитории; их k8s-манифесты — этап D в конце задачи.
 
 ### HTTP API ShareTrip Service
 
@@ -108,7 +164,7 @@ Smoke после `make run`:
 curl http://127.0.0.1:8080/ready
 ```
 
-Postman / JWT: [`.docs/cheatsheets/keycloak-cheatsheet.md`](.docs/cheatsheets/keycloak-cheatsheet.md).
+Keycloak: Bearer JWT + роль `client` для маршрутов `trip/*` (см. таблицу портов выше).
 
 ### Трейсинг в Jaeger (ShareTrip)
 
@@ -124,8 +180,6 @@ Postman / JWT: [`.docs/cheatsheets/keycloak-cheatsheet.md`](.docs/cheatsheets/ke
 В Jaeger выбери сервис **`share-trip`** (не `trip-api`, не `sharetrip-contract`).  
 UI: http://localhost:16686 → Service `share-trip` → Find Traces.
 
-Подробнее: [`.docs/cheatsheets/observability-cheatsheet.md`](.docs/cheatsheets/observability-cheatsheet.md) §4, §11.
-
 ### Grafana — дашборды (что / где / зачем)
 
 UI: http://localhost:3000 → папка **`Share_Trip`** (автозагрузка из `deploy/grafana/dashboards_files/`).
@@ -137,9 +191,22 @@ UI: http://localhost:3000 → папка **`Share_Trip`** (автозагруз�
 | Runtime Go | `runtime_go.json` | goroutines, heap, GC, CPU |
 | PostgreSQL | `postgresql_go.json` | БД: up, connections, commits/rollbacks |
 
-`app_metrics_go` показывает `status` в одной панели RPS
-`http_status_codes_go.json` дашборд по кодам ответа — для ревью 4xx/5xx открывай в Графана **HTTP Status Codes** 
-
-Подробно: [`.docs/cheatsheets/grafana-dashboards-cheatsheet.md`](.docs/cheatsheets/grafana-dashboards-cheatsheet.md) (§2 — цепочка app→Prometheus→Grafana, минимум стека).
+`app_metrics_go` показывает `status` в одной панели RPS.  
+`http_status_codes_go.json` — дашборд по кодам ответа; для ревью 4xx/5xx открывай в Grafana **HTTP Status Codes**.
 
 ---
+### Надёжная доставка TripPublished (outbox)
+
+`PATCH .../moveTripDraft-ToPublish` в **одной TX**: trip → `published` + строка в `outbox_events` (`status=pending`). Ответ **200** не ждёт Kafka.
+
+Фоновый **outbox publisher** (горутина + ticker, env `OUTBOX_POLL_INTERVAL_MS` / `OUTBOX_BATCH_SIZE`):
+`SELECT pending … FOR UPDATE SKIP LOCKED` → Produce в topic `trip.events` → `sent` / при ошибке `attempts++`, `last_error`.
+
+Kafka producer живёт только у publisher, не у HTTP handler.
+
+| Таблица / topic | Роль |
+|----------------|------|
+| `outbox_events` | pending → sent (или failed после лимита попыток) |
+| `trip.events` | envelope TripPublished (`event_id` = `outbox_events.id`) |
+
+Inbox / идемпотентность consumer — в сервисе Notification (отдельный репозиторий).

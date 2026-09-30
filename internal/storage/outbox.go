@@ -1,4 +1,4 @@
-// repository/outbox_repo.go
+// outbox_events repository (create + poller lock/mark).
 
 package storage
 
@@ -8,23 +8,67 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"go.opentelemetry.io/otel"
 	"job4j.ru/share_trip/internal/observability/logctx"
-	"job4j.ru/share_trip/internal/outbox/domain"
-
-	"github.com/jackc/pgx/v5"
 	"job4j.ru/share_trip/internal/observability/metrics"
+	"job4j.ru/share_trip/internal/outbox/domain"
 )
 
 const (
+	// OutboxMaxAttempts — after this many failed Produce attempts status becomes failed.
+	OutboxMaxAttempts = 10
+
 	createEvent = `
-insert into outbox_event(event_id, event_name, aggregate_id, payload, created_at)
-values($1, $2, $3, $4, $5)
+insert into outbox_events(id, aggregate_type, aggregate_id, event_type, payload, status, attempts, created_at)
+values($1, $2, $3, $4, $5, $6, $7, $8)
+`
+
+	lockPending = `
+select
+	id,
+	aggregate_type,
+	aggregate_id,
+	event_type,
+	payload,
+	status,
+	attempts,
+	last_error,
+	created_at,
+	sent_at
+from outbox_events
+where status = 'pending'
+order by created_at
+for update skip locked
+limit $1
+`
+
+	markSent = `
+update outbox_events
+set status = 'sent',
+    sent_at = now(),
+    last_error = null
+where id = $1
+`
+
+	markFailed = `
+update outbox_events
+set attempts = attempts + 1,
+    last_error = $2,
+    status = case
+        when attempts + 1 >= $3 then 'failed'
+        else status
+    end
+where id = $1
 `
 )
 
 type OutboxRepository interface {
-	CreateEventWhenTripMovesFromDraftToPublishedTx(ctx context.Context, tx pgx.Tx, o *domain.Entity) error
+	CreateTx(ctx context.Context, tx pgx.Tx, o *domain.Entity) error
+	LockPendingTx(ctx context.Context, tx pgx.Tx, limit int) ([]*domain.Entity, error)
+	MarkSentTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
+	MarkFailedTx(ctx context.Context, tx pgx.Tx, id uuid.UUID, produceErr error) error
 }
 
 type OutboxEventRepository struct {
@@ -37,53 +81,195 @@ func NewOutboxEventRepository(m *metrics.Metrics) *OutboxEventRepository {
 	}
 }
 
-func (r *OutboxEventRepository) CreateEventWhenTripMovesFromDraftToPublishedTx(ctx context.Context, tx pgx.Tx, o *domain.Entity) error {
-	//tracing Jaeger
+func (r *OutboxEventRepository) CreateTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	o *domain.Entity,
+) error {
 	tracer := otel.Tracer("OutboxEventRepository")
-	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.CreateEventWhenTripMovesFromDraftToPublishedTx")
+	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.CreateTx")
 
-	// prometheus
 	started := time.Now()
-	name := "repo_event_create_duration_seconds" //metric name
-	result := MetricsResultSuccess               //metric result
-	var rows pgx.Rows                            // for history to defer
+	op := "outbox_create"
+	result := MetricsResultSuccess
 
 	defer func() {
-		rows.Close() // process rows sql
-
-		r.metrics.RepositoryQueryTotal.
-			WithLabelValues(name, result).
-			Inc() // Increment the counter for the result
-		r.metrics.RepositoryQueryDuration.
-			WithLabelValues(name, result).
-			Observe(time.Since(started).Seconds()) // Observe the duration of the operation
-
-		span.End() // Span always ends in the end. Jaeger will measure the time between Start and End!
+		r.metrics.RepositoryQueryTotal.WithLabelValues(op, result).Inc()
+		r.metrics.RepositoryQueryDuration.WithLabelValues(op, result).
+			Observe(time.Since(started).Seconds())
+		span.End()
 	}()
 
-	//getting custom logger context
 	logger := logctx.Logger(ctxSpc).With(
 		slog.String("layer", "repository"),
 		slog.String("repository", "OutboxEventRepository"),
-		slog.String("operation", "CreateEventWhenTripMovesFromDraftToPublishedTx"),
-		slog.String("client_id", o.AggregateId.String()),
+		slog.String("operation", "CreateTx"),
+		slog.String("aggregate_id", o.AggregateID.String()),
+		slog.String("event_id", o.ID.String()),
 	)
-	logger.Debug("create event when trip moves from draft to published repository started")
+	logger.Debug("outbox create started")
 
 	createdAt := o.CreatedAt
 	if createdAt.IsZero() {
 		createdAt = time.Now()
 	}
 
-	query := createEvent
-	args := []interface{}{o.EventID, o.EventName, o.AggregateId, o.Payload, createdAt}
+	status := o.Status
+	if status == "" {
+		status = domain.StatusPending
+	}
 
-	rows, err := tx.Query(ctx, query, args...)
-	if err != nil {
+	args := []interface{}{
+		o.ID,
+		o.AggregateType,
+		o.AggregateID,
+		o.EventType,
+		o.Payload,
+		status,
+		o.Attempts,
+		createdAt,
+	}
+
+	if _, err := tx.Exec(ctxSpc, createEvent, args...); err != nil {
+		result = "error"
 		return fmt.Errorf("err when create outbox event trip publish: %w", err)
+	}
+
+	logger.Debug("outbox create completed")
+	return nil
+}
+
+func (r *OutboxEventRepository) LockPendingTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	limit int,
+) ([]*domain.Entity, error) {
+	tracer := otel.Tracer("OutboxEventRepository")
+	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.LockPendingTx")
+
+	started := time.Now()
+	op := "outbox_lock_pending"
+	result := MetricsResultSuccess
+
+	defer func() {
+		r.metrics.RepositoryQueryTotal.WithLabelValues(op, result).Inc()
+		r.metrics.RepositoryQueryDuration.WithLabelValues(op, result).
+			Observe(time.Since(started).Seconds())
+		span.End()
+	}()
+
+	if limit <= 0 {
+		return nil, nil
+	}
+
+	rows, err := tx.Query(ctxSpc, lockPending, limit)
+	if err != nil {
+		result = "error"
+		return nil, fmt.Errorf("lock pending outbox events: %w", err)
 	}
 	defer rows.Close()
 
-	logger.Debug("create event when trip moves from draft to published completed")
+	events := make([]*domain.Entity, 0, limit)
+	for rows.Next() {
+		var (
+			e         domain.Entity
+			status    string
+			lastError *string
+			sentAt    *time.Time
+		)
+		if err := rows.Scan(
+			&e.ID,
+			&e.AggregateType,
+			&e.AggregateID,
+			&e.EventType,
+			&e.Payload,
+			&status,
+			&e.Attempts,
+			&lastError,
+			&e.CreatedAt,
+			&sentAt,
+		); err != nil {
+			result = "error"
+			return nil, fmt.Errorf("scan pending outbox event: %w", err)
+		}
+		e.Status = domain.Status(status)
+		e.LastError = lastError
+		e.SentAt = sentAt
+		events = append(events, &e)
+	}
+	if err := rows.Err(); err != nil {
+		result = "error"
+		return nil, fmt.Errorf("iterate pending outbox events: %w", err)
+	}
+
+	slog.Info("lock pending outbox events completed", "events", len(events))
+	return events, nil
+}
+
+func (r *OutboxEventRepository) MarkSentTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	id uuid.UUID,
+) error {
+	tracer := otel.Tracer("OutboxEventRepository")
+	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.MarkSentTx")
+
+	started := time.Now()
+	op := "outbox_mark_sent"
+	result := MetricsResultSuccess
+
+	defer func() {
+		r.metrics.RepositoryQueryTotal.WithLabelValues(op, result).Inc()
+		r.metrics.RepositoryQueryDuration.WithLabelValues(op, result).
+			Observe(time.Since(started).Seconds())
+		span.End()
+	}()
+
+	tag, err := tx.Exec(ctxSpc, markSent, id)
+	if err != nil {
+		result = "error"
+		return fmt.Errorf("mark outbox event sent: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		result = "error"
+		return fmt.Errorf("mark outbox event sent: event %s not found", id)
+	}
+	return nil
+}
+
+func (r *OutboxEventRepository) MarkFailedTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	id uuid.UUID,
+	produceErr error,
+) error {
+	tracer := otel.Tracer("OutboxEventRepository")
+	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.MarkFailedTx")
+
+	started := time.Now()
+	op := "outbox_mark_failed"
+	result := MetricsResultSuccess
+
+	defer func() {
+		r.metrics.RepositoryQueryTotal.WithLabelValues(op, result).Inc()
+		r.metrics.RepositoryQueryDuration.WithLabelValues(op, result).
+			Observe(time.Since(started).Seconds())
+		span.End()
+	}()
+
+	errMsg := ""
+	if produceErr != nil {
+		errMsg = produceErr.Error()
+	}
+
+	tag, err := tx.Exec(ctxSpc, markFailed, id, errMsg, OutboxMaxAttempts)
+	if err != nil {
+		result = "error"
+		return fmt.Errorf("mark outbox event failed: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		result = "error"
+		return fmt.Errorf("mark outbox event failed: event %s not found", id)
+	}
 	return nil
 }

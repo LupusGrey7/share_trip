@@ -1,5 +1,5 @@
-// config for resty client
-package configs
+// configs for resty client
+package config
 
 import (
 	"net/http"

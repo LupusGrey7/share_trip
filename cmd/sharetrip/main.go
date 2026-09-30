@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -16,8 +19,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/joho/godotenv"
+	"job4j.ru/share_trip/config"
 	"job4j.ru/share_trip/internal/api"
-	appConfigs "job4j.ru/share_trip/internal/app"
+	appConfig "job4j.ru/share_trip/internal/app"
 	"job4j.ru/share_trip/internal/storage"
 )
 
@@ -36,24 +40,26 @@ func init() {
 }
 
 func main() {
-	ctx := context.Background()
-	cfg := appConfigs.ReadDBConfig()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	pool, err := storage.NewPool(ctx, cfg.DSN())
+	conf, err := config.LoadAppConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	pool, err := storage.NewPool(ctx, conf.DatabaseDSN)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer pool.Close()
 
-	// logging connection to DB
 	if pingErr := pool.Ping(ctx); pingErr != nil {
 		log.Fatalf("failed to ping database: %v", pingErr)
 	}
 	log.Info("Connected to database successfully")
 
-	//logger
-	logger, logFile, err := appConfigs.NewLogger()
+	logger, logFile, err := appConfig.NewLogger()
 	if err != nil {
 		panic(err)
 	}
@@ -64,12 +70,10 @@ func main() {
 		}
 	}(logFile)
 
-	//registry Prometheus
 	registry := prometheus.NewRegistry()
 	m := metrics.New(registry)
 
-	// init Tracing (OpenTelemetry → otel-collector → Jaeger)
-	tp, err := appConfigs.InitTracing(ctx)
+	tp, err := appConfig.InitTracing(ctx)
 	if err != nil {
 		log.Error("init tracing failed", "error", err)
 		os.Exit(1)
@@ -82,34 +86,41 @@ func main() {
 		}
 	}()
 
-	//app fiber
 	app := fiber.New()
-	app.Use(tracing.NewFiberMiddleware()) // init Tracing OpenTelemetry
+	app.Use(tracing.NewFiberMiddleware())
 	app.Use(func(c *fiber.Ctx) error {
-		ctx := c.UserContext()
-		// correlation id = OTel TraceID (X-Request-ID + Locals; в handlers — trace_id в slog)
-		traceID := trace.SpanFromContext(ctx).SpanContext().TraceID().String()
+		reqCtx := c.UserContext()
+		traceID := trace.SpanFromContext(reqCtx).SpanContext().TraceID().String()
 		c.Set("X-Request-ID", traceID)
 		c.Locals("requestid", traceID)
 		return c.Next()
 	})
-	//add custom logger, before add api and metrics
 	app.Use(middleware.Correlation(logger))
-	//add metrics middleware
 	app.Use(api.NewHTTPMetricsMiddleware(m))
 
-	keycloakCfg := appConfigs.GetKeycloakConfig()
-	appConfigs.LogKeycloakConfig(keycloakCfg)
-	appConfigs.LogContractConfig()
+	keycloakCfg := appConfig.KeycloakFromConfig(conf)
+	appConfig.LogKeycloakConfig(keycloakCfg)
+	appConfig.LogContractConfig(conf)
 
-	//build the Server
-	appConfigs.BuildServer(app, pool, registry, m, keycloakCfg)
+	outboxPublisher := appConfig.BuildServer(app, pool, registry, m, keycloakCfg, conf)
+	go func() {
+		if runErr := outboxPublisher.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
+			log.Errorf("outbox publisher stopped: %v", runErr)
+		}
+	}()
 
-	// log registered routes
-	api.LogRegisteredRoutes(":8080")
+	api.LogRegisteredRoutes(":" + conf.HTTPPort)
 
-	//listen the app
-	err = app.Listen(":8080")
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if shutErr := app.ShutdownWithContext(shutdownCtx); shutErr != nil {
+			log.Errorf("fiber shutdown: %v", shutErr)
+		}
+	}()
+
+	err = app.Listen(":" + conf.HTTPPort)
 	if err != nil {
 		log.Fatal("failed to listen: %v", err)
 	}

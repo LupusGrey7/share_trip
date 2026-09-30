@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/go-resty/resty/v2"
-	"job4j.ru/share_trip/configs"
+	"job4j.ru/share_trip/config"
 )
 
 type BaseContractClient interface {
@@ -19,10 +19,10 @@ func NewContractClient(baseURL string) *ContractClient {
 	return &ContractClient{
 		httpClient: resty.New().
 			SetBaseURL(baseURL).
-			SetTimeout(configs.Timeout).
-			SetRetryCount(configs.RetryCount).
-			SetRetryWaitTime(configs.RetryWaitTime).
-			SetRetryMaxWaitTime(configs.RetryMaxWaitTime).
-			AddRetryCondition(configs.RetryConditionFunc),
+			SetTimeout(config.Timeout).
+			SetRetryCount(config.RetryCount).
+			SetRetryWaitTime(config.RetryWaitTime).
+			SetRetryMaxWaitTime(config.RetryMaxWaitTime).
+			AddRetryCondition(config.RetryConditionFunc),
 	}
 }

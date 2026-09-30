@@ -1,3 +1,4 @@
+// scenario: MoveTripFromDraftToPublish — Contract check outside tx, then short DB transaction.
 package service
 
 import (
@@ -9,7 +10,6 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
-	"job4j.ru/share_trip/internal/clients/kafka"
 	"job4j.ru/share_trip/internal/observability/logctx"
 	outboxdomain "job4j.ru/share_trip/internal/outbox/domain"
 	"job4j.ru/share_trip/internal/trip/domain"
@@ -47,9 +47,8 @@ func (s *TripService) MoveTripFromDraftToPublish(
 		slog.String("operation", "MoveTripFromDraftToPublish"),
 		slog.String("client_id", req.ID),
 	)
-	logger.Debug("move trip from draft to publish started")
 
-	eventID := uuid.New().String()
+	eventID := uuid.New()
 	occurredAt := time.Now()
 
 	txCtx, txSpan := otel.Tracer("database").Start(ctxSpc, "DB.Transaction")
@@ -57,7 +56,6 @@ func (s *TripService) MoveTripFromDraftToPublish(
 
 	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*domain.MoveTripFromDraftToPublishOutput, error) {
 		txLogger := logger.With(slog.String("layer", "transaction"))
-		txLogger.Debug("move trip from draft to publish transaction execution started")
 
 		resp, err := s.useCase.MoveTripFromDraftToPublish(txCtx, tx, s.repo, req)
 		if err != nil {
@@ -67,22 +65,20 @@ func (s *TripService) MoveTripFromDraftToPublish(
 			return nil, err
 		}
 
-		payload := outboxdomain.PayloadEvent{TripID: resp.ID}
-		event := outboxdomain.Entity{
-			EventID:     eventID,
-			EventName:   string(outboxdomain.EventPublished),
-			AggregateId: resp.ID,
-			Payload:     payload,
-			CreatedAt:   occurredAt,
-		}
+		event := outboxdomain.NewTripPublishedEvent(
+			eventID,
+			resp.ID,
+			resp.DriverID,
+			req.CompanyID,
+			occurredAt,
+		)
 
-		err = s.outboxRepo.CreateEventWhenTripMovesFromDraftToPublishedTx(ctxSpc, tx, &event)
+		err = s.outboxRepo.CreateTx(ctxSpc, tx, &event)
 		if err != nil {
 			txLogger.Error("move trip from draft to publish outbox create event failed", slog.Any("error", err))
-			return nil, fmt.Errorf("error while MoveTripFromDraftToPublish create Outbox Event: %w", err)
+			return nil, fmt.Errorf("error while MoveTripFromDraftToPublish create outbox event: %w", err)
 		}
 
-		txLogger.Debug("transaction execution completed", slog.String("trip_id", resp.ID.String()))
 		return resp, nil
 	})
 
@@ -95,25 +91,5 @@ func (s *TripService) MoveTripFromDraftToPublish(
 		return nil, err
 	}
 
-	if pubErr := s.kafka.PublishTripPublished(
-		ctxSpc,
-		kafka.TripPublished{
-			EventID:    eventID,
-			EventType:  kafka.EventTypePublished,
-			OccurredAt: occurredAt,
-			Payload: kafka.TripPublishedPayload{
-				TripID:    res.ID.String(),
-				DriverID:  res.DriverID.String(),
-				CompanyID: req.CompanyID,
-			},
-		}); pubErr != nil {
-		logger.Error("kafka publish failed after commit, event lost until poller",
-			slog.String("trip_id", res.ID.String()),
-			slog.String("event_id", eventID),
-			slog.Any("error", pubErr),
-		)
-	}
-
-	logger.Debug("move trip from draft to publish completed", slog.String("trip_id", res.ID.String()))
 	return res, nil
 }
