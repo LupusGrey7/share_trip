@@ -7,10 +7,7 @@ import (
 	"job4j.ru/share_trip/internal/outbox/domain"
 )
 
-func (u *OutboxUseCase) LockPendingTx(
-	ctx context.Context,
-	tx pgx.Tx,
-	limit int,
-) ([]*domain.Entity, error) {
-	return u.repo.LockPendingTx(ctx, tx, limit)
+// LockPending - lock pending events in one transaction
+func (u *OutboxUseCase) LockPending(ctx context.Context, tx pgx.Tx, limit int) ([]*domain.Entity, error) {
+	return u.repo.LockPending(ctx, tx, limit)
 }

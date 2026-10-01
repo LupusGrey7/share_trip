@@ -7,9 +7,17 @@ import (
 	"context"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"job4j.ru/share_trip/internal/clients/kafka"
 	"job4j.ru/share_trip/internal/observability/metrics"
 	"job4j.ru/share_trip/internal/outbox/service"
+	"job4j.ru/share_trip/internal/outbox/usecase"
+	"job4j.ru/share_trip/internal/storage"
+)
+
+const (
+	defaultInterval  = time.Second
+	defaultBatchSize = 50
 )
 
 type TripEventPublisher interface {
@@ -17,29 +25,34 @@ type TripEventPublisher interface {
 	PublishBatch(ctx context.Context) error
 }
 
-type Publisher struct {
+type OutboxPublisher struct {
 	producer  kafka.TripEventProducer
 	outbox    *service.OutboxService
 	interval  time.Duration
 	batchSize int
 }
 
-func NewPublisher(
-	_ *metrics.Metrics,
+func NewOutboxPublisher(
+	m *metrics.Metrics,
 	producer kafka.TripEventProducer,
-	outbox *service.OutboxService,
+	pool *pgxpool.Pool,
 	interval time.Duration,
 	batchSize int,
-) *Publisher {
+) *OutboxPublisher {
 	if interval <= 0 {
-		interval = time.Second
+		interval = defaultInterval
 	}
 	if batchSize <= 0 {
-		batchSize = 50
+		batchSize = defaultBatchSize
 	}
-	return &Publisher{
+
+	outboxRepo := storage.NewOutboxEventRepository(m)
+	outboxUC := usecase.NewOutboxUseCase(outboxRepo)
+	outboxSvc := service.NewOutboxService(m, pool, outboxUC)
+
+	return &OutboxPublisher{
 		producer:  producer,
-		outbox:    outbox,
+		outbox:    outboxSvc,
 		interval:  interval,
 		batchSize: batchSize,
 	}

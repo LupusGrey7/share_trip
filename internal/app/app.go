@@ -10,18 +10,17 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
-	"job4j.ru/share_trip/configs"
+
 	"job4j.ru/share_trip/internal/api"
 	clientContract "job4j.ru/share_trip/internal/clients/http/contract"
 	clientContractUsecase "job4j.ru/share_trip/internal/clients/http/contract/usecase"
 	"job4j.ru/share_trip/internal/clients/kafka"
+	"job4j.ru/share_trip/internal/config"
 	"job4j.ru/share_trip/internal/middleware"
 	"job4j.ru/share_trip/internal/observability/logctx"
 	"job4j.ru/share_trip/internal/observability/metrics"
 	"job4j.ru/share_trip/internal/observability/tracing"
-	"job4j.ru/share_trip/internal/outbox"
-	outboxservice "job4j.ru/share_trip/internal/outbox/service"
-	outboxusecase "job4j.ru/share_trip/internal/outbox/usecase"
+
 	"job4j.ru/share_trip/internal/storage"
 	"job4j.ru/share_trip/internal/trip/service"
 	"job4j.ru/share_trip/internal/trip/usecase"
@@ -34,10 +33,10 @@ func BuildServer(
 	registry *prometheus.Registry,
 	m *metrics.Metrics,
 	keycloakCfg middleware.KeycloakConfig,
-) *outbox.Publisher {
+) {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
-	contractClient := clientContract.NewContractClient(configs.ContractServiceURL())
+	contractClient := clientContract.NewContractClient(config.ContractServiceURL())
 
 	repo := storage.NewRepoPg(pool)
 	repoTrip := storage.NewTripRepository(m, pool)
@@ -47,32 +46,18 @@ func BuildServer(
 	contractUseCase := clientContractUsecase.NewContractUsecase(contractClient)
 	tripUseCase := usecase.NewTripUseCase(contractUseCase)
 
-	kafkaProducer := newKafkaProducer()
-
 	infoService := service.NewInfoService(infoUseCase, repo)
 	tripService := service.NewTripService(m, pool, repoTrip, outboxRepo, tripUseCase)
-
-	outboxUC := outboxusecase.NewOutboxUseCase(outboxRepo)
-	outboxSvc := outboxservice.NewOutboxService(m, pool, outboxUC)
-	outboxPublisher := outbox.NewPublisher(
-		m,
-		kafkaProducer,
-		outboxSvc,
-		configs.EnvDurationMS("OUTBOX_POLL_INTERVAL_MS", 1000),
-		configs.EnvInt("OUTBOX_BATCH_SIZE", 50),
-	)
 
 	server := api.NewServer(registry, validate, infoService, tripService)
 
 	keycloakAuth := middleware.KeycloakRefreshTokenMiddleware(keycloakCfg)
 	server.SetupRoutes(app, keycloakAuth)
-
-	return outboxPublisher
 }
 
-func newKafkaProducer() kafka.TripEventProducer {
-	brokersCSV := configs.Env("KAFKA_BROKERS", "localhost:9092")
-	topic := configs.Env("KAFKA_TOPIC_TRIP_EVENTS", "trip.events")
+func NewKafkaProducer() *kafka.Producer {
+	brokersCSV := config.Env("KAFKA_BROKERS", "localhost:9092")
+	topic := config.Env("KAFKA_TOPIC_TRIP_EVENTS", "trip.events")
 	brokers := strings.Split(brokersCSV, ",")
 	for i := range brokers {
 		brokers[i] = strings.TrimSpace(brokers[i])
@@ -82,38 +67,38 @@ func newKafkaProducer() kafka.TripEventProducer {
 
 func ReadDBConfig() storage.Config {
 	return storage.Config{
-		Host:     configs.Env("DB_HOST", "localhost"),
-		Port:     configs.EnvInt("DB_PORT", 6543),
-		User:     configs.Env("DB_USER", "postgres"),
-		Password: configs.Env("DB_PASSWORD", "password"),
-		DBName:   configs.Env("DB_NAME", "share_trip"),
-		SSLMode:  configs.Env("DB_SSLMODE", "disable"),
+		Host:     config.Env("DB_HOST", "localhost"),
+		Port:     config.EnvInt("DB_PORT", 6543),
+		User:     config.Env("DB_USER", "postgres"),
+		Password: config.Env("DB_PASSWORD", "password"),
+		DBName:   config.Env("DB_NAME", "share_trip"),
+		SSLMode:  config.Env("DB_SSLMODE", "disable"),
 	}
 }
 
 func InitTracing(ctx context.Context) (*tracing.TracerProvider, error) {
 	return tracing.NewProvider(ctx, tracing.Config{
-		ServiceName:    configs.Env("OTEL_SERVICE_NAME", "share-trip"),
-		ServiceVersion: configs.Env("OTEL_SERVICE_VERSION", "1.0.0"),
-		Environment:    configs.Env("OTEL_ENVIRONMENT", "local"),
-		Endpoint:       configs.Env("OTEL_EXPORTER_ENDPOINT", "localhost:4319"),
+		ServiceName:    config.Env("OTEL_SERVICE_NAME", "share-trip"),
+		ServiceVersion: config.Env("OTEL_SERVICE_VERSION", "1.0.0"),
+		Environment:    config.Env("OTEL_ENVIRONMENT", "local"),
+		Endpoint:       config.Env("OTEL_EXPORTER_ENDPOINT", "localhost:4319"),
 	})
 }
 
 // getKeycloakConfig - get the keycloak config
 func GetKeycloakConfig() middleware.KeycloakConfig {
 	return middleware.KeycloakConfig{
-		Issuer:       configs.Env("KEYCLOAK_ISSUER", "http://localhost:8087/realms/sharetrip"),
-		ClientID:     configs.Env("KEYCLOAK_CLIENT_ID", "sharetrip-api"),
-		ClientSecret: configs.Env("KEYCLOAK_CLIENT_SECRET", ""),
+		Issuer:       config.Env("KEYCLOAK_ISSUER", "http://localhost:8087/realms/sharetrip"),
+		ClientID:     config.Env("KEYCLOAK_CLIENT_ID", "sharetrip-api"),
+		ClientSecret: config.Env("KEYCLOAK_CLIENT_SECRET", ""),
 	}
 }
 
 // LogContractConfig logs resolved Contract Service base URL (from .env or default).
 func LogContractConfig() {
 	logctx.Logger(context.Background()).Info("contract service config",
-		slog.String("url", configs.ContractServiceURL()),
-		slog.String("env_var", configs.ContractServiceEnv),
+		slog.String("url", config.ContractServiceURL()),
+		slog.String("env_var", config.ContractServiceEnv),
 	)
 }
 

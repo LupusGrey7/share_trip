@@ -11,9 +11,9 @@ import (
 
 // BaseOutboxUseCase — DB operations for outbox (calls repo).
 type BaseOutboxUseCase interface {
-	LockPendingTx(ctx context.Context, tx pgx.Tx, limit int) ([]*domain.Entity, error)
-	MarkSentTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
-	MarkFailedTx(ctx context.Context, tx pgx.Tx, id uuid.UUID, err error) error
+	LockPending(ctx context.Context, tx pgx.Tx, limit int) ([]*domain.Entity, error)
+	MarkSent(ctx context.Context, tx pgx.Tx, ids []uuid.UUID) error
+	MarkFailed(ctx context.Context, tx pgx.Tx, ids []uuid.UUID, err error) error
 }
 
 type OutboxUseCase struct {

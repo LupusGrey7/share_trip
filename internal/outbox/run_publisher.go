@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func (p *Publisher) Run(ctx context.Context) error {
+func (p *OutboxPublisher) Run(ctx context.Context) error {
 	slog.Info("outbox publisher started",
 		slog.Duration("interval", p.interval),
 		slog.Int("batch_size", p.batchSize),

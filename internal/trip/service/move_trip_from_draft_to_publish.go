@@ -73,7 +73,7 @@ func (s *TripService) MoveTripFromDraftToPublish(
 			occurredAt,
 		)
 
-		err = s.outboxRepo.CreateTx(ctxSpc, tx, &event)
+		err = s.outboxRepo.CreateEvent(ctxSpc, tx, &event)
 		if err != nil {
 			txLogger.Error("move trip from draft to publish outbox create event failed", slog.Any("error", err))
 			return nil, fmt.Errorf("error while MoveTripFromDraftToPublish create outbox event: %w", err)

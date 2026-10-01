@@ -34,7 +34,7 @@ func TestOutboxRepo_CreateLockMark(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	require.NoError(t, repo.CreateTx(ctx, tx, &event))
+	require.NoError(t, repo.CreateEvent(ctx, tx, &event))
 	require.NoError(t, tx.Commit(ctx))
 
 	t.Cleanup(func() {
@@ -45,7 +45,7 @@ func TestOutboxRepo_CreateLockMark(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = txLock.Rollback(ctx) }()
 
-	pending, err := repo.LockPendingTx(ctx, txLock, 50)
+	pending, err := repo.LockPending(ctx, txLock, 50)
 	require.NoError(t, err)
 
 	var found *domain.Entity
@@ -55,12 +55,12 @@ func TestOutboxRepo_CreateLockMark(t *testing.T) {
 			break
 		}
 	}
-	require.NotNil(t, found, "created event must appear in LockPendingTx")
+	require.NotNil(t, found, "created event must appear in LockPending")
 	require.Equal(t, domain.StatusPending, found.Status)
 	require.Equal(t, "acme01", found.Payload.CompanyID)
 	require.Equal(t, tripID.String(), found.Payload.TripID)
 
-	require.NoError(t, repo.MarkFailedTx(ctx, txLock, eventID, errors.New("kafka timeout")))
+	require.NoError(t, repo.MarkFailed(ctx, txLock, []uuid.UUID{eventID}, errors.New("kafka timeout")))
 	require.NoError(t, txLock.Commit(ctx))
 
 	var (
@@ -82,7 +82,7 @@ func TestOutboxRepo_CreateLockMark(t *testing.T) {
 	defer func() { _ = txSent.Rollback(ctx) }()
 
 	// status still pending — can lock again after failed attempt
-	require.NoError(t, repo.MarkSentTx(ctx, txSent, eventID))
+	require.NoError(t, repo.MarkSent(ctx, txSent, []uuid.UUID{eventID}))
 	require.NoError(t, txSent.Commit(ctx))
 
 	var sentAt *time.Time

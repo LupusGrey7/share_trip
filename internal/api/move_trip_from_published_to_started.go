@@ -52,7 +52,7 @@ func (s *Server) MoveTripFromPublishedToStarted(c *fiber.Ctx) error {
 		slog.String("client_id", driverID.String()),
 	)
 	ctx = logctx.WithLogger(ctx, logger)
-	
+
 	domainReq := toMoveTripFromPublishedToStartedInput(request)
 
 	resp, err := s.TripService.MoveTripFromPublishedToStarted(ctx, domainReq)

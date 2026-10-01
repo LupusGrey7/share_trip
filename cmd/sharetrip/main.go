@@ -21,6 +21,8 @@ import (
 	"github.com/joho/godotenv"
 	"job4j.ru/share_trip/internal/api"
 	appConfigs "job4j.ru/share_trip/internal/app"
+	"job4j.ru/share_trip/internal/config"
+	"job4j.ru/share_trip/internal/outbox"
 	"job4j.ru/share_trip/internal/storage"
 )
 
@@ -44,11 +46,11 @@ func main() {
 
 	cfg := appConfigs.ReadDBConfig()
 
+	// database
 	pool, err := storage.NewPool(ctx, cfg.DSN())
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	defer pool.Close()
 
 	if pingErr := pool.Ping(ctx); pingErr != nil {
@@ -67,6 +69,7 @@ func main() {
 		}
 	}(logFile)
 
+	// metrics
 	registry := prometheus.NewRegistry()
 	m := metrics.New(registry)
 
@@ -99,12 +102,32 @@ func main() {
 	appConfigs.LogKeycloakConfig(keycloakCfg)
 	appConfigs.LogContractConfig()
 
-	outboxPublisher := appConfigs.BuildServer(app, pool, registry, m, keycloakCfg)
+	// producer
+	kafkaProducer := appConfigs.NewKafkaProducer()
+	defer func() {
+		if err := kafkaProducer.Close(); err != nil {
+			log.Errorf("failed to close kafka producer: %v", err)
+		}
+	}()
+
+	// outbox publisher
+	outboxPublisher := outbox.NewOutboxPublisher(
+		m,
+		kafkaProducer,
+		pool,
+		config.EnvDurationMS("OUTBOX_POLL_INTERVAL_MS", 1000),
+		config.EnvInt("OUTBOX_BATCH_SIZE", 50),
+	)
+	outboxDone := make(chan struct{})
 	go func() {
+		defer close(outboxDone)
 		if runErr := outboxPublisher.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
 			log.Errorf("outbox publisher stopped: %v", runErr)
 		}
 	}()
+
+	// server
+	appConfigs.BuildServer(app, pool, registry, m, keycloakCfg)
 
 	api.LogRegisteredRoutes(":8080")
 
@@ -118,6 +141,8 @@ func main() {
 	}()
 
 	err = app.Listen(":8080")
+	stop()
+	<-outboxDone
 	if err != nil {
 		log.Fatal("failed to listen: %v", err)
 	}

@@ -7,6 +7,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (u *OutboxUseCase) MarkSentTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
-	return u.repo.MarkSentTx(ctx, tx, id)
+func (u *OutboxUseCase) MarkSent(ctx context.Context, tx pgx.Tx, ids []uuid.UUID) error {
+	return u.repo.MarkSent(ctx, tx, ids)
 }

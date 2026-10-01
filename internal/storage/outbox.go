@@ -21,12 +21,12 @@ const (
 	OutboxMaxAttempts = 10
 
 	createEvent = `
-insert into outbox_events(id, aggregate_type, aggregate_id, event_type, payload, status, attempts, created_at)
-values($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO outbox_events(id, aggregate_type, aggregate_id, event_type, payload, status, attempts, created_at)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 	lockPending = `
-select
+SELECT
 	id,
 	aggregate_type,
 	aggregate_id,
@@ -38,37 +38,37 @@ select
 	created_at,
 	sent_at
 from outbox_events
-where status = 'pending'
-order by created_at
-for update skip locked
-limit $1
+WHERE status = 'pending'
+ORDER BY created_at
+FOR UPDATE SKIP LOCKED
+LIMIT $1
 `
 
 	markSent = `
-update outbox_events
-set status = 'sent',
-    sent_at = now(),
-    last_error = null
-where id = $1
+UPDATE outbox_events
+SET status = 'sent',
+    sent_at = NOW(),
+    last_error = NULL
+WHERE id = ANY($1::uuid[])
 `
 
 	markFailed = `
-update outbox_events
-set attempts = attempts + 1,
+UPDATE outbox_events
+SET attempts = attempts + 1,
     last_error = $2,
-    status = case
-        when attempts + 1 >= $3 then 'failed'
-        else status
-    end
-where id = $1
+    status = CASE
+        WHEN attempts + 1 >= $3 THEN 'failed'
+        ELSE status
+    END
+WHERE id = ANY($1::uuid[])
 `
 )
 
 type OutboxRepository interface {
-	CreateTx(ctx context.Context, tx pgx.Tx, o *domain.Entity) error
-	LockPendingTx(ctx context.Context, tx pgx.Tx, limit int) ([]*domain.Entity, error)
-	MarkSentTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
-	MarkFailedTx(ctx context.Context, tx pgx.Tx, id uuid.UUID, produceErr error) error
+	CreateEvent(ctx context.Context, tx pgx.Tx, o *domain.Entity) error
+	LockPending(ctx context.Context, tx pgx.Tx, limit int) ([]*domain.Entity, error)
+	MarkSent(ctx context.Context, tx pgx.Tx, ids []uuid.UUID) error
+	MarkFailed(ctx context.Context, tx pgx.Tx, ids []uuid.UUID, produceErr error) error
 }
 
 type OutboxEventRepository struct {
@@ -81,13 +81,13 @@ func NewOutboxEventRepository(m *metrics.Metrics) *OutboxEventRepository {
 	}
 }
 
-func (r *OutboxEventRepository) CreateTx(
+func (r *OutboxEventRepository) CreateEvent(
 	ctx context.Context,
 	tx pgx.Tx,
 	o *domain.Entity,
 ) error {
 	tracer := otel.Tracer("OutboxEventRepository")
-	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.CreateTx")
+	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.CreateEvent")
 
 	started := time.Now()
 	op := "outbox_create"
@@ -103,7 +103,7 @@ func (r *OutboxEventRepository) CreateTx(
 	logger := logctx.Logger(ctxSpc).With(
 		slog.String("layer", "repository"),
 		slog.String("repository", "OutboxEventRepository"),
-		slog.String("operation", "CreateTx"),
+		slog.String("operation", "CreateEvent"),
 		slog.String("aggregate_id", o.AggregateID.String()),
 		slog.String("event_id", o.ID.String()),
 	)
@@ -139,13 +139,13 @@ func (r *OutboxEventRepository) CreateTx(
 	return nil
 }
 
-func (r *OutboxEventRepository) LockPendingTx(
+func (r *OutboxEventRepository) LockPending(
 	ctx context.Context,
 	tx pgx.Tx,
 	limit int,
 ) ([]*domain.Entity, error) {
 	tracer := otel.Tracer("OutboxEventRepository")
-	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.LockPendingTx")
+	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.LockPending")
 
 	started := time.Now()
 	op := "outbox_lock_pending"
@@ -172,10 +172,10 @@ func (r *OutboxEventRepository) LockPendingTx(
 	events := make([]*domain.Entity, 0, limit)
 	for rows.Next() {
 		var (
-			e          domain.Entity
-			status     string
-			lastError  *string
-			sentAt     *time.Time
+			e         domain.Entity
+			status    string
+			lastError *string
+			sentAt    *time.Time
 		)
 		if err := rows.Scan(
 			&e.ID,
@@ -206,13 +206,13 @@ func (r *OutboxEventRepository) LockPendingTx(
 	return events, nil
 }
 
-func (r *OutboxEventRepository) MarkSentTx(
+func (r *OutboxEventRepository) MarkSent(
 	ctx context.Context,
 	tx pgx.Tx,
-	id uuid.UUID,
+	ids []uuid.UUID,
 ) error {
 	tracer := otel.Tracer("OutboxEventRepository")
-	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.MarkSentTx")
+	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.MarkSent")
 
 	started := time.Now()
 	op := "outbox_mark_sent"
@@ -225,26 +225,31 @@ func (r *OutboxEventRepository) MarkSentTx(
 		span.End()
 	}()
 
-	tag, err := tx.Exec(ctxSpc, markSent, id)
+	if len(ids) == 0 {
+		result = "error"
+		return fmt.Errorf("mark outbox event sent: no events to mark")
+	}
+
+	tag, err := tx.Exec(ctxSpc, markSent, ids)
 	if err != nil {
 		result = "error"
 		return fmt.Errorf("mark outbox event sent: %w", err)
 	}
-	if tag.RowsAffected() == 0 {
+	if tag.RowsAffected() != int64(len(ids)) {
 		result = "error"
-		return fmt.Errorf("mark outbox event sent: event %s not found", id)
+		return fmt.Errorf("mark outbox events sent: updated %d of %d", tag.RowsAffected(), len(ids))
 	}
 	return nil
 }
 
-func (r *OutboxEventRepository) MarkFailedTx(
+func (r *OutboxEventRepository) MarkFailed(
 	ctx context.Context,
 	tx pgx.Tx,
-	id uuid.UUID,
+	ids []uuid.UUID,
 	produceErr error,
 ) error {
 	tracer := otel.Tracer("OutboxEventRepository")
-	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.MarkFailedTx")
+	ctxSpc, span := tracer.Start(ctx, "OutboxEventRepository.MarkFailed")
 
 	started := time.Now()
 	op := "outbox_mark_failed"
@@ -262,14 +267,14 @@ func (r *OutboxEventRepository) MarkFailedTx(
 		errMsg = produceErr.Error()
 	}
 
-	tag, err := tx.Exec(ctxSpc, markFailed, id, errMsg, OutboxMaxAttempts)
+	tag, err := tx.Exec(ctxSpc, markFailed, ids, errMsg, OutboxMaxAttempts)
 	if err != nil {
 		result = "error"
 		return fmt.Errorf("mark outbox event failed: %w", err)
 	}
-	if tag.RowsAffected() == 0 {
+	if tag.RowsAffected() != int64(len(ids)) {
 		result = "error"
-		return fmt.Errorf("mark outbox event failed: event %s not found", id)
+		return fmt.Errorf("mark outbox events failed: updated %d of %d", tag.RowsAffected(), len(ids))
 	}
 	return nil
 }

@@ -3,19 +3,15 @@ package service
 import (
 	"context"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"job4j.ru/share_trip/internal/observability/metrics"
 	"job4j.ru/share_trip/internal/outbox/domain"
 	"job4j.ru/share_trip/internal/outbox/usecase"
 )
 
-// BaseOutboxService — publisher calls this; Lock/Mark must share one TX.
+// BaseOutboxService — publisher calls this; lock + mark run in one TX inside the service.
 type BaseOutboxService interface {
-	LockPendingTx(ctx context.Context, tx pgx.Tx, limit int) ([]*domain.Entity, error)
-	MarkSentTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
-	MarkFailedTx(ctx context.Context, tx pgx.Tx, id uuid.UUID, err error) error
+	ProcessPending(ctx context.Context, limit int, handle func(ctx context.Context, e *domain.Entity) error) error
 }
 
 // OutboxService orchestrates outbox for the publisher (service → usecase → repo).
@@ -35,8 +31,4 @@ func NewOutboxService(
 		pool:    pool,
 		useCase: useCase,
 	}
-}
-
-func (o *OutboxService) Pool() *pgxpool.Pool {
-	return o.pool
 }

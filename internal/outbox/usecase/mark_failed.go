@@ -7,6 +7,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func (u *OutboxUseCase) MarkFailedTx(ctx context.Context, tx pgx.Tx, id uuid.UUID, err error) error {
-	return u.repo.MarkFailedTx(ctx, tx, id, err)
+func (u *OutboxUseCase) MarkFailed(ctx context.Context, tx pgx.Tx, ids []uuid.UUID, err error) error {
+	return u.repo.MarkFailed(ctx, tx, ids, err)
 }
