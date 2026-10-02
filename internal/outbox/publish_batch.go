@@ -2,13 +2,9 @@ package outbox
 
 import (
 	"context"
-
-	"job4j.ru/share_trip/internal/outbox/domain"
 )
 
-// PublishBatch locks a pending batch in one TX, produces to Kafka, then marks sent/failed.
+// PublishBatch publishes one batch of pending outbox events (see service.PublishPending).
 func (p *OutboxPublisher) PublishBatch(ctx context.Context) error {
-	return p.outbox.ProcessPending(ctx, p.batchSize, func(ctx context.Context, e *domain.Entity) error {
-		return p.producer.PublishTripPublished(ctx, e.ToTripPublished())
-	})
+	return p.outbox.PublishPending(ctx, p.batchSize)
 }

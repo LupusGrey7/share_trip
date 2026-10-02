@@ -26,7 +26,6 @@ type TripEventPublisher interface {
 }
 
 type OutboxPublisher struct {
-	producer  kafka.TripEventProducer
 	outbox    *service.OutboxService
 	interval  time.Duration
 	batchSize int
@@ -48,10 +47,9 @@ func NewOutboxPublisher(
 
 	outboxRepo := storage.NewOutboxEventRepository(m)
 	outboxUC := usecase.NewOutboxUseCase(outboxRepo)
-	outboxSvc := service.NewOutboxService(m, pool, outboxUC)
+	outboxSvc := service.NewOutboxService(m, pool, outboxUC, producer)
 
 	return &OutboxPublisher{
-		producer:  producer,
 		outbox:    outboxSvc,
 		interval:  interval,
 		batchSize: batchSize,
