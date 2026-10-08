@@ -1,4 +1,5 @@
 // scenario: MoveTripFromDraftToPublish — Contract check outside tx, then short DB transaction.
+
 package service
 
 import (
@@ -23,7 +24,7 @@ func (s *TripService) MoveTripFromDraftToPublish(
 	ctx context.Context,
 	req domain.MoveTripFromDraftToPublishInput,
 ) (res *domain.MoveTripFromDraftToPublishOutput, err error) {
-	ctxSpc, span := otel.Tracer("TripService").Start(ctx, "TripService.MoveTripFromDraftToPublish")
+	ctx, span := otel.Tracer("TripService").Start(ctx, "TripService.MoveTripFromDraftToPublish")
 
 	started := time.Now()
 	result := "success"
@@ -42,7 +43,7 @@ func (s *TripService) MoveTripFromDraftToPublish(
 		span.End()
 	}()
 
-	logger := logctx.Logger(ctxSpc).With(
+	logger := logctx.Logger(ctx).With(
 		slog.String("service", "TripService"),
 		slog.String("operation", "MoveTripFromDraftToPublish"),
 		slog.String("client_id", req.ID),
@@ -51,45 +52,46 @@ func (s *TripService) MoveTripFromDraftToPublish(
 	eventID := uuid.New()
 	occurredAt := time.Now()
 
-	txCtx, txSpan := otel.Tracer("database").Start(ctxSpc, "DB.Transaction")
+	txCtx, txSpan := otel.Tracer("database").Start(ctx, "DB.Transaction")
 	defer txSpan.End()
 
 	res, err = tx(txCtx, s.pool, func(tx pgx.Tx) (*domain.MoveTripFromDraftToPublishOutput, error) {
 		txLogger := logger.With(slog.String("layer", "transaction"))
+		txLogger.Debug("move trip from draft to publish transaction started", slog.String("trip_id", req.ID))
 
 		resp, err := s.useCase.MoveTripFromDraftToPublish(txCtx, tx, s.repo, req)
 		if err != nil {
-			if !errors.Is(err, usecase.ErrAlreadyDone) {
-				txLogger.Error("move trip from draft to publish usecase failed", slog.Any("error", err))
-			}
 			return nil, err
 		}
 
-		event := outboxdomain.NewTripPublishedEvent(
-			eventID,
-			resp.ID,
-			resp.DriverID,
-			req.CompanyID,
-			occurredAt,
-		)
+		event := outboxdomain.Entity{
+			ID:            eventID,
+			AggregateType: outboxdomain.AggregateTypeTrip,
+			AggregateID:   resp.ID,
+			EventType:     string(outboxdomain.EventPublished),
+			Payload: outboxdomain.PayloadEvent{
+				TripID:    resp.ID.String(),
+				DriverID:  resp.DriverID.String(),
+				CompanyID: req.CompanyID,
+			},
+			Status:    outboxdomain.StatusPending,
+			Attempts:  0,
+			CreatedAt: occurredAt,
+		}
 
-		err = s.outboxRepo.CreateEvent(ctxSpc, tx, &event)
+		err = s.outboxRepo.CreateEvent(txCtx, tx, &event)
 		if err != nil {
-			txLogger.Error("move trip from draft to publish outbox create event failed", slog.Any("error", err))
 			return nil, fmt.Errorf("error while MoveTripFromDraftToPublish create outbox event: %w", err)
 		}
 
+		txLogger.Debug("move trip from draft to publish transaction completed", slog.String("trip_id", req.ID))
 		return resp, nil
 	})
 
 	if err != nil {
-		if !errors.Is(err, usecase.ErrAlreadyDone) {
-			logger.Error("move trip from draft to publish failed", slog.Any("error", err))
-			txSpan.RecordError(err)
-			txSpan.SetStatus(codes.Error, err.Error())
-		}
 		return nil, err
 	}
 
+	logger.Debug("move trip from draft to publish completed", slog.String("trip_id", req.ID))
 	return res, nil
 }

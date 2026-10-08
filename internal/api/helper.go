@@ -3,16 +3,19 @@ package api
 
 import (
 	"errors"
+	"log/slog"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"job4j.ru/share_trip/internal/clients/http/contract"
 	"job4j.ru/share_trip/internal/middleware"
+	"job4j.ru/share_trip/internal/observability/logctx"
 	"job4j.ru/share_trip/internal/trip/usecase"
 )
 
 // HandleError maps domain/api sentinel errors to HTTP responses.
 func HandleError(c *fiber.Ctx, err error) error {
+	logger := logctx.Logger(c.UserContext()).With(slog.String("operation", "HandleError"))
 	switch {
 	case errors.Is(err, ErrClaimsNotFound): // 401
 		return ErrResponse(c, fiber.StatusUnauthorized, ErrorClaimsNotFound)
@@ -37,13 +40,14 @@ func HandleError(c *fiber.Ctx, err error) error {
 		return ErrResponse(c, fiber.StatusGatewayTimeout, ErrorContractTimeout)
 	case errors.Is(err, contracts.ErrUnavailable): // 503 — Contract down / 5xx after retry
 		return ErrResponse(c, fiber.StatusServiceUnavailable, ErrorContractUnavailable)
-	case errors.Is(err, contracts.ErrBadRequest): // 400 — Contract отклонил запрос как невалидный
+	case errors.Is(err, contracts.ErrBadRequest): // 400 — contract rejected request as invalid
 		return ErrResponse(c, fiber.StatusBadRequest, ErrorContractBadRequest)
 	case errors.Is(err, contracts.ErrForbidden): // 403
 		return ErrResponse(c, fiber.StatusForbidden, ErrorContractForbidden)
 	case errors.Is(err, ErrBadGateway): // 502 — e.g. sub is not a UUID
 		return ErrResponse(c, fiber.StatusBadGateway, ErrorBadGateway)
 	default:
+		logger.Error("internal server error", slog.String("error", err.Error()))
 		return ErrResponse(c, fiber.StatusInternalServerError, InternalServerError)
 	}
 }

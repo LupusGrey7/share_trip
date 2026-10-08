@@ -8,7 +8,7 @@ import (
 )
 
 type BaseContractClient interface {
-	CheckAvailableService(ctx context.Context, companyID string, serviceCode string) (CheckResult, error)
+	CheckAvailableService(ctx context.Context, req CheckServiceRequest) (CheckResult, error)
 }
 
 type ContractClient struct {

@@ -1,4 +1,5 @@
 // check_available_service.go - check if a service is available for a company
+
 package contracts
 
 import (
@@ -10,21 +11,17 @@ import (
 )
 
 const (
-	// TODO: confirm exact path/method with Contract Service OpenAPI (teclead + contract service team)
 	CheckAvailableServiceEndpoint = "/api/v2/companies/{companyId}/services/{serviceCode}/availability"
+	ContentType                   = "application/json"
 )
 
-func (c *ContractClient) CheckAvailableService(
-	ctx context.Context,
-	companyID string,
-	serviceCode string,
-) (CheckResult, error) {
+func (c *ContractClient) CheckAvailableService(ctx context.Context, req CheckServiceRequest) (CheckResult, error) {
 	started := time.Now()
 	logger := logctx.Logger(ctx).With(
 		slog.String("service", "ContractClient"),
 		slog.String("operation", "CheckAvailableService"),
-		slog.String("company_id", companyID),
-		slog.String("service_code", serviceCode),
+		slog.String("company_id", req.CompanyID),
+		slog.String("service_code", req.ServiceCode),
 	)
 	logger.Info("checking service availability")
 
@@ -32,11 +29,11 @@ func (c *ContractClient) CheckAvailableService(
 
 	resp, err := c.httpClient.R().
 		SetContext(ctx).
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Accept", "application/json").
-		ForceContentType("application/json").
-		SetPathParam("companyId", companyID).
-		SetPathParam("serviceCode", serviceCode).
+		SetHeader("Content-Type", ContentType).
+		SetHeader("Accept", ContentType).
+		ForceContentType(ContentType).
+		SetPathParam("companyId", req.CompanyID).
+		SetPathParam("serviceCode", req.ServiceCode).
 		SetResult(&response).
 		Get(CheckAvailableServiceEndpoint)
 

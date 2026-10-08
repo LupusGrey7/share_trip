@@ -182,7 +182,7 @@ func TestServer_MoveTripFromDraftToPublish(t *testing.T) {
 		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
-		wantMsg := fmt.Sprintf("err tx block() with: conflict: invalid entity status: expected %s", domain.StatusDraft)
+		wantMsg := fmt.Sprintf("tx block: conflict: invalid entity status: expected %s", domain.StatusDraft)
 		require.Equal(t, wantMsg, apiResp.Message)
 	})
 

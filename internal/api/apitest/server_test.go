@@ -30,7 +30,7 @@ import (
 
 	"job4j.ru/share_trip/internal/api/apitest/fixtures"
 	client "job4j.ru/share_trip/internal/clients/http/contract"
-	clientUsecase "job4j.ru/share_trip/internal/clients/http/contract/usecase"
+
 	"job4j.ru/share_trip/internal/trip/service"
 )
 
@@ -149,13 +149,12 @@ func TestMain(m *testing.M) {
 	}))
 
 	contractClient := client.NewContractClient(contractStubServer.URL)
-	contractUsecase := clientUsecase.NewContractUsecase(contractClient)
 
 	infoUseCase := usecase.NewInfoUseCase()
-	tripUseCase := usecase.NewTripUseCase(contractUsecase)
+	tripUseCase := usecase.NewTripUseCase()
 
 	infoService := service.NewInfoService(infoUseCase, repo)
-	tripService := service.NewTripService(mu, testPool, repoTrip, outboxRepo, tripUseCase)
+	tripService := service.NewTripService(mu, testPool, repoTrip, outboxRepo, tripUseCase, contractClient)
 
 	server := api.NewServer(registry, validate, infoService, tripService) // ← add to service
 

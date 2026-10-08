@@ -34,25 +34,20 @@ func (t *TripUseCase) MoveTripFromDraftToPublish(
 	resp, err := repo.GetForUpdateByIDTx(ctxSpc, tx, req.ID)
 	if err != nil {
 		if errors.Is(err, storage.ErrTripNotFound) {
-			logger.Error("move trip from draft to publish get trip repository failed", slog.Any("error", err))
 			return nil, ErrTripNotFound
 		}
-		logger.Error("move trip from draft to publish get trip repository failed", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("get trip for update: %w", err)
 	}
 
 	if resp.DriverID != req.ClientID {
-		logger.Error("move trip from draft to publish useCase failed", slog.Any("error", err))
 		return nil, fmt.Errorf("%w: client %s is not driver of trip %s", ErrForbidden, req.ClientID, req.ID)
 	}
 
 	if resp.Status == domain.StatusPublished {
-		logger.Debug("move trip from draft to publish already published", slog.String("trip_id", resp.ID.String()))
 		return nil, ErrAlreadyDone
 	}
 
 	if resp.Status != domain.StatusDraft {
-		logger.Error("move draft to publish useCase failed", slog.Any("error", err))
 		return nil, fmt.Errorf("%w: invalid entity status: expected %s", ErrConflict, domain.StatusDraft)
 	}
 
@@ -60,10 +55,9 @@ func (t *TripUseCase) MoveTripFromDraftToPublish(
 
 	updatedTrip, err := repo.UpdateTripTx(ctxSpc, tx, resp)
 	if err != nil {
-		logger.Error("update trip repository failed", slog.Any("error", err))
-		return nil, err
+		return nil, fmt.Errorf("update trip: %w", err)
 	}
 
-	logger.Debug("move from draft to publish completed", slog.String("trip_id", resp.ID.String()))
+	logger.Debug("move trip from draft to publish useCase completed", slog.String("trip_id", resp.ID.String()))
 	return updatedTrip.ToMoveTripFromDraftToPublishOutput(), nil
 }

@@ -13,7 +13,7 @@ import (
 
 	"job4j.ru/share_trip/internal/api"
 	clientContract "job4j.ru/share_trip/internal/clients/http/contract"
-	clientContractUsecase "job4j.ru/share_trip/internal/clients/http/contract/usecase"
+
 	"job4j.ru/share_trip/internal/clients/kafka"
 	"job4j.ru/share_trip/internal/config"
 	"job4j.ru/share_trip/internal/middleware"
@@ -43,11 +43,10 @@ func BuildServer(
 	outboxRepo := storage.NewOutboxEventRepository(m)
 
 	infoUseCase := usecase.NewInfoUseCase()
-	contractUseCase := clientContractUsecase.NewContractUsecase(contractClient)
-	tripUseCase := usecase.NewTripUseCase(contractUseCase)
+	tripUseCase := usecase.NewTripUseCase()
 
 	infoService := service.NewInfoService(infoUseCase, repo)
-	tripService := service.NewTripService(m, pool, repoTrip, outboxRepo, tripUseCase)
+	tripService := service.NewTripService(m, pool, repoTrip, outboxRepo, tripUseCase, contractClient)
 
 	server := api.NewServer(registry, validate, infoService, tripService)
 

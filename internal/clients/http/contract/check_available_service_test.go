@@ -27,7 +27,7 @@ func TestCheckAvailableService_Allowed(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	client := contracts.NewContractClient(srv.URL)
-	got, err := client.CheckAvailableService(context.Background(), "acme", "trip_start")
+	got, err := client.CheckAvailableService(context.Background(), contracts.CheckServiceRequest{CompanyID: "acme", ServiceCode: "trip_start"})
 	require.NoError(t, err)
 	require.True(t, got.Allowed)
 	require.Equal(t, "ok", got.Reason)
@@ -45,7 +45,7 @@ func TestCheckAvailableService_DeniedNoRetry(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	client := contracts.NewContractClient(srv.URL)
-	got, err := client.CheckAvailableService(context.Background(), "acme", "trip_start")
+	got, err := client.CheckAvailableService(context.Background(), contracts.CheckServiceRequest{CompanyID: "acme", ServiceCode: "trip_start"})
 	require.NoError(t, err)
 	require.False(t, got.Allowed)
 	require.Equal(t, "quota", got.Reason)
@@ -65,7 +65,7 @@ func TestCheckAvailableService_NotFoundIsBusinessDeny(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	client := contracts.NewContractClient(srv.URL)
-	got, err := client.CheckAvailableService(context.Background(), "acme", "trip_start")
+	got, err := client.CheckAvailableService(context.Background(), contracts.CheckServiceRequest{CompanyID: "acme", ServiceCode: "trip_start"})
 	require.NoError(t, err, "404 company not found must not be fail-closed error")
 	require.False(t, got.Allowed)
 	require.Contains(t, strings.ToLower(got.Reason), "company not found")
@@ -83,7 +83,7 @@ func TestCheckAvailableService_BadRequestCompanyNotFoundIsDeny(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	client := contracts.NewContractClient(srv.URL)
-	got, err := client.CheckAvailableService(context.Background(), "999", "trip_start")
+	got, err := client.CheckAvailableService(context.Background(), contracts.CheckServiceRequest{CompanyID: "999", ServiceCode: "trip_start"})
 	require.NoError(t, err)
 	require.False(t, got.Allowed)
 	require.Contains(t, strings.ToLower(got.Reason), "company not found")
@@ -98,7 +98,7 @@ func TestCheckAvailableService_Forbidden(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	client := contracts.NewContractClient(srv.URL)
-	_, err := client.CheckAvailableService(context.Background(), "acme", "trip_start")
+	_, err := client.CheckAvailableService(context.Background(), contracts.CheckServiceRequest{CompanyID: "acme", ServiceCode: "trip_start"})
 	require.Error(t, err)
 	require.True(t, errors.Is(err, contracts.ErrForbidden))
 }
@@ -119,7 +119,7 @@ func TestCheckAvailableService_Retry503ThenOK(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	client := contracts.NewContractClient(srv.URL)
-	got, err := client.CheckAvailableService(context.Background(), "acme", "trip_start")
+	got, err := client.CheckAvailableService(context.Background(), contracts.CheckServiceRequest{CompanyID: "acme", ServiceCode: "trip_start"})
 	require.NoError(t, err)
 	require.True(t, got.Allowed)
 	require.GreaterOrEqual(t, calls.Load(), int32(2))
@@ -134,7 +134,7 @@ func TestCheckAvailableService_UnavailableAfterRetries(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	client := contracts.NewContractClient(srv.URL)
-	_, err := client.CheckAvailableService(context.Background(), "acme", "trip_start")
+	_, err := client.CheckAvailableService(context.Background(), contracts.CheckServiceRequest{CompanyID: "acme", ServiceCode: "trip_start"})
 	require.Error(t, err)
 	require.True(t, errors.Is(err, contracts.ErrUnavailable))
 }
@@ -149,7 +149,7 @@ func TestCheckAvailableService_Timeout(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	client := contracts.NewContractClient(srv.URL)
-	_, err := client.CheckAvailableService(context.Background(), "acme", "trip_start")
+	_, err := client.CheckAvailableService(context.Background(), contracts.CheckServiceRequest{CompanyID: "acme", ServiceCode: "trip_start"})
 	require.Error(t, err)
 	require.True(t, errors.Is(err, contracts.ErrTimeout) || errors.Is(err, contracts.ErrUnavailable),
 		"got: %v", err)

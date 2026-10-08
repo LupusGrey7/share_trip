@@ -23,7 +23,7 @@ func (o *OutboxService) PublishPending(ctx context.Context, limit int) error {
 	sentIDs := make([]uuid.UUID, 0, len(events))
 	failedIDs := make([]uuid.UUID, 0, len(events))
 	var lastErr error
-	
+
 	for _, e := range events {
 		if err := o.producer.PublishTripPublished(ctx, e.ToTripPublished()); err != nil {
 			failedIDs = append(failedIDs, e.ID)
