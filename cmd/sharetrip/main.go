@@ -9,10 +9,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.opentelemetry.io/otel/trace"
+	clientContract "job4j.ru/share_trip/internal/clients/http/contract"
 	"job4j.ru/share_trip/internal/observability/metrics"
 	"job4j.ru/share_trip/internal/observability/tracing"
+	"job4j.ru/share_trip/internal/trip/service"
+	"job4j.ru/share_trip/internal/trip/usecase"
 
 	"job4j.ru/share_trip/internal/middleware"
 
@@ -26,14 +29,28 @@ import (
 	"job4j.ru/share_trip/internal/storage"
 )
 
+const (
+	envFileName = ".env"
+
+	// outbox config
+	outboxPollIntervalMS = 1000
+	outboxBatchSize      = 50
+
+	// tracing
+	otelServiceNameDef      = "share-trip"
+	otelServiceVersionDef   = "1.0.0"
+	otelEnvironmentDef      = "local"
+	otelExporterEndpointDef = "localhost:4319"
+)
+
 // init is invoked before main()
 // Explicit path to .env. Makefile does `include .env` + `export` and may
 // Pass outdated KEYCLOAK_CLIENT_SECRET from OS env; Overload overrides the file.
 func init() {
 	cwd, err := os.Getwd()
-	envFile := ".env"
+	envFile := envFileName
 	if err == nil {
-		envFile = filepath.Join(cwd, ".env")
+		envFile = filepath.Join(cwd, envFileName)
 	}
 	if loadErr := godotenv.Overload(envFile); loadErr != nil {
 		log.Infof("No .env file at %s: %v", envFile, loadErr)
@@ -44,6 +61,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// read config
 	cfg := appConfigs.ReadDBConfig()
 
 	// database
@@ -71,33 +89,34 @@ func main() {
 
 	// metrics
 	registry := prometheus.NewRegistry()
-	m := metrics.New(registry)
+	metric := metrics.New(registry)
 
-	tp, err := appConfigs.InitTracing(ctx)
+	// tracing
+	tp, err := tracing.NewProvider(ctx, tracing.Config{
+		ServiceName:    config.Env("OTEL_SERVICE_NAME", otelServiceNameDef),
+		ServiceVersion: config.Env("OTEL_SERVICE_VERSION", otelServiceVersionDef),
+		Environment:    config.Env("OTEL_ENVIRONMENT", otelEnvironmentDef),
+		Endpoint:       config.Env("OTEL_EXPORTER_ENDPOINT", otelExporterEndpointDef),
+	})
 	if err != nil {
-		log.Error("init tracing failed", "error", err)
-		os.Exit(1)
+		log.Fatalf("init tracing failed: %v", err)
 	}
 	defer func() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if shutdownErr := tp.Shutdown(shutdownCtx); shutdownErr != nil {
-			log.Error("shutdown tracing failed", "error", shutdownErr)
+			log.Errorf("shutdown tracing failed: %v", shutdownErr)
 		}
 	}()
 
+	// fiber app
 	app := fiber.New()
 	app.Use(tracing.NewFiberMiddleware())
-	app.Use(func(c *fiber.Ctx) error {
-		reqCtx := c.UserContext()
-		traceID := trace.SpanFromContext(reqCtx).SpanContext().TraceID().String()
-		c.Set("X-Request-ID", traceID)
-		c.Locals("requestid", traceID)
-		return c.Next()
-	})
+	app.Use(middleware.TraceIDHeader())
 	app.Use(middleware.Correlation(logger))
-	app.Use(api.NewHTTPMetricsMiddleware(m))
+	app.Use(api.NewHTTPMetricsMiddleware(metric))
 
+	// keycloak config
 	keycloakCfg := appConfigs.GetKeycloakConfig()
 	appConfigs.LogKeycloakConfig(keycloakCfg)
 	appConfigs.LogContractConfig()
@@ -112,11 +131,11 @@ func main() {
 
 	// outbox publisher
 	outboxPublisher := outbox.NewOutboxPublisher(
-		m,
+		metric,
 		kafkaProducer,
 		pool,
-		config.EnvDurationMS("OUTBOX_POLL_INTERVAL_MS", 1000),
-		config.EnvInt("OUTBOX_BATCH_SIZE", 50),
+		config.EnvDurationMS("OUTBOX_POLL_INTERVAL_MS", outboxPollIntervalMS),
+		config.EnvInt("OUTBOX_BATCH_SIZE", outboxBatchSize),
 	)
 	outboxDone := make(chan struct{})
 	go func() {
@@ -126,9 +145,27 @@ func main() {
 		}
 	}()
 
-	// server
-	appConfigs.BuildServer(app, pool, registry, m, keycloakCfg)
+	// server (build server and setup routes)
+	validate := validator.New(validator.WithRequiredStructEnabled())
 
+	contractClient := clientContract.NewClient(config.ContractServiceURL())
+
+	repo := storage.NewRepoPg(pool)
+	repoTrip := storage.NewTripRepository(metric, pool)
+	outboxRepo := storage.NewOutboxEventRepository(metric)
+
+	infoUseCase := usecase.NewInfoUseCase()
+	tripUseCase := usecase.NewTripUseCase()
+
+	infoService := service.NewInfoService(infoUseCase, repo)
+	tripService := service.NewTripService(metric, pool, repoTrip, outboxRepo, tripUseCase, contractClient)
+
+	server := api.NewServer(registry, validate, infoService, tripService)
+
+	keycloakAuth := middleware.KeycloakRefreshTokenMiddleware(keycloakCfg)
+	server.SetupRoutes(app, keycloakAuth)
+
+	// app print registered routes
 	api.LogRegisteredRoutes(":8080")
 
 	go func() {
@@ -144,6 +181,6 @@ func main() {
 	stop()
 	<-outboxDone
 	if err != nil {
-		log.Fatal("failed to listen: %v", err)
+		log.Fatalf("failed to listen: %v", err)
 	}
 }

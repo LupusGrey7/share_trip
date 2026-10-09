@@ -1,4 +1,4 @@
-//middleware, который будет выполняться на каждый HTTP-запрос.
+//middleware, who will be executed on each HTTP request.
 
 package middleware
 
@@ -12,11 +12,12 @@ import (
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
-const RequestIDHeader = "X-Request-Id"
-const LoggerLocalKey = "logger"
+const (
+	RequestIDHeader = "X-Request-Id"
+	LoggerLocalKey  = "logger"
+)
 
-// Correlation -
-// return func(*Ctx) error
+// Correlation - return func(*Ctx) error
 func Correlation(baseLogger *slog.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		requestID := c.Get(RequestIDHeader)

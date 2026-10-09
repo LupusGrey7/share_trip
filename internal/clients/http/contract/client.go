@@ -7,16 +7,16 @@ import (
 	"job4j.ru/share_trip/internal/config"
 )
 
-type BaseContractClient interface {
+type ContractClient interface {
 	CheckAvailableService(ctx context.Context, req CheckServiceRequest) (CheckResult, error)
 }
 
-type ContractClient struct {
+type Client struct {
 	httpClient *resty.Client //library for making http requests
 }
 
-func NewContractClient(baseURL string) *ContractClient {
-	return &ContractClient{
+func NewClient(baseURL string) *Client {
+	return &Client{
 		httpClient: resty.New().
 			SetBaseURL(baseURL).
 			SetTimeout(config.Timeout).

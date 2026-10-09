@@ -1,3 +1,5 @@
+// Package app contains application-level initialization and configuration logic.
+
 package app
 
 import (
@@ -6,57 +8,25 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/prometheus/client_golang/prometheus"
-
-	"job4j.ru/share_trip/internal/api"
-	clientContract "job4j.ru/share_trip/internal/clients/http/contract"
-
 	"job4j.ru/share_trip/internal/clients/kafka"
 	"job4j.ru/share_trip/internal/config"
 	"job4j.ru/share_trip/internal/middleware"
 	"job4j.ru/share_trip/internal/observability/logctx"
-	"job4j.ru/share_trip/internal/observability/metrics"
-	"job4j.ru/share_trip/internal/observability/tracing"
-
 	"job4j.ru/share_trip/internal/storage"
-	"job4j.ru/share_trip/internal/trip/service"
-	"job4j.ru/share_trip/internal/trip/usecase"
 )
 
-// BuildServer wires HTTP API and returns the outbox publisher (start with go p.Run(ctx)).
-func BuildServer(
-	app *fiber.App,
-	pool *pgxpool.Pool,
-	registry *prometheus.Registry,
-	m *metrics.Metrics,
-	keycloakCfg middleware.KeycloakConfig,
-) {
-	validate := validator.New(validator.WithRequiredStructEnabled())
+const (
+	appName                 = "share-trip"
+	kafkaBrokersPortDef     = "localhost:9092"
+	kafkaTopicTripEventsDef = "trip.events"
 
-	contractClient := clientContract.NewContractClient(config.ContractServiceURL())
-
-	repo := storage.NewRepoPg(pool)
-	repoTrip := storage.NewTripRepository(m, pool)
-	outboxRepo := storage.NewOutboxEventRepository(m)
-
-	infoUseCase := usecase.NewInfoUseCase()
-	tripUseCase := usecase.NewTripUseCase()
-
-	infoService := service.NewInfoService(infoUseCase, repo)
-	tripService := service.NewTripService(m, pool, repoTrip, outboxRepo, tripUseCase, contractClient)
-
-	server := api.NewServer(registry, validate, infoService, tripService)
-
-	keycloakAuth := middleware.KeycloakRefreshTokenMiddleware(keycloakCfg)
-	server.SetupRoutes(app, keycloakAuth)
-}
+	keycloakIssuerDef   = "http://localhost:8087/realms/sharetrip"
+	keycloakClientIDDef = "sharetrip-api"
+)
 
 func NewKafkaProducer() *kafka.Producer {
-	brokersCSV := config.Env("KAFKA_BROKERS", "localhost:9092")
-	topic := config.Env("KAFKA_TOPIC_TRIP_EVENTS", "trip.events")
+	brokersCSV := config.Env("KAFKA_BROKERS", kafkaBrokersPortDef)
+	topic := config.Env("KAFKA_TOPIC_TRIP_EVENTS", kafkaTopicTripEventsDef)
 	brokers := strings.Split(brokersCSV, ",")
 	for i := range brokers {
 		brokers[i] = strings.TrimSpace(brokers[i])
@@ -75,20 +45,11 @@ func ReadDBConfig() storage.Config {
 	}
 }
 
-func InitTracing(ctx context.Context) (*tracing.TracerProvider, error) {
-	return tracing.NewProvider(ctx, tracing.Config{
-		ServiceName:    config.Env("OTEL_SERVICE_NAME", "share-trip"),
-		ServiceVersion: config.Env("OTEL_SERVICE_VERSION", "1.0.0"),
-		Environment:    config.Env("OTEL_ENVIRONMENT", "local"),
-		Endpoint:       config.Env("OTEL_EXPORTER_ENDPOINT", "localhost:4319"),
-	})
-}
-
-// getKeycloakConfig - get the keycloak config
+// GetKeycloakConfig - get the keycloak config
 func GetKeycloakConfig() middleware.KeycloakConfig {
 	return middleware.KeycloakConfig{
-		Issuer:       config.Env("KEYCLOAK_ISSUER", "http://localhost:8087/realms/sharetrip"),
-		ClientID:     config.Env("KEYCLOAK_CLIENT_ID", "sharetrip-api"),
+		Issuer:       config.Env("KEYCLOAK_ISSUER", keycloakIssuerDef),
+		ClientID:     config.Env("KEYCLOAK_CLIENT_ID", keycloakClientIDDef),
 		ClientSecret: config.Env("KEYCLOAK_CLIENT_SECRET", ""),
 	}
 }
@@ -101,7 +62,7 @@ func LogContractConfig() {
 	)
 }
 
-// logKeycloakConfig - log the keycloak config
+// LogKeycloakConfig - log the keycloak config
 func LogKeycloakConfig(keycloakCfg middleware.KeycloakConfig) {
 	cwd, _ := os.Getwd()
 	logctx.Logger(context.Background()).Info("keycloak config",
@@ -111,7 +72,8 @@ func LogKeycloakConfig(keycloakCfg middleware.KeycloakConfig) {
 		slog.String("cwd", cwd),
 	)
 	if keycloakCfg.ClientSecret == "" || keycloakCfg.ClientSecret == "secret" {
-		logctx.Logger(context.Background()).Error("KEYCLOAK_CLIENT_SECRET empty or placeholder 'secret' — save real secret in .env, then: " +
-			"Remove-Item Env:KEYCLOAK_CLIENT_SECRET; make run")
+		logctx.Logger(context.Background()).
+			Error("KEYCLOAK_CLIENT_SECRET empty or placeholder 'secret' — save real secret in .env, then: " +
+				"Remove-Item Env:KEYCLOAK_CLIENT_SECRET; make run")
 	}
 }

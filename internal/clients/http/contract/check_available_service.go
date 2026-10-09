@@ -15,7 +15,7 @@ const (
 	ContentType                   = "application/json"
 )
 
-func (c *ContractClient) CheckAvailableService(ctx context.Context, req CheckServiceRequest) (CheckResult, error) {
+func (c *Client) CheckAvailableService(ctx context.Context, req CheckServiceRequest) (CheckResult, error) {
 	started := time.Now()
 	logger := logctx.Logger(ctx).With(
 		slog.String("service", "ContractClient"),

@@ -148,7 +148,7 @@ func TestMain(m *testing.M) {
 		h(w, r)
 	}))
 
-	contractClient := client.NewContractClient(contractStubServer.URL)
+	contractClient := client.NewClient(contractStubServer.URL)
 
 	infoUseCase := usecase.NewInfoUseCase()
 	tripUseCase := usecase.NewTripUseCase()

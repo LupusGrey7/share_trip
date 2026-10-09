@@ -27,7 +27,7 @@ type TripService struct {
 	repo           storage.BaseTxTripRepository
 	outboxRepo     storage.OutboxRepository
 	useCase        usecase.BaseTripUseCase
-	contractClient contracts.BaseContractClient
+	contractClient contracts.ContractClient
 }
 
 func NewTripService(
@@ -36,7 +36,7 @@ func NewTripService(
 	r storage.BaseTxTripRepository,
 	outbox storage.OutboxRepository,
 	uc usecase.BaseTripUseCase,
-	contractClient contracts.BaseContractClient,
+	contractClient contracts.ContractClient,
 ) *TripService {
 	return &TripService{
 		metrics:        m,
