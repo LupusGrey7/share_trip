@@ -1,10 +1,5 @@
-// /scenario: publish trip published event to kafka
-// /input: trip_id, driver_id, company_id
-// /output: error if message is not written
-// /error: if event is not valid
-// /error: if message is not written
-// /error: if writer is not closed
-// /error: if writer is not closed
+// scenario: publish trip published event to kafka
+
 package kafka
 
 import (

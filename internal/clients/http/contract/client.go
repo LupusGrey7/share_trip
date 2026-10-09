@@ -4,25 +4,25 @@ import (
 	"context"
 
 	"github.com/go-resty/resty/v2"
-	"job4j.ru/share_trip/configs"
+	"job4j.ru/share_trip/internal/config"
 )
 
-type BaseContractClient interface {
-	CheckAvailableService(ctx context.Context, companyID string, serviceCode string) (CheckResult, error)
+type ContractClient interface {
+	CheckAvailableService(ctx context.Context, req CheckServiceRequest) (CheckResult, error)
 }
 
-type ContractClient struct {
+type Client struct {
 	httpClient *resty.Client //library for making http requests
 }
 
-func NewContractClient(baseURL string) *ContractClient {
-	return &ContractClient{
+func NewClient(baseURL string) *Client {
+	return &Client{
 		httpClient: resty.New().
 			SetBaseURL(baseURL).
-			SetTimeout(configs.Timeout).
-			SetRetryCount(configs.RetryCount).
-			SetRetryWaitTime(configs.RetryWaitTime).
-			SetRetryMaxWaitTime(configs.RetryMaxWaitTime).
-			AddRetryCondition(configs.RetryConditionFunc),
+			SetTimeout(config.Timeout).
+			SetRetryCount(config.RetryCount).
+			SetRetryWaitTime(config.RetryWaitTime).
+			SetRetryMaxWaitTime(config.RetryMaxWaitTime).
+			AddRetryCondition(config.RetryConditionFunc),
 	}
 }

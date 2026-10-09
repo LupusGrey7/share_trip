@@ -52,7 +52,6 @@ func (s *Server) MoveTripFromPublishedToStarted(c *fiber.Ctx) error {
 		slog.String("client_id", driverID.String()),
 	)
 	ctx = logctx.WithLogger(ctx, logger)
-	logger.Debug("move trip from published to started request accepted")
 
 	domainReq := toMoveTripFromPublishedToStartedInput(request)
 
@@ -61,9 +60,6 @@ func (s *Server) MoveTripFromPublishedToStarted(c *fiber.Ctx) error {
 		return HandleError(c, err)
 	}
 
-	logger.Debug("move trip from published to started completed",
-		slog.String("status", string(resp.Status)),
-	)
 	return c.Status(fiber.StatusOK).JSON(toMoveTripFromPublishedToStartedResponse(resp))
 }
 

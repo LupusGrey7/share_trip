@@ -1,3 +1,5 @@
+// Package metrics provides Prometheus metrics collection for the application.
+
 package metrics
 
 import (
@@ -6,17 +8,19 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-// Label constants для избежания ошибок в runtime
+// Label constants for - для избежания ошибок в runtime
 const (
 	labelMethod    = "method"
 	labelPath      = "path"
 	labelStatus    = "status"
 	labelResult    = "result"
 	labelOperation = "operation"
+	nameSpace      = "sharetrip"
+	subSystemHTTP  = "http"
 )
 
 // Metrics holds all prometheus metric collectors for the application.
-// Uses modern prometheus patterns with promauto for automatic registration.
+// important! Uses modern prometheus patterns with promauto for automatic registration.
 type Metrics struct {
 	// HTTP metrics
 	HTTPRequestTotal     *prometheus.CounterVec
@@ -54,8 +58,8 @@ func New(reg prometheus.Registerer) *Metrics {
 		// HTTP metrics
 		HTTPRequestTotal: factory.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "sharetrip",
-				Subsystem: "http",
+				Namespace: nameSpace,
+				Subsystem: subSystemHTTP,
 				Name:      "requests_total",
 				Help:      "Total number of HTTP requests processed",
 			},
@@ -64,8 +68,8 @@ func New(reg prometheus.Registerer) *Metrics {
 
 		HTTPRequestDuration: factory.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "sharetrip",
-				Subsystem: "http",
+				Namespace: nameSpace,
+				Subsystem: subSystemHTTP,
 				Name:      "request_duration_seconds",
 				Help:      "HTTP request latency in seconds",
 				Buckets:   prometheus.DefBuckets,
@@ -75,8 +79,8 @@ func New(reg prometheus.Registerer) *Metrics {
 
 		HTTPRequestsInFlight: factory.NewGauge(
 			prometheus.GaugeOpts{
-				Namespace: "sharetrip",
-				Subsystem: "http",
+				Namespace: nameSpace,
+				Subsystem: subSystemHTTP,
 				Name:      "requests_in_flight",
 				Help:      "Number of HTTP requests currently being processed",
 			},
@@ -85,7 +89,7 @@ func New(reg prometheus.Registerer) *Metrics {
 		// Trip create metrics
 		TripCreateTotal: factory.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "sharetrip",
+				Namespace: nameSpace,
 				Subsystem: "trip",
 				Name:      "create_total",
 				Help:      "Total number of trip creation attempts",
@@ -95,7 +99,7 @@ func New(reg prometheus.Registerer) *Metrics {
 
 		TripCreateDuration: factory.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "sharetrip",
+				Namespace: nameSpace,
 				Subsystem: "trip",
 				Name:      "create_duration_seconds",
 				Help:      "Trip creation operation latency in seconds",
@@ -107,7 +111,7 @@ func New(reg prometheus.Registerer) *Metrics {
 		// Trip get by id metrics
 		TripGetByIDTotal: factory.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "sharetrip",
+				Namespace: nameSpace,
 				Subsystem: "trip",
 				Name:      "get_by_id_total",
 				Help:      "Total number of get trip by ID attempts",
@@ -117,7 +121,7 @@ func New(reg prometheus.Registerer) *Metrics {
 
 		TripGetByIDDuration: factory.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "sharetrip",
+				Namespace: nameSpace,
 				Subsystem: "trip",
 				Name:      "get_by_id_duration_seconds",
 				Help:      "Get trip by ID operation latency in seconds",
@@ -129,7 +133,7 @@ func New(reg prometheus.Registerer) *Metrics {
 		// Trip publish metrics
 		TripDraftToPublishTotal: factory.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "sharetrip",
+				Namespace: nameSpace,
 				Subsystem: "trip",
 				Name:      "publish_total",
 				Help:      "Total number of trip publication attempts",
@@ -139,7 +143,7 @@ func New(reg prometheus.Registerer) *Metrics {
 
 		TripDraftToPublishDuration: factory.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "sharetrip",
+				Namespace: nameSpace,
 				Subsystem: "trip",
 				Name:      "publish_duration_seconds",
 				Help:      "Trip publication operation latency in seconds",
@@ -150,7 +154,7 @@ func New(reg prometheus.Registerer) *Metrics {
 
 		TripPublishedToStartTotal: factory.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "sharetrip",
+				Namespace: nameSpace,
 				Subsystem: "trip",
 				Name:      "start_total",
 				Help:      "Total number of trip start (published→started) attempts",
@@ -160,7 +164,7 @@ func New(reg prometheus.Registerer) *Metrics {
 
 		TripPublishedToStartDuration: factory.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "sharetrip",
+				Namespace: nameSpace,
 				Subsystem: "trip",
 				Name:      "start_duration_seconds",
 				Help:      "Trip start (published→started) operation latency in seconds",
@@ -172,7 +176,7 @@ func New(reg prometheus.Registerer) *Metrics {
 		// Repository metrics
 		RepositoryQueryTotal: factory.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "sharetrip",
+				Namespace: nameSpace,
 				Subsystem: "repository",
 				Name:      "query_total",
 				Help:      "Total number of database queries",
@@ -182,7 +186,7 @@ func New(reg prometheus.Registerer) *Metrics {
 
 		RepositoryQueryDuration: factory.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "sharetrip",
+				Namespace: nameSpace,
 				Subsystem: "repository",
 				Name:      "query_duration_seconds",
 				Help:      "Database query latency in seconds",

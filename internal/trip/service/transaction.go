@@ -4,14 +4,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
-	"job4j.ru/share_trip/internal/observability/logctx"
-
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
 func tx[T interface{}](
@@ -19,48 +18,23 @@ func tx[T interface{}](
 	pool *pgxpool.Pool,
 	block func(tx pgx.Tx) (*T, error),
 ) (*T, error) {
-	logger := logctx.Logger(ctx).With(
-		slog.String("layer", "transaction"),
-	)
-	logger.Info("begin transaction")
-
 	txBegin, err := pool.Begin(ctx)
 	if err != nil {
-		logger.Error(
-			"failed to begin transaction",
-			slog.Any("error", err),
-		)
-
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+		return nil, fmt.Errorf("begin tx: %w", err)
 	}
+	defer func() {
+		// Rollback after a successful Commit returns pgx.ErrTxClosed.
+		if rbErr := txBegin.Rollback(ctx); rbErr != nil && !errors.Is(rbErr, pgx.ErrTxClosed) {
+			logctx.Logger(ctx).Error("rollback failed", slog.Any("error", rbErr)) // ignored error
+		}
+	}()
 
 	res, err := block(txBegin)
 	if err != nil {
-		logger.Error(
-			"transaction block failed",
-			slog.Any("error", err),
-		)
-
-		return nil, fmt.Errorf("err tx block() with: %w", err)
+		return nil, fmt.Errorf("tx block: %w", err)
 	}
-
 	if err = txBegin.Commit(ctx); err != nil {
-		// If the commit fails, we also try to roll back (although this may not work)
-		logger.Error(
-			"failed to commit transaction",
-			slog.Any("error", err),
-		)
-
-		if rbErr := txBegin.Rollback(ctx); rbErr != nil {
-			log.Error("rollback error: %v", rbErr)
-			logger.Error(
-				"rollback transaction failed",
-				slog.Any("error", err),
-			)
-		}
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, fmt.Errorf("commit tx: %w", err)
 	}
-
-	logger.Info("commit transaction")
 	return res, nil
 }

@@ -62,6 +62,32 @@ func TestServer_MoveTripFromDraftToPublish(t *testing.T) {
 			Status:        api.StatusEnum("published"),
 		}
 		require.Equal(t, want, got)
+
+		var (
+			aggregateType string
+			eventType     string
+			status        string
+			attempts      int
+			payload       []byte
+		)
+		err = testPool.QueryRow(testCtx, `
+			select aggregate_type, event_type, status, attempts, payload
+			from outbox_events
+			where aggregate_id = $1
+			order by created_at desc
+			limit 1
+		`, created.ID).Scan(&aggregateType, &eventType, &status, &attempts, &payload)
+		require.NoError(t, err)
+		require.Equal(t, "trip", aggregateType)
+		require.Equal(t, "trip_published", eventType)
+		require.Equal(t, "pending", status)
+		require.Equal(t, 0, attempts)
+
+		var payloadMap map[string]string
+		require.NoError(t, json.Unmarshal(payload, &payloadMap))
+		require.Equal(t, created.ID.String(), payloadMap["trip_id"])
+		require.Equal(t, fixtures.NormalClientID.String(), payloadMap["driver_id"])
+		require.Equal(t, testCompanyIDForPublish, payloadMap["company_id"])
 	})
 
 	// Given: trip draft owned by NormalClientID
@@ -156,7 +182,7 @@ func TestServer_MoveTripFromDraftToPublish(t *testing.T) {
 		var apiResp api.Response
 		require.NoError(t, json.Unmarshal(respBody, &apiResp))
 		require.False(t, apiResp.Success)
-		wantMsg := fmt.Sprintf("err tx block() with: conflict: invalid entity status: expected %s", domain.StatusDraft)
+		wantMsg := fmt.Sprintf("tx block: conflict: invalid entity status: expected %s", domain.StatusDraft)
 		require.Equal(t, wantMsg, apiResp.Message)
 	})
 

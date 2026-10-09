@@ -1,8 +1,9 @@
-package configs
+package config
 
 import (
 	"os"
 	"strconv"
+	"time"
 )
 
 func Env(key, def string) string {
@@ -23,6 +24,11 @@ func EnvInt(key string, def int) int {
 		return def
 	}
 	return n
+}
+
+// EnvDurationMS reads an env var as milliseconds (e.g. OUTBOX_POLL_INTERVAL_MS=1000 → 1s).
+func EnvDurationMS(key string, defMS int) time.Duration {
+	return time.Duration(EnvInt(key, defMS)) * time.Millisecond
 }
 
 // ContractServiceURL returns CONTRACT_SERVICE_URL or configs.BaseURL default.
