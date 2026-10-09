@@ -8,7 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-// Label constants for - для избежания ошибок в runtime
+// Label constants for avoiding errors at runtime
 const (
 	labelMethod    = "method"
 	labelPath      = "path"
