@@ -7,6 +7,7 @@ import (
 	"job4j.ru/share_trip/internal/config"
 )
 
+//go:generate mockgen -source=client.go -destination=mocks/mock_contract_client.go -package=mocks
 type ContractClient interface {
 	CheckAvailableService(ctx context.Context, req CheckServiceRequest) (CheckResult, error)
 }

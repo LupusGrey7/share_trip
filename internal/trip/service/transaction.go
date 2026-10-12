@@ -9,13 +9,17 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"job4j.ru/share_trip/internal/observability/logctx"
 )
 
+// TxBeginner is satisfied by *pgxpool.Pool; tests pass a fake.
+type TxBeginner interface {
+	Begin(ctx context.Context) (pgx.Tx, error)
+}
+
 func tx[T interface{}](
 	ctx context.Context,
-	pool *pgxpool.Pool,
+	pool TxBeginner, //changed from *pgxpool.Pool to TxBeginner interface to allow for testing with a fake	
 	block func(tx pgx.Tx) (*T, error),
 ) (*T, error) {
 	txBegin, err := pool.Begin(ctx)
