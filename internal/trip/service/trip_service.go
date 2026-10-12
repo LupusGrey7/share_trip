@@ -6,8 +6,7 @@ package service
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-	"job4j.ru/share_trip/internal/clients/kafka"
+	contracts "job4j.ru/share_trip/internal/clients/http/contract"
 	"job4j.ru/share_trip/internal/observability/metrics"
 	"job4j.ru/share_trip/internal/storage"
 	"job4j.ru/share_trip/internal/trip/domain"
@@ -22,28 +21,28 @@ type Service interface {
 }
 
 type TripService struct {
-	metrics    *metrics.Metrics
-	pool       *pgxpool.Pool
-	kafka      kafka.TripEventProducer
-	repo       storage.BaseTxTripRepository
-	outboxRepo storage.OutboxRepository
-	useCase    usecase.BaseTripUseCase
+	metrics        *metrics.Metrics
+	pool           TxBeginner //changed from *pgxpool.Pool to TxBeginner interface to allow for testing with a fake	
+	repo           storage.BaseTxTripRepository
+	outboxRepo     storage.OutboxRepository
+	useCase        usecase.BaseTripUseCase
+	contractClient contracts.ContractClient
 }
 
 func NewTripService(
 	m *metrics.Metrics,
-	pool *pgxpool.Pool,
-	kafkaProducer kafka.TripEventProducer,
+	pool TxBeginner,
 	r storage.BaseTxTripRepository,
 	outbox storage.OutboxRepository,
 	uc usecase.BaseTripUseCase,
+	contractClient contracts.ContractClient,
 ) *TripService {
 	return &TripService{
-		metrics:    m,
-		pool:       pool,
-		kafka:      kafkaProducer,
-		repo:       r,
-		outboxRepo: outbox,
-		useCase:    uc,
+		metrics:        m,
+		pool:           pool,
+		repo:           r,
+		outboxRepo:     outbox,
+		useCase:        uc,
+		contractClient: contractClient,
 	}
 }

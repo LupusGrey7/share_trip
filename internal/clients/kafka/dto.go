@@ -13,8 +13,8 @@ const (
 	EventTypeStarted   EventType = "trip_started"
 )
 
-// TripPublishedPayload — business fields inside envelope.payload.
-type TripPublishedPayload struct {
+// PayloadEvent — business fields inside envelope.payload.
+type PayloadEvent struct {
 	TripID    string `json:"trip_id"`
 	DriverID  string `json:"driver_id"`
 	CompanyID string `json:"company_id"`
@@ -22,8 +22,8 @@ type TripPublishedPayload struct {
 
 // TripPublished — Kafka envelope (envelope + nested payload), not a flat JSON.
 type TripPublished struct {
-	EventID    string               `json:"event_id" validate:"required,uuid"`
-	EventType  EventType            `json:"event_type" validate:"required,oneof=trip_published trip_cancellation trip_completion trip_start"`
-	OccurredAt time.Time            `json:"occurred_at"`
-	Payload    TripPublishedPayload `json:"payload"`
+	EventID    string       `json:"event_id" validate:"required,uuid"`
+	EventType  EventType    `json:"event_type" validate:"required,oneof=trip_published trip_cancellation trip_completion trip_start"`
+	OccurredAt time.Time    `json:"occurred_at"`
+	Payload    PayloadEvent `json:"payload"`
 }

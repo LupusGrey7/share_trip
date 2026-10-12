@@ -6,8 +6,8 @@ type CheckResult struct {
 }
 
 type CheckServiceRequest struct {
-	CompanyID   string `json:"company_id"`
-	ServiceCode string `json:"service_code"`
+	CompanyID   string
+	ServiceCode string
 }
 
 type CheckServiceResponse struct {

@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/jackc/pgx/v5"
@@ -30,13 +31,12 @@ func (t *TripUseCase) GetTripByID(
 
 	entity, err := repo.GetTripByIDTx(ctxSpc, tx, input.ID)
 	if err != nil {
-		logger.Error("get trip by ID useCase failed", slog.Any("error", err))
 		if errors.Is(err, storage.ErrTripNotFound) {
 			return nil, ErrTripNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("get trip by ID: %w", err)
 	}
 
-	logger.Debug("get trip by ID useCase completed")
+	logger.Debug("get trip by ID useCase completed", slog.String("trip_id", input.ID))
 	return domain.TripEntityToOutput(entity), nil
 }

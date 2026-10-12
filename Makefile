@@ -36,6 +36,10 @@ DC := $(DEPLOY_DIR)/docker-compose.yml
 VERSION=1.0.0
 LDFLAGS=-ldflags "-X main.Version=${VERSION}"
 
+# mockgen (go.uber.org/mock; github.com/golang/mock is archived)
+MOCKGEN_VERSION := v0.6.0
+GOBIN := $(shell $(GO) env GOPATH)/bin
+
 # Task - Default target
 .PHONY: help
 help:
@@ -56,6 +60,9 @@ help:
 	@echo "  migrate-up  	  - Apply migrations"
 	@echo "  migrate-down	  - Roll back the last migration"
 	@echo "  migrate-status  - Check migration status"
+	@echo "  install-mockgen - Install mockgen"
+	@echo "  generate-mocks  - Generate mocks (go generate)"
+	@echo "  generate        - Run all code generation "
 	@echo "  check           - A full run, like in CI: formatting, linter, tests"
 	@echo "  coverage    	  - Run tests and generate HTML coverage report"
 	@echo "  cover       	  - Alias for coverage"
@@ -71,7 +78,7 @@ help:
 # Prepare Environment (installation of tools)
 # ============================================================
 .PHONY: deps
-deps:
+deps: install-mockgen
 	#$(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5 # install go linter
 	#$(GO) install github.com/pressly/goose/v3/cmd/goose@latest) # install Goose
 
@@ -180,6 +187,20 @@ migrate-down:
 .PHONY: migrate-status
 migrate-status:
 	goose -dir $(MIGRATIONS_DIR) postgres $(DB_DSN) status
+
+# Task - Install mockgen
+.PHONY: install-mockgen
+install-mockgen:
+	$(GO) install go.uber.org/mock/mockgen@$(MOCKGEN_VERSION)
+
+# Task - Generate mocks from //go:generate directives (mockgen from GOBIN even if not in PATH)
+.PHONY: generate-mocks
+generate-mocks:
+	PATH="$(GOBIN):$$PATH" $(GO) generate ./...
+
+# Task - Run all code generation
+.PHONY: generate
+generate: generate-mocks
 
 # Task - A full run, like in CI: formatting, linter, tests
 .PHONY: check
