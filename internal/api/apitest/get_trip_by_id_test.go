@@ -18,7 +18,6 @@ import (
 func TestServer_GetTripById(t *testing.T) {
 	t.Parallel()
 
-
 	// Given: trip created by NormalClientID and then GET trip by ID
 	// Then: 200 OK
 	t.Run("success_get_trip_by_id_when_caller_is_trip_owner", func(t *testing.T) {

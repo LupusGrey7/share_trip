@@ -19,7 +19,6 @@ const createTripDraftURL = GroupPrefixV2 + "/trip/createTripDraft"
 func TestServer_CreateTrip(t *testing.T) {
 	t.Parallel()
 
-
 	// Given: valid request + JWT stub
 	// When: POST createTripDraft
 	// Then: 201, DriverID = Keycloak sub (not from body)
